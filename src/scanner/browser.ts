@@ -12,6 +12,8 @@ import { log } from '../utils/logger.js';
 export interface CrawlResult {
   pages: CrawledPage[];
   responses: InterceptedResponse[];
+  browser: Browser;
+  context: BrowserContext;
 }
 
 export async function crawl(config: ScanConfig): Promise<CrawlResult> {
@@ -37,45 +39,50 @@ export async function crawl(config: ScanConfig): Promise<CrawlResult> {
     disallowedPaths = await fetchRobotsTxt(config.targetUrl, context);
   }
 
-  try {
-    while (toVisit.length > 0 && visited.size < config.maxPages) {
-      const url = toVisit.shift()!;
-      const normalized = normalizeUrl(url);
+  while (toVisit.length > 0 && visited.size < config.maxPages) {
+    const url = toVisit.shift()!;
+    const normalized = normalizeUrl(url);
 
-      if (visited.has(normalized)) continue;
-      if (!isSameOrigin(normalized, config.targetUrl)) continue;
-      if (isDisallowed(normalized, disallowedPaths, config.targetUrl)) {
-        log.debug(`Skipping (robots.txt): ${normalized}`);
-        continue;
-      }
-
-      visited.add(normalized);
-      log.info(`Crawling [${visited.size}/${config.maxPages}]: ${normalized}`);
-
-      try {
-        const pageResult = await crawlPage(context, normalized, config, responses);
-        pages.push(pageResult);
-
-        // Add discovered links to queue
-        for (const link of pageResult.links) {
-          const normalizedLink = normalizeUrl(link);
-          if (!visited.has(normalizedLink) && isSameOrigin(normalizedLink, config.targetUrl)) {
-            toVisit.push(normalizedLink);
-          }
-        }
-
-        // Rate limiting
-        await delay(config.requestDelay);
-      } catch (err) {
-        log.warn(`Failed to crawl ${normalized}: ${(err as Error).message}`);
-      }
+    if (visited.has(normalized)) continue;
+    if (!isSameOrigin(normalized, config.targetUrl)) continue;
+    if (isDisallowed(normalized, disallowedPaths, config.targetUrl)) {
+      log.debug(`Skipping (robots.txt): ${normalized}`);
+      continue;
     }
-  } finally {
-    await browser.close();
+
+    visited.add(normalized);
+    log.info(`Crawling [${visited.size}/${config.maxPages}]: ${normalized}`);
+
+    try {
+      const pageResult = await crawlPage(context, normalized, config, responses);
+      pages.push(pageResult);
+
+      // Add discovered links to queue
+      for (const link of pageResult.links) {
+        const normalizedLink = normalizeUrl(link);
+        if (!visited.has(normalizedLink) && isSameOrigin(normalizedLink, config.targetUrl)) {
+          toVisit.push(normalizedLink);
+        }
+      }
+
+      // Rate limiting
+      await delay(config.requestDelay);
+    } catch (err) {
+      log.warn(`Failed to crawl ${normalized}: ${(err as Error).message}`);
+    }
   }
 
   log.info(`Crawl complete: ${pages.length} pages scanned`);
-  return { pages, responses };
+  return { pages, responses, browser, context };
+}
+
+/** Close the browser when scanning is complete */
+export async function closeBrowser(browser: Browser): Promise<void> {
+  try {
+    await browser.close();
+  } catch {
+    // Browser may already be closed
+  }
 }
 
 async function crawlPage(

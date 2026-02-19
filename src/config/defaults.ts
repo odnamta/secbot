@@ -37,6 +37,8 @@ export function buildConfig(
     outputFormat: ['terminal'],
     concurrency: profileDefaults.concurrency!,
     requestDelay: profileDefaults.requestDelay!,
+    logRequests: false,
+    useAI: true,
     ...overrides,
   };
 }

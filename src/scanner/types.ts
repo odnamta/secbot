@@ -59,10 +59,13 @@ export interface ScanConfig {
   timeout: number;
   respectRobots: boolean;
   authStorageState?: string;
-  outputFormat: ('terminal' | 'json' | 'html')[];
+  outputFormat: ('terminal' | 'json' | 'html' | 'bounty')[];
   outputPath?: string;
   concurrency: number;
   requestDelay: number;
+  scope?: ScanScope;
+  logRequests: boolean;
+  useAI: boolean;
 }
 
 export interface CrawledPage {
@@ -122,6 +125,9 @@ export interface ScanResult {
   rawFindings: RawFinding[];
   interpretedFindings: InterpretedFinding[];
   summary: ScanSummary;
+  recon?: ReconResult;
+  attackPlan?: AttackPlan;
+  validatedFindings?: ValidatedFinding[];
 }
 
 export interface ScanSummary {
@@ -129,4 +135,110 @@ export interface ScanSummary {
   totalInterpretedFindings: number;
   bySeverity: Record<Severity, number>;
   topIssues: string[];
+}
+
+// ─── Scope ─────────────────────────────────────────────────────────
+
+export interface ScanScope {
+  includePatterns: string[];
+  excludePatterns: string[];
+}
+
+// ─── Recon ─────────────────────────────────────────────────────────
+
+export interface ReconResult {
+  techStack: TechFingerprint;
+  waf: WafDetection;
+  framework: FrameworkDetection;
+  endpoints: EndpointMap;
+}
+
+export interface TechFingerprint {
+  server?: string;
+  poweredBy?: string;
+  cdn?: string;
+  languages: string[];
+  detected: string[];
+}
+
+export interface WafDetection {
+  detected: boolean;
+  name?: string;
+  confidence: Confidence;
+  evidence: string[];
+}
+
+export interface FrameworkDetection {
+  name?: string;
+  version?: string;
+  confidence: Confidence;
+  evidence: string[];
+}
+
+export interface EndpointMap {
+  pages: string[];
+  apiRoutes: string[];
+  forms: FormInfo[];
+  staticAssets: string[];
+  graphql: string[];
+}
+
+// ─── Attack Plan ───────────────────────────────────────────────────
+
+export interface AttackPlan {
+  recommendedChecks: RecommendedCheck[];
+  reasoning: string;
+  skipReasons: Record<string, string>;
+}
+
+export interface RecommendedCheck {
+  name: string;
+  priority: number;
+  reason: string;
+  focusAreas?: string[];
+}
+
+// ─── Validation ────────────────────────────────────────────────────
+
+export interface ValidatedFinding {
+  findingId: string;
+  isValid: boolean;
+  confidence: Confidence;
+  reasoning: string;
+  adjustedSeverity?: Severity;
+}
+
+// ─── Bug Bounty ────────────────────────────────────────────────────
+
+export interface BountyReport {
+  target: string;
+  scanDate: string;
+  findings: BountyFinding[];
+  summary: { total: number; bySeverity: Record<Severity, number> };
+}
+
+export interface BountyFinding {
+  title: string;
+  severity: Severity;
+  cwe: string;
+  owaspCategory: string;
+  asset: string;
+  description: string;
+  stepsToReproduce: string[];
+  impact: string;
+  evidence: string;
+  remediation: string;
+}
+
+// ─── Request Logging ───────────────────────────────────────────────
+
+export interface RequestLogEntry {
+  timestamp: string;
+  method: string;
+  url: string;
+  headers?: Record<string, string>;
+  body?: string;
+  responseStatus?: number;
+  responseHeaders?: Record<string, string>;
+  phase: string;
 }

@@ -7,14 +7,21 @@ import { program } from 'commander';
 import chalk from 'chalk';
 import { resolve, join } from 'node:path';
 import { readFileSync } from 'node:fs';
-import { crawl } from './scanner/browser.js';
+import { randomUUID } from 'node:crypto';
+import { crawl, closeBrowser } from './scanner/browser.js';
 import { runPassiveChecks } from './scanner/passive.js';
-import { runActiveChecks } from './scanner/active.js';
-import { interpretFindings, type AIProvider } from './ai/interpreter.js';
+import { runActiveChecks } from './scanner/active/index.js';
+import { runRecon } from './scanner/recon.js';
+import { planAttack } from './ai/planner.js';
+import { validateFindings } from './ai/validator.js';
+import { generateReport } from './ai/reporter.js';
 import { printTerminalReport } from './reporter/terminal.js';
 import { writeJsonReport } from './reporter/json.js';
 import { writeHtmlReport } from './reporter/html.js';
+import { writeBountyReport } from './reporter/bounty.js';
 import { buildConfig } from './config/defaults.js';
+import { parseScopePatterns } from './utils/scope.js';
+import { RequestLogger } from './utils/request-logger.js';
 import { log, setLogLevel } from './utils/logger.js';
 import type { ScanConfig, ScanProfile, ScanResult } from './scanner/types.js';
 
@@ -31,13 +38,13 @@ program
   .argument('<url>', 'Target URL to scan')
   .option('-p, --profile <profile>', 'Scan profile: quick, standard, deep', 'standard')
   .option('-a, --auth <path>', 'Path to Playwright storage state JSON for authenticated scanning')
-  .option('-f, --format <formats>', 'Output formats: terminal,json,html (comma-separated)', 'terminal')
+  .option('-f, --format <formats>', 'Output formats: terminal,json,html,bounty (comma-separated)', 'terminal')
   .option('-o, --output <path>', 'Output directory for reports', './secbot-reports')
   .option('--max-pages <n>', 'Maximum pages to crawl', undefined)
   .option('--timeout <ms>', 'Per-page timeout in milliseconds', undefined)
   .option('--ignore-robots', 'Ignore robots.txt restrictions', false)
-  .option('--ai-provider <provider>', 'AI provider: auto, ollama, anthropic, none (default: auto)', 'auto')
-  .option('--ollama-model <model>', 'Ollama model to use (default: auto-detect)', undefined)
+  .option('--scope <patterns>', 'Scope patterns: "*.example.com,-admin.example.com"')
+  .option('--log-requests', 'Log all HTTP requests for accountability', false)
   .option('--no-ai', 'Skip AI interpretation (use rule-based fallback)')
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (url: string, options: Record<string, unknown>) => {
@@ -69,7 +76,6 @@ program
       console.log(chalk.yellow(`  Target: ${targetUrl}`));
       console.log();
 
-      // In non-interactive mode, proceed. In interactive mode, ask for consent
       if (process.stdin.isTTY) {
         const { createInterface } = await import('node:readline');
         const rl = createInterface({ input: process.stdin, output: process.stdout });
@@ -89,81 +95,143 @@ program
 
     // Build config
     const formats = (options.format as string).split(',').map((f) => f.trim()) as ScanConfig['outputFormat'];
+    const scope = options.scope ? parseScopePatterns(options.scope as string) : undefined;
+    const useAI = options.ai !== false;
+
     const config = buildConfig(targetUrl, {
       profile: options.profile as ScanProfile,
       authStorageState: options.auth as string | undefined,
       outputFormat: formats,
       outputPath: options.output as string,
       respectRobots: !options.ignoreRobots,
+      scope,
+      logRequests: options.logRequests === true,
+      useAI,
       ...(options.maxPages ? { maxPages: parseInt(options.maxPages as string, 10) } : {}),
       ...(options.timeout ? { timeout: parseInt(options.timeout as string, 10) } : {}),
     });
 
+    const scanId = new Date().toISOString().replace(/[:.]/g, '-');
+    const outputDir = resolve(config.outputPath ?? './secbot-reports');
     const startedAt = new Date().toISOString();
 
+    // Set up request logger (opt-in)
+    const requestLogger = config.logRequests
+      ? new RequestLogger(outputDir, scanId)
+      : undefined;
+
     try {
-      // Phase 1: Crawl
+      // ─── Phase 1: Crawl ────────────────────────────────────────
       log.info('Phase 1: Crawling target...');
-      const { pages, responses } = await crawl(config);
+      const { pages, responses, browser, context } = await crawl(config);
 
       if (pages.length === 0) {
         console.log(chalk.yellow('No pages were successfully crawled. Check the URL and try again.'));
+        await closeBrowser(browser);
         process.exit(1);
       }
 
-      // Phase 2: Passive scanning
-      log.info('Phase 2: Running passive security checks...');
-      const passiveFindings = runPassiveChecks(pages, responses);
+      try {
+        // ─── Phase 2: Recon ──────────────────────────────────────
+        log.info('Phase 2: Running reconnaissance...');
+        const recon = runRecon(pages, responses);
 
-      // Phase 3: Active scanning
-      log.info('Phase 3: Running active security checks...');
-      const activeFindings = await runActiveChecks(pages, config);
+        // ─── Phase 3: AI Attack Plan ─────────────────────────────
+        let attackPlan;
+        if (config.useAI) {
+          log.info('Phase 3: AI planning attack strategy...');
+          attackPlan = await planAttack(targetUrl, recon, pages, config.profile);
+        } else {
+          log.info('Phase 3: Skipping AI planning (--no-ai)');
+        }
 
-      const allRawFindings = [...passiveFindings, ...activeFindings];
+        // ─── Phase 4: Passive Scanning ───────────────────────────
+        log.info('Phase 4: Running passive security checks...');
+        const passiveFindings = runPassiveChecks(pages, responses);
 
-      // Phase 4: AI interpretation
-      const aiProvider: AIProvider = options.ai === false ? 'none' : (options.aiProvider as AIProvider);
-      log.info(`Phase 4: AI interpretation (provider: ${aiProvider})...`);
-      const interpreted = await interpretFindings(targetUrl, allRawFindings, {
-        provider: aiProvider,
-        ollamaModel: options.ollamaModel as string,
-      });
-      const { findings: interpretedFindings, summary } = interpreted;
+        // ─── Phase 5: Active Scanning ────────────────────────────
+        log.info('Phase 5: Running active security checks...');
+        const activeFindings = await runActiveChecks(
+          context,
+          pages,
+          config,
+          attackPlan,
+          requestLogger,
+        );
 
-      const completedAt = new Date().toISOString();
+        const allRawFindings = [...passiveFindings, ...activeFindings];
 
-      const scanResult: ScanResult = {
-        targetUrl,
-        profile: config.profile,
-        startedAt,
-        completedAt,
-        pagesScanned: pages.length,
-        rawFindings: allRawFindings,
-        interpretedFindings,
-        summary,
-      };
+        // ─── Phase 6: AI Validation ──────────────────────────────
+        let validations;
+        if (config.useAI && allRawFindings.length > 0) {
+          log.info('Phase 6: AI validating findings...');
+          validations = await validateFindings(targetUrl, allRawFindings, recon);
+        } else {
+          log.info(config.useAI ? 'Phase 6: No findings to validate' : 'Phase 6: Skipping AI validation (--no-ai)');
+          // Fallback: mark all as valid
+          validations = allRawFindings.map((f) => ({
+            findingId: f.id,
+            isValid: true,
+            confidence: 'medium' as const,
+            reasoning: 'AI validation skipped',
+          }));
+        }
 
-      // Phase 5: Report
-      log.info('Phase 5: Generating reports...');
+        // ─── Phase 7: AI Report Generation ───────────────────────
+        log.info('Phase 7: Generating report...');
+        const { findings: interpretedFindings, summary } = await generateReport(
+          targetUrl,
+          allRawFindings,
+          validations,
+          recon,
+        );
 
-      if (formats.includes('terminal')) {
-        printTerminalReport(scanResult);
+        const completedAt = new Date().toISOString();
+
+        const scanResult: ScanResult = {
+          targetUrl,
+          profile: config.profile,
+          startedAt,
+          completedAt,
+          pagesScanned: pages.length,
+          rawFindings: allRawFindings,
+          interpretedFindings,
+          summary,
+          recon,
+          attackPlan,
+          validatedFindings: validations,
+        };
+
+        // ─── Phase 8: Output Reports ─────────────────────────────
+        log.info('Phase 8: Writing reports...');
+
+        if (formats.includes('terminal')) {
+          printTerminalReport(scanResult);
+        }
+
+        if (formats.includes('json')) {
+          const jsonPath = join(outputDir, `secbot-${scanId}.json`);
+          writeJsonReport(scanResult, jsonPath);
+        }
+
+        if (formats.includes('html')) {
+          const htmlPath = join(outputDir, `secbot-${scanId}.html`);
+          writeHtmlReport(scanResult, htmlPath);
+        }
+
+        if (formats.includes('bounty')) {
+          const bountyPath = join(outputDir, `secbot-${scanId}-bounty.md`);
+          writeBountyReport(scanResult, bountyPath);
+        }
+
+        // Flush request log
+        requestLogger?.flush();
+
+        log.info('Scan complete!');
+      } finally {
+        // Always close browser
+        await closeBrowser(browser);
       }
-
-      const outputDir = resolve(config.outputPath ?? './secbot-reports');
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-
-      if (formats.includes('json')) {
-        const jsonPath = join(outputDir, `secbot-${timestamp}.json`);
-        writeJsonReport(scanResult, jsonPath);
-      }
-
-      if (formats.includes('html')) {
-        const htmlPath = join(outputDir, `secbot-${timestamp}.html`);
-        writeHtmlReport(scanResult, htmlPath);
-      }
-
-      log.info('Scan complete!');
     } catch (err) {
       log.error(`Scan failed: ${(err as Error).message}`);
       if (options.verbose) {
