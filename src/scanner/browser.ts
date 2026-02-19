@@ -136,19 +136,24 @@ async function crawlPage(
       timeout: config.timeout,
     });
 
+    // Use final URL after redirects (e.g., / → /login)
+    const finalUrl = page.url();
+
     // Extract page info
     const title = await page.title();
-    const links = await extractLinks(page, url);
-    const forms = await extractForms(page, url);
+    const links = await extractLinks(page, finalUrl);
+    const forms = await extractForms(page, finalUrl);
     const scripts = await extractScripts(page);
-    const cookies = await extractCookies(context, url);
+    const cookies = await extractCookies(context, finalUrl);
 
-    // Get response headers for this page
-    const pageResponse = responses.find((r) => normalizeUrl(r.url) === normalizeUrl(url));
+    // Get response headers for the final page (not the redirect)
+    const pageResponse =
+      responses.find((r) => normalizeUrl(r.url) === normalizeUrl(finalUrl) && r.status >= 200 && r.status < 300) ??
+      responses.find((r) => normalizeUrl(r.url) === normalizeUrl(url));
     const headers = pageResponse?.headers ?? {};
 
     return {
-      url,
+      url: finalUrl,
       status: pageResponse?.status ?? 200,
       headers,
       title,
