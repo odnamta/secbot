@@ -86,6 +86,14 @@ export async function crawl(config: ScanConfig): Promise<CrawlResult> {
         const pageResult = result.value;
         pages.push(pageResult);
 
+        // If the page redirected, mark the final URL as visited too.
+        // This prevents re-crawling the same page (which would hit the
+        // browser cache and lose security headers).
+        const normalizedFinal = normalizeUrl(pageResult.url);
+        if (!visited.has(normalizedFinal)) {
+          visited.add(normalizedFinal);
+        }
+
         // Add discovered links to queue
         for (const link of pageResult.links) {
           const normalizedLink = normalizeUrl(link);
@@ -129,51 +137,95 @@ async function crawlPage(
 ): Promise<CrawledPage> {
   const page = await context.newPage();
 
+  // Track pending response captures so we can await them before reading
+  const pendingResponses: Promise<void>[] = [];
+
   // Intercept all responses
-  page.on('response', async (response) => {
-    try {
-      const headers: Record<string, string> = {};
-      const allHeaders = await response.allHeaders();
-      for (const [k, v] of Object.entries(allHeaders)) {
-        headers[k.toLowerCase()] = v;
-      }
-
-      let body: string | undefined;
-      const contentType = headers['content-type'] ?? '';
-      if (
-        contentType.includes('text/html') ||
-        contentType.includes('application/json') ||
-        contentType.includes('text/plain')
-      ) {
-        try {
-          body = await response.text();
-          if (body.length > 10000) {
-            body = body.slice(0, 10000) + '... [truncated]';
-          }
-        } catch {
-          // Some responses can't be read
+  page.on('response', (response) => {
+    const capture = (async () => {
+      try {
+        const headers: Record<string, string> = {};
+        const allHeaders = await response.allHeaders();
+        for (const [k, v] of Object.entries(allHeaders)) {
+          headers[k.toLowerCase()] = v;
         }
-      }
 
-      responses.push({
-        url: response.url(),
-        status: response.status(),
-        headers,
-        body,
-      });
-    } catch {
-      // Ignore response reading errors
-    }
+        let body: string | undefined;
+        const contentType = headers['content-type'] ?? '';
+        if (
+          contentType.includes('text/html') ||
+          contentType.includes('application/json') ||
+          contentType.includes('text/plain')
+        ) {
+          try {
+            body = await response.text();
+            if (body.length > 10000) {
+              body = body.slice(0, 10000) + '... [truncated]';
+            }
+          } catch {
+            // Some responses can't be read
+          }
+        }
+
+        responses.push({
+          url: response.url(),
+          status: response.status(),
+          headers,
+          body,
+        });
+      } catch {
+        // Ignore response reading errors
+      }
+    })();
+    pendingResponses.push(capture);
   });
 
   try {
-    await page.goto(url, {
+    const gotoResponse = await page.goto(url, {
       waitUntil: 'networkidle',
       timeout: config.timeout,
     });
 
+    // Capture document headers IMMEDIATELY from the goto response,
+    // BEFORE awaiting the response handlers. The handlers call response.text()
+    // which can interfere with reading headers from the same HTTP response.
+    let headers: Record<string, string> = {};
+    let status = 200;
+    if (gotoResponse) {
+      const allHeaders = await gotoResponse.allHeaders();
+      for (const [k, v] of Object.entries(allHeaders)) {
+        headers[k.toLowerCase()] = v;
+      }
+      status = gotoResponse.status();
+    }
+
     // Use final URL after redirects (e.g., / → /login)
     const finalUrl = page.url();
+
+    // When Chromium follows a redirect, the goto response can return
+    // incomplete headers (only CDN-level headers, missing security headers).
+    // Detect this by checking for content-type — a real HTML response always
+    // has it. When missing, make a fresh HTTP request via Playwright's API
+    // request context which bypasses the browser cache entirely.
+    if (!headers['content-type'] && status >= 200 && status < 400) {
+      log.debug(`Incomplete headers for ${finalUrl}, fetching fresh`);
+      try {
+        const freshResp = await page.request.head(finalUrl);
+        const freshHeaders = freshResp.headers();
+        if (Object.keys(freshHeaders).length > Object.keys(headers).length) {
+          headers = {};
+          for (const [k, v] of Object.entries(freshHeaders)) {
+            headers[k.toLowerCase()] = v;
+          }
+          status = freshResp.status();
+        }
+      } catch {
+        log.debug(`Failed to fetch fresh headers for ${finalUrl}`);
+      }
+    }
+
+    // Now wait for response handlers to finish (populates shared responses[])
+    await Promise.allSettled(pendingResponses);
 
     // Extract page info
     const title = await page.title();
@@ -182,15 +234,9 @@ async function crawlPage(
     const scripts = await extractScripts(page);
     const cookies = await extractCookies(context, finalUrl);
 
-    // Get response headers for the final page (not the redirect)
-    const pageResponse =
-      responses.find((r) => normalizeUrl(r.url) === normalizeUrl(finalUrl) && r.status >= 200 && r.status < 300) ??
-      responses.find((r) => normalizeUrl(r.url) === normalizeUrl(url));
-    const headers = pageResponse?.headers ?? {};
-
     return {
       url: finalUrl,
-      status: pageResponse?.status ?? 200,
+      status,
       headers,
       title,
       forms,
