@@ -205,3 +205,48 @@ Remember:
 - Provide specific fix suggestions with code examples
 - Output ONLY valid JSON`;
 }
+
+/**
+ * Reduced reporter prompt — used as retry when full prompt produces invalid/truncated JSON.
+ * Omits code examples and shortens descriptions to reduce output token count.
+ */
+export function buildReducedReporterUserPrompt(
+  url: string,
+  rawFindings: RawFinding[],
+  validations: ValidatedFinding[],
+  recon: ReconResult,
+): string {
+  const validIds = new Set(validations.filter((v) => v.isValid).map((v) => v.findingId));
+  const validFindings = rawFindings.filter((f) => validIds.has(f.id));
+
+  const compactFindings = validFindings.map((f) => {
+    const validation = validations.find((v) => v.findingId === f.id);
+    return {
+      id: f.id,
+      category: f.category,
+      severity: validation?.adjustedSeverity ?? f.severity,
+      title: f.title,
+      url: f.url,
+    };
+  });
+
+  return `Analyze these validated security findings for ${url}.
+
+Total raw findings: ${rawFindings.length}
+Validated as real: ${validFindings.length}
+
+Tech context:
+- Framework: ${recon.framework.name ?? 'unknown'}
+
+Findings:
+${JSON.stringify(compactFindings, null, 2)}
+
+IMPORTANT constraints for this response:
+- Set "codeExample" to null for ALL findings
+- Keep "description" under 200 characters
+- Keep "suggestedFix" under 200 characters
+- Do NOT include "evidence" field
+- Deduplicate aggressively
+- Target <10 actionable findings
+- Output ONLY valid JSON`;
+}

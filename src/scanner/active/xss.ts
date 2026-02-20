@@ -8,10 +8,10 @@ import type { ActiveCheck, ScanTargets } from './index.js';
 import { delay } from '../../utils/shared.js';
 
 /**
- * Dangerous HTML contexts where unencoded reflection means executable XSS.
- * We check if the raw payload appears inside these patterns.
+ * Dangerous HTML contexts — safe to match against both markers and full payloads.
+ * These contexts mean executable XSS even if only a marker string appears.
  */
-const DANGEROUS_CONTEXTS = [
+const DANGEROUS_CONTEXTS_ALWAYS = [
   // Inside <script> tags
   /<script[^>]*>[^]*?PAYLOAD[^]*?<\/script>/i,
   // Inside event handlers
@@ -20,7 +20,14 @@ const DANGEROUS_CONTEXTS = [
   /(?:href|src|action)\s*=\s*["']?\s*javascript:[^"']*PAYLOAD/i,
   // Unquoted attribute value
   /=\s*PAYLOAD/,
-  // Raw in HTML body (not inside an attribute value that's properly quoted and encoded)
+];
+
+/**
+ * Body-context pattern — only safe to match against full payloads, NOT markers.
+ * A marker like "secbot-xss-1" appearing in text content is NOT dangerous by itself.
+ */
+const DANGEROUS_CONTEXTS_PAYLOAD_ONLY = [
+  // Raw in HTML body (full payload with tags appearing unencoded)
   />[^<]*PAYLOAD/,
 ];
 
@@ -45,29 +52,54 @@ export const xssCheck: ActiveCheck = {
 };
 
 /**
+ * Check if nearby content has HTML-encoded versions of the marker,
+ * indicating the app IS encoding output (safe, not XSS).
+ */
+function isHtmlEncoded(content: string, marker: string): boolean {
+  // Look for HTML entities near the marker position
+  const idx = content.indexOf(marker);
+  if (idx === -1) return false;
+
+  // Check a window around the marker for HTML entities
+  const windowStart = Math.max(0, idx - 100);
+  const windowEnd = Math.min(content.length, idx + marker.length + 100);
+  const window = content.slice(windowStart, windowEnd);
+
+  return /&lt;|&gt;|&quot;|&#x27;|&#39;|&amp;/.test(window);
+}
+
+/**
  * Check if a payload is reflected in a dangerous (unencoded, executable) context.
  * Returns the context description if dangerous, null if safely encoded.
  */
 function checkDangerousReflection(content: string, payload: string, marker?: string | null): string | null {
-  const searchTerms = [payload];
-  if (marker) searchTerms.push(marker);
-
-  for (const term of searchTerms) {
-    // Quick check: is it reflected at all?
-    if (!content.includes(term)) continue;
-
-    // Check if it's in a dangerous context
-    for (const pattern of DANGEROUS_CONTEXTS) {
-      const contextPattern = new RegExp(pattern.source.replace('PAYLOAD', escapeRegex(term)), pattern.flags);
+  // Check full payload first (higher signal)
+  if (content.includes(payload)) {
+    // Check all context patterns for full payloads
+    for (const pattern of [...DANGEROUS_CONTEXTS_ALWAYS, ...DANGEROUS_CONTEXTS_PAYLOAD_ONLY]) {
+      const contextPattern = new RegExp(pattern.source.replace('PAYLOAD', escapeRegex(payload)), pattern.flags);
       if (contextPattern.test(content)) {
         return `Unencoded reflection in dangerous context`;
       }
     }
 
-    // Also check: if the raw HTML tag payload appears as-is, it's dangerous
-    // (e.g., <script>alert(1)</script> appears literally in the HTML source)
-    if (term.includes('<') && content.includes(term)) {
+    // If the raw HTML tag payload appears as-is, it's dangerous
+    if (payload.includes('<') && content.includes(payload)) {
       return `Raw HTML tag reflected without encoding`;
+    }
+  }
+
+  // Check marker — only against ALWAYS contexts, and skip if HTML-encoded
+  if (marker && content.includes(marker)) {
+    if (isHtmlEncoded(content, marker)) {
+      return null; // App encodes output — marker in text is safe
+    }
+
+    for (const pattern of DANGEROUS_CONTEXTS_ALWAYS) {
+      const contextPattern = new RegExp(pattern.source.replace('PAYLOAD', escapeRegex(marker)), pattern.flags);
+      if (contextPattern.test(content)) {
+        return `Unencoded reflection in dangerous context`;
+      }
     }
   }
 

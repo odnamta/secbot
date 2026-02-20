@@ -139,6 +139,90 @@ async function testSqliOnForms(
         break;
       }
     }
+
+    // --- Time-based blind SQLi for forms ---
+    if (config.profile !== 'quick' && !findings.some((f) => f.category === 'sqli' && f.url === form.pageUrl)) {
+      const timePayloads = config.profile === 'deep' ? SQLI_TIME_PAYLOADS : SQLI_TIME_PAYLOADS.slice(0, 1);
+
+      // Build form body from inputs
+      const formBody = textInputs.map((i) => `${encodeURIComponent(i.name)}=${encodeURIComponent('test')}`).join('&');
+
+      // Establish baseline with benign POST requests
+      const baselineTimes: number[] = [];
+      for (let i = 0; i < 2; i++) {
+        const page = await context.newPage();
+        try {
+          const start = Date.now();
+          await page.request.fetch(form.action, {
+            method: form.method.toUpperCase() === 'GET' ? 'GET' : 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            data: formBody,
+          });
+          baselineTimes.push(Date.now() - start);
+        } catch {
+          // skip
+        } finally {
+          await page.close();
+        }
+        await delay(config.requestDelay);
+      }
+
+      if (baselineTimes.length > 0) {
+        const avgBaseline = baselineTimes.reduce((a, b) => a + b, 0) / baselineTimes.length;
+
+        for (const payload of timePayloads) {
+          const payloadBody = textInputs
+            .map((i) => `${encodeURIComponent(i.name)}=${encodeURIComponent(payload)}`)
+            .join('&');
+
+          const page = await context.newPage();
+          try {
+            const start = Date.now();
+            const response = await page.request.fetch(form.action, {
+              method: form.method.toUpperCase() === 'GET' ? 'GET' : 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              data: payloadBody,
+            });
+            const elapsed = Date.now() - start;
+
+            requestLogger?.log({
+              timestamp: new Date().toISOString(),
+              method: form.method,
+              url: form.action,
+              body: payloadBody,
+              responseStatus: response.status(),
+              phase: 'active-sqli-blind',
+            });
+
+            const diff = elapsed - avgBaseline;
+            if (diff > BLIND_SQLI_THRESHOLD_MS) {
+              findings.push({
+                id: randomUUID(),
+                category: 'sqli',
+                severity: 'high',
+                title: `Potential Blind SQL Injection in Form "${textInputs[0].name}"`,
+                description: `Time-based blind SQL injection suspected. The response was ${Math.round(diff)}ms slower when a time-delay payload was submitted via form input "${textInputs[0].name}". Baseline: ${Math.round(avgBaseline)}ms, With payload: ${elapsed}ms.`,
+                url: form.pageUrl,
+                evidence: `Payload: ${payload}\nBaseline: ${Math.round(avgBaseline)}ms\nWith payload: ${elapsed}ms\nDifference: ${Math.round(diff)}ms (threshold: ${BLIND_SQLI_THRESHOLD_MS}ms)`,
+                request: {
+                  method: form.method,
+                  url: form.action,
+                  body: payloadBody,
+                },
+                timestamp: new Date().toISOString(),
+              });
+              break;
+            }
+          } catch {
+            // Continue
+          } finally {
+            await page.close();
+          }
+
+          await delay(config.requestDelay);
+        }
+      }
+    }
   }
 
   return findings;

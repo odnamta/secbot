@@ -6,7 +6,7 @@ import type {
   ScanSummary,
 } from '../scanner/types.js';
 import { askClaude, parseJsonResponse } from './client.js';
-import { REPORTER_SYSTEM_PROMPT, buildReporterUserPrompt } from './prompts.js';
+import { REPORTER_SYSTEM_PROMPT, buildReporterUserPrompt, buildReducedReporterUserPrompt } from './prompts.js';
 import { fallbackInterpretation } from './fallback.js';
 import { log } from '../utils/logger.js';
 
@@ -38,7 +38,10 @@ export async function generateReport(
   log.info(`Generating AI report for ${validFindings.length} validated findings...`);
 
   const userPrompt = buildReporterUserPrompt(url, rawFindings, validations, recon);
-  const response = await askClaude(REPORTER_SYSTEM_PROMPT, userPrompt, { maxTokens: 8192 });
+  const response = await askClaude(REPORTER_SYSTEM_PROMPT, userPrompt, {
+    maxTokens: 16384,
+    timeout: 120000,
+  });
 
   if (response) {
     const parsed = parseJsonResponse<ReportResult>(response);
@@ -48,7 +51,26 @@ export async function generateReport(
       );
       return parsed;
     }
-    log.warn('AI reporter returned invalid JSON — using fallback');
+
+    // Retry with reduced prompt (no code examples, shorter descriptions)
+    log.warn('AI reporter returned invalid JSON — retrying with reduced prompt...');
+    const reducedPrompt = buildReducedReporterUserPrompt(url, rawFindings, validations, recon);
+    const retryResponse = await askClaude(REPORTER_SYSTEM_PROMPT, reducedPrompt, {
+      maxTokens: 8192,
+      timeout: 60000,
+    });
+
+    if (retryResponse) {
+      const retryParsed = parseJsonResponse<ReportResult>(retryResponse);
+      if (retryParsed?.findings && retryParsed?.summary) {
+        log.info(
+          `AI report (retry): ${rawFindings.length} raw → ${validFindings.length} validated → ${retryParsed.findings.length} actionable`,
+        );
+        return retryParsed;
+      }
+    }
+
+    log.warn('AI reporter retry also failed — using fallback');
   } else {
     log.info('AI unavailable — using rule-based report generation');
   }

@@ -99,8 +99,84 @@ export function parseJsonResponse<T>(text: string): T | null {
 
   try {
     return JSON.parse(jsonStr) as T;
-  } catch (err) {
-    log.debug(`JSON parse failed: ${(err as Error).message}`);
+  } catch {
+    // Try to recover truncated JSON
+    const recovered = tryRecoverTruncatedJson(jsonStr);
+    if (recovered) {
+      try {
+        return JSON.parse(recovered) as T;
+      } catch (err2) {
+        log.debug(`JSON recovery failed: ${(err2 as Error).message}`);
+      }
+    }
+    log.debug('JSON parse failed and recovery unsuccessful');
     return null;
   }
+}
+
+/**
+ * Attempt to fix truncated/malformed JSON from Claude responses.
+ * Handles: unclosed brackets, dangling strings, trailing commas.
+ */
+function tryRecoverTruncatedJson(input: string): string | null {
+  let str = input.trim();
+
+  // Remove trailing comma before we close brackets
+  str = str.replace(/,\s*$/, '');
+
+  // Track open brackets
+  const stack: string[] = [];
+  let inString = false;
+  let escape = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+
+    if (escape) {
+      escape = false;
+      continue;
+    }
+
+    if (ch === '\\' && inString) {
+      escape = true;
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (ch === '{' || ch === '[') {
+      stack.push(ch);
+    } else if (ch === '}') {
+      if (stack.length > 0 && stack[stack.length - 1] === '{') stack.pop();
+    } else if (ch === ']') {
+      if (stack.length > 0 && stack[stack.length - 1] === '[') stack.pop();
+    }
+  }
+
+  // If nothing is unclosed, no recovery needed (or possible)
+  if (stack.length === 0 && !inString) return null;
+
+  // Close dangling string
+  if (inString) {
+    str += '"';
+  }
+
+  // Remove any trailing comma after closing the string
+  str = str.replace(/,\s*$/, '');
+
+  // Close unclosed brackets in reverse order
+  while (stack.length > 0) {
+    const open = stack.pop();
+    // Remove trailing comma before closing
+    str = str.replace(/,\s*$/, '');
+    str += open === '{' ? '}' : ']';
+  }
+
+  log.debug('Recovered truncated JSON');
+  return str;
 }
