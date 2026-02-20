@@ -1,19 +1,32 @@
 import { randomUUID } from 'node:crypto';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig, FormInfo } from '../types.js';
-import { SQLI_PAYLOADS, SQL_ERROR_PATTERNS } from '../../config/payloads/sqli.js';
+import { SQLI_PAYLOADS, SQLI_TIME_PAYLOADS, SQL_ERROR_PATTERNS } from '../../config/payloads/sqli.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck } from './index.js';
+import { delay } from '../../utils/shared.js';
+
+/** Threshold in ms — if response is this much slower than baseline, it's suspicious */
+const BLIND_SQLI_THRESHOLD_MS = 1500;
 
 export const sqliCheck: ActiveCheck = {
   name: 'sqli',
   category: 'sqli',
   async run(context, targets, config, requestLogger) {
-    if (targets.forms.length === 0) return [];
+    const findings: RawFinding[] = [];
 
-    log.info(`Testing ${targets.forms.length} forms for SQL injection...`);
-    return testSqliOnForms(context, targets.forms, config, requestLogger);
+    if (targets.forms.length > 0) {
+      log.info(`Testing ${targets.forms.length} forms for SQL injection...`);
+      findings.push(...(await testSqliOnForms(context, targets.forms, config, requestLogger)));
+    }
+
+    if (targets.urlsWithParams.length > 0) {
+      log.info(`Testing ${targets.urlsWithParams.length} URLs for SQL injection...`);
+      findings.push(...(await testSqliOnUrls(context, targets.urlsWithParams, config, requestLogger)));
+    }
+
+    return findings;
   },
 };
 
@@ -34,6 +47,9 @@ async function testSqliOnForms(
 
     for (const payload of payloads) {
       const page = await context.newPage();
+
+      // Register response handler BEFORE navigation to avoid race condition
+      let responseResolve: (() => void) | null = null;
       let responseBody = '';
 
       page.on('response', async (response) => {
@@ -41,6 +57,7 @@ async function testSqliOnForms(
           const ct = response.headers()['content-type'] ?? '';
           if (ct.includes('text/html') || ct.includes('application/json')) {
             responseBody = await response.text();
+            responseResolve?.();
           }
         } catch {
           // Ignore
@@ -58,6 +75,14 @@ async function testSqliOnForms(
           }
         }
 
+        // Reset for capturing form submission response
+        responseBody = '';
+        let responseTimeout: ReturnType<typeof setTimeout> | null = null;
+        const submissionResponse = new Promise<void>((resolve) => {
+          responseResolve = resolve;
+          responseTimeout = setTimeout(resolve, 5000);
+        });
+
         try {
           const submitBtn = page.locator('form button[type="submit"], form input[type="submit"]').first();
           if (await submitBtn.count() > 0) {
@@ -65,9 +90,10 @@ async function testSqliOnForms(
           } else {
             await page.locator('form').first().evaluate((f) => (f as HTMLFormElement).submit());
           }
-          await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+          await submissionResponse;
+          if (responseTimeout) clearTimeout(responseTimeout);
         } catch {
-          // Form submission may fail
+          if (responseTimeout) clearTimeout(responseTimeout);
         }
 
         requestLogger?.log({
@@ -118,6 +144,142 @@ async function testSqliOnForms(
   return findings;
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+async function testSqliOnUrls(
+  context: BrowserContext,
+  urls: string[],
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+  const errorPayloads = config.profile === 'deep' ? SQLI_PAYLOADS : SQLI_PAYLOADS.slice(0, 3);
+  const timePayloads = config.profile === 'deep' ? SQLI_TIME_PAYLOADS : SQLI_TIME_PAYLOADS.slice(0, 1);
+
+  for (const originalUrl of urls) {
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(originalUrl);
+    } catch {
+      continue;
+    }
+    const params = Array.from(parsedUrl.searchParams.keys());
+    if (params.length === 0) continue;
+
+    for (const param of params) {
+      let foundForParam = false;
+
+      // --- Error-based detection ---
+      for (const payload of errorPayloads) {
+        if (foundForParam) break;
+        const testUrl = new URL(originalUrl);
+        testUrl.searchParams.set(param, payload);
+
+        const page = await context.newPage();
+        try {
+          const response = await page.request.fetch(testUrl.href);
+          const body = await response.text();
+
+          requestLogger?.log({
+            timestamp: new Date().toISOString(),
+            method: 'GET',
+            url: testUrl.href,
+            responseStatus: response.status(),
+            phase: 'active-sqli',
+          });
+
+          for (const pattern of SQL_ERROR_PATTERNS) {
+            const match = body.match(pattern);
+            if (match) {
+              findings.push({
+                id: randomUUID(),
+                category: 'sqli',
+                severity: 'critical',
+                title: `SQL Injection in URL Parameter "${param}"`,
+                description: `SQL error message detected when injecting payload into URL parameter "${param}". This indicates the parameter is directly interpolated into SQL queries.`,
+                url: originalUrl,
+                evidence: `Payload: ${payload}\nTest URL: ${testUrl.href}\nSQL error: ${match[0]}`,
+                request: { method: 'GET', url: testUrl.href },
+                response: { status: response.status(), bodySnippet: body.slice(0, 300) },
+                timestamp: new Date().toISOString(),
+              });
+              foundForParam = true;
+              break;
+            }
+          }
+        } catch {
+          // Continue
+        } finally {
+          await page.close();
+        }
+
+        await delay(config.requestDelay);
+      }
+
+      // --- Time-based blind detection ---
+      if (!foundForParam && config.profile !== 'quick') {
+        // Establish baseline response time
+        const baselineTimes: number[] = [];
+        for (let i = 0; i < 2; i++) {
+          const page = await context.newPage();
+          try {
+            const start = Date.now();
+            await page.request.fetch(originalUrl);
+            baselineTimes.push(Date.now() - start);
+          } catch {
+            // skip
+          } finally {
+            await page.close();
+          }
+          await delay(config.requestDelay);
+        }
+
+        if (baselineTimes.length === 0) continue;
+        const avgBaseline = baselineTimes.reduce((a, b) => a + b, 0) / baselineTimes.length;
+
+        for (const payload of timePayloads) {
+          if (foundForParam) break;
+          const testUrl = new URL(originalUrl);
+          testUrl.searchParams.set(param, payload);
+
+          const page = await context.newPage();
+          try {
+            const start = Date.now();
+            const response = await page.request.fetch(testUrl.href);
+            const elapsed = Date.now() - start;
+
+            requestLogger?.log({
+              timestamp: new Date().toISOString(),
+              method: 'GET',
+              url: testUrl.href,
+              responseStatus: response.status(),
+              phase: 'active-sqli-blind',
+            });
+
+            const diff = elapsed - avgBaseline;
+            if (diff > BLIND_SQLI_THRESHOLD_MS) {
+              findings.push({
+                id: randomUUID(),
+                category: 'sqli',
+                severity: 'high',
+                title: `Potential Blind SQL Injection in URL Parameter "${param}"`,
+                description: `Time-based blind SQL injection suspected. The response was ${Math.round(diff)}ms slower when a time-delay payload was injected into "${param}". Baseline: ${Math.round(avgBaseline)}ms, With payload: ${elapsed}ms.`,
+                url: originalUrl,
+                evidence: `Payload: ${payload}\nBaseline: ${Math.round(avgBaseline)}ms\nWith payload: ${elapsed}ms\nDifference: ${Math.round(diff)}ms (threshold: ${BLIND_SQLI_THRESHOLD_MS}ms)`,
+                request: { method: 'GET', url: testUrl.href },
+                timestamp: new Date().toISOString(),
+              });
+              foundForParam = true;
+            }
+          } catch {
+            // Continue
+          } finally {
+            await page.close();
+          }
+
+          await delay(config.requestDelay);
+        }
+      }
+    }
+  }
+
+  return findings;
 }

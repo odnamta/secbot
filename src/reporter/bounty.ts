@@ -2,6 +2,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import type { ScanResult, InterpretedFinding, Severity, CheckCategory } from '../scanner/types.js';
 import { log } from '../utils/logger.js';
+import { severityOrder, formatDuration } from '../utils/shared.js';
 
 export function writeBountyReport(result: ScanResult, outputPath: string): void {
   const md = generateBountyMarkdown(result);
@@ -157,15 +158,4 @@ function mapToCwe(finding: InterpretedFinding): string {
   return 'CWE-Unknown';
 }
 
-function severityOrder(s: Severity): number {
-  return { critical: 5, high: 4, medium: 3, low: 2, info: 1 }[s];
-}
-
-function formatDuration(start: string, end: string): string {
-  const ms = new Date(end).getTime() - new Date(start).getTime();
-  if (ms < 1000) return `${ms}ms`;
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  return `${minutes}m ${seconds % 60}s`;
-}
+// severityOrder and formatDuration imported from shared utils

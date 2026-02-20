@@ -1,4 +1,5 @@
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
+import { readFileSync, existsSync } from 'node:fs';
 import type {
   ScanConfig,
   CrawledPage,
@@ -16,15 +17,26 @@ export interface CrawlResult {
   context: BrowserContext;
 }
 
+/** Realistic Chrome UA to avoid WAF blocks. SecBot identifier only sent in non-stealth mode. */
+const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+
 export async function crawl(config: ScanConfig): Promise<CrawlResult> {
   const browser = await chromium.launch({ headless: true });
   const contextOptions: Parameters<Browser['newContext']>[0] = {
-    userAgent: 'SecBot/0.0.1 (Security Scanner)',
+    userAgent: config.userAgent ?? DEFAULT_USER_AGENT,
     ignoreHTTPSErrors: true,
   };
 
   if (config.authStorageState) {
-    contextOptions.storageState = config.authStorageState;
+    if (!existsSync(config.authStorageState)) {
+      throw new Error(`Auth storage state file not found: ${config.authStorageState}`);
+    }
+    try {
+      JSON.parse(readFileSync(config.authStorageState, 'utf-8'));
+      contextOptions.storageState = config.authStorageState;
+    } catch {
+      throw new Error(`Auth storage state file is not valid JSON: ${config.authStorageState}`);
+    }
   }
 
   const context = await browser.newContext(contextOptions);
@@ -39,49 +51,73 @@ export async function crawl(config: ScanConfig): Promise<CrawlResult> {
     disallowedPaths = await fetchRobotsTxt(config.targetUrl, context);
   }
 
+  const concurrency = Math.min(config.concurrency, 5); // Cap at 5 to be safe
+
   while (toVisit.length > 0 && visited.size < config.maxPages) {
-    const url = toVisit.shift()!;
-    const normalized = normalizeUrl(url);
+    // Collect a batch of URLs to crawl concurrently
+    const batch: string[] = [];
+    while (batch.length < concurrency && toVisit.length > 0 && (visited.size + batch.length) < config.maxPages) {
+      const url = toVisit.shift()!;
+      const normalized = normalizeUrl(url);
 
-    if (visited.has(normalized)) continue;
-    if (!isSameOrigin(normalized, config.targetUrl)) continue;
-    if (isDisallowed(normalized, disallowedPaths, config.targetUrl)) {
-      log.debug(`Skipping (robots.txt): ${normalized}`);
-      continue;
-    }
-
-    visited.add(normalized);
-    log.info(`Crawling [${visited.size}/${config.maxPages}]: ${normalized}`);
-
-    try {
-      const pageResult = await crawlPage(context, normalized, config, responses);
-      pages.push(pageResult);
-
-      // Add discovered links to queue
-      for (const link of pageResult.links) {
-        const normalizedLink = normalizeUrl(link);
-        if (!visited.has(normalizedLink) && isSameOrigin(normalizedLink, config.targetUrl)) {
-          toVisit.push(normalizedLink);
-        }
+      if (visited.has(normalized)) continue;
+      if (!isSameOrigin(normalized, config.targetUrl)) continue;
+      if (isDisallowed(normalized, disallowedPaths, config.targetUrl)) {
+        log.debug(`Skipping (robots.txt): ${normalized}`);
+        continue;
       }
 
-      // Rate limiting
-      await delay(config.requestDelay);
-    } catch (err) {
-      log.warn(`Failed to crawl ${normalized}: ${(err as Error).message}`);
+      visited.add(normalized);
+      batch.push(normalized);
     }
+
+    if (batch.length === 0) break;
+
+    // Crawl batch concurrently
+    const results = await Promise.allSettled(
+      batch.map(async (normalized) => {
+        log.info(`Crawling [${visited.size}/${config.maxPages}]: ${normalized}`);
+        return crawlPage(context, normalized, config, responses);
+      }),
+    );
+
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        const pageResult = result.value;
+        pages.push(pageResult);
+
+        // Add discovered links to queue
+        for (const link of pageResult.links) {
+          const normalizedLink = normalizeUrl(link);
+          if (!visited.has(normalizedLink) && isSameOrigin(normalizedLink, config.targetUrl)) {
+            toVisit.push(normalizedLink);
+          }
+        }
+      } else {
+        log.warn(`Failed to crawl: ${result.reason?.message ?? 'unknown error'}`);
+      }
+    }
+
+    // Rate limiting between batches
+    await delay(config.requestDelay);
   }
 
   log.info(`Crawl complete: ${pages.length} pages scanned`);
   return { pages, responses, browser, context };
 }
 
-/** Close the browser when scanning is complete */
+/** Close all pages, contexts, and the browser when scanning is complete */
 export async function closeBrowser(browser: Browser): Promise<void> {
   try {
+    for (const ctx of browser.contexts()) {
+      for (const page of ctx.pages()) {
+        try { await page.close(); } catch { /* already closed */ }
+      }
+      try { await ctx.close(); } catch { /* already closed */ }
+    }
     await browser.close();
-  } catch {
-    // Browser may already be closed
+  } catch (err) {
+    log.debug(`Browser cleanup warning: ${(err as Error).message}`);
   }
 }
 

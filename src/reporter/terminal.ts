@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import type { ScanResult, InterpretedFinding, Severity } from '../scanner/types.js';
+import { severityOrder, formatDuration } from '../utils/shared.js';
 
 export function printTerminalReport(result: ScanResult): void {
   console.log();
@@ -122,16 +123,4 @@ function getSeverityColor(severity: Severity) {
   }
 }
 
-function severityOrder(s: Severity): number {
-  return { critical: 5, high: 4, medium: 3, low: 2, info: 1 }[s];
-}
-
-function formatDuration(start: string, end: string): string {
-  const ms = new Date(end).getTime() - new Date(start).getTime();
-  if (ms < 1000) return `${ms}ms`;
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}m ${remainingSeconds}s`;
-}
+// severityOrder and formatDuration imported from shared utils

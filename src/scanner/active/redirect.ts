@@ -5,6 +5,7 @@ import { REDIRECT_PAYLOADS } from '../../config/payloads/redirect.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck } from './index.js';
+import { delay } from '../../utils/shared.js';
 
 export const redirectCheck: ActiveCheck = {
   name: 'redirect',
@@ -38,10 +39,31 @@ async function testOpenRedirect(
 
         const page = await context.newPage();
         try {
-          await page.goto(testUrl.href, {
-            timeout: config.timeout,
-            waitUntil: 'domcontentloaded',
-          });
+          // First check: use fetch to inspect Location header directly (catches server-side redirects)
+          let locationRedirect = false;
+          try {
+            const fetchResponse = await page.request.fetch(testUrl.href, {
+              maxRedirects: 0,
+            });
+            const locationHeader = fetchResponse.headers()['location'] ?? '';
+            if (locationHeader.includes('evil.example.com')) {
+              locationRedirect = true;
+              findings.push({
+                id: randomUUID(),
+                category: 'open-redirect',
+                severity: 'medium',
+                title: `Open Redirect via "${param}" Parameter`,
+                description: `The parameter "${param}" allows redirecting users to arbitrary external domains via Location header.`,
+                url: originalUrl,
+                evidence: `Payload: ${payload}\nLocation: ${locationHeader}`,
+                request: { method: 'GET', url: testUrl.href },
+                response: { status: fetchResponse.status(), headers: fetchResponse.headers() },
+                timestamp: new Date().toISOString(),
+              });
+            }
+          } catch {
+            // fetch with maxRedirects may not be supported, fall through to browser check
+          }
 
           requestLogger?.log({
             timestamp: new Date().toISOString(),
@@ -50,21 +72,30 @@ async function testOpenRedirect(
             phase: 'active-redirect',
           });
 
-          const finalUrl = page.url();
-          if (finalUrl.includes('evil.example.com')) {
-            findings.push({
-              id: randomUUID(),
-              category: 'open-redirect',
-              severity: 'medium',
-              title: `Open Redirect via "${param}" Parameter`,
-              description: `The parameter "${param}" allows redirecting users to arbitrary external domains.`,
-              url: originalUrl,
-              evidence: `Payload: ${payload}\nRedirected to: ${finalUrl}`,
-              request: { method: 'GET', url: testUrl.href },
-              timestamp: new Date().toISOString(),
+          // Second check: follow redirects in browser (catches JS redirects, meta refresh)
+          if (!locationRedirect) {
+            await page.goto(testUrl.href, {
+              timeout: config.timeout,
+              waitUntil: 'domcontentloaded',
             });
-            break;
+
+            const finalUrl = page.url();
+            if (finalUrl.includes('evil.example.com')) {
+              findings.push({
+                id: randomUUID(),
+                category: 'open-redirect',
+                severity: 'medium',
+                title: `Open Redirect via "${param}" Parameter`,
+                description: `The parameter "${param}" allows redirecting users to arbitrary external domains.`,
+                url: originalUrl,
+                evidence: `Payload: ${payload}\nRedirected to: ${finalUrl}`,
+                request: { method: 'GET', url: testUrl.href },
+                timestamp: new Date().toISOString(),
+              });
+            }
           }
+
+          if (findings.some((f) => f.url === originalUrl && f.category === 'open-redirect')) break;
         } catch {
           // Continue
         } finally {
@@ -77,8 +108,4 @@ async function testOpenRedirect(
   }
 
   return findings;
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

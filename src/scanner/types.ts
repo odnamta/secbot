@@ -66,6 +66,7 @@ export interface ScanConfig {
   scope?: ScanScope;
   logRequests: boolean;
   useAI: boolean;
+  userAgent?: string;
 }
 
 export interface CrawledPage {

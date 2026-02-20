@@ -1,35 +1,52 @@
-import { writeFileSync, mkdirSync, appendFileSync } from 'node:fs';
+import { mkdirSync, appendFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { RequestLogEntry } from '../scanner/types.js';
 import { log } from './logger.js';
 
+const MAX_BUFFER_SIZE = 500;
+
 export class RequestLogger {
-  private entries: RequestLogEntry[] = [];
+  private buffer: RequestLogEntry[] = [];
   private outputPath: string;
-  private flushed = false;
+  private totalCount = 0;
+  private dirCreated = false;
 
   constructor(outputDir: string, scanId: string) {
     this.outputPath = join(outputDir, scanId, 'requests.jsonl');
   }
 
   log(entry: RequestLogEntry): void {
-    this.entries.push(entry);
+    this.buffer.push(entry);
+    this.totalCount++;
+
+    // Auto-flush when buffer is full to prevent memory buildup
+    if (this.buffer.length >= MAX_BUFFER_SIZE) {
+      this.flushBuffer();
+    }
   }
 
-  /** Flush all logged requests to a JSONL file */
+  /** Flush remaining entries and finalize the log */
   flush(): void {
-    if (this.flushed || this.entries.length === 0) return;
+    if (this.totalCount === 0) return;
+    this.flushBuffer();
+    log.info(`Request log written: ${this.totalCount} entries → ${this.outputPath}`);
+  }
 
-    mkdirSync(dirname(this.outputPath), { recursive: true });
-    const lines = this.entries.map((e) => JSON.stringify(e)).join('\n') + '\n';
-    writeFileSync(this.outputPath, lines, 'utf-8');
-    this.flushed = true;
+  private flushBuffer(): void {
+    if (this.buffer.length === 0) return;
 
-    log.info(`Request log written: ${this.entries.length} entries → ${this.outputPath}`);
+    if (!this.dirCreated) {
+      mkdirSync(dirname(this.outputPath), { recursive: true });
+      this.dirCreated = true;
+    }
+
+    const lines = this.buffer.map((e) => JSON.stringify(e)).join('\n') + '\n';
+    appendFileSync(this.outputPath, lines, 'utf-8');
+    this.buffer = [];
   }
 
   get count(): number {
-    return this.entries.length;
+    return this.totalCount;
   }
 
   get path(): string {

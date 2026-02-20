@@ -9,8 +9,12 @@ export const corsCheck: ActiveCheck = {
   name: 'cors',
   category: 'cors-misconfiguration',
   async run(context, targets, config, requestLogger) {
-    log.info('Testing CORS configuration...');
-    return testCorsMisconfiguration(context, targets.pages, config, requestLogger);
+    // Prioritize API endpoints, fall back to regular pages
+    const testUrls = targets.apiEndpoints.length > 0
+      ? [...targets.apiEndpoints, ...targets.pages.slice(0, 2)]
+      : targets.pages;
+    log.info(`Testing CORS configuration on ${testUrls.length} URLs...`);
+    return testCorsMisconfiguration(context, testUrls, config, requestLogger);
   },
 };
 
@@ -42,6 +46,7 @@ async function testCorsMisconfiguration(
     for (const url of testUrls) {
       const page = await context.newPage();
       try {
+        // Test 1: Simple request with evil Origin
         const response = await page.request.fetch(url, {
           headers: { Origin: evilOrigin },
         });
@@ -106,6 +111,54 @@ async function testCorsMisconfiguration(
             },
             timestamp: new Date().toISOString(),
           });
+        }
+
+        // Test 2: OPTIONS preflight to check CORS policy enforcement
+        try {
+          const preflight = await page.request.fetch(url, {
+            method: 'OPTIONS',
+            headers: {
+              Origin: evilOrigin,
+              'Access-Control-Request-Method': 'POST',
+              'Access-Control-Request-Headers': 'Content-Type, Authorization',
+            },
+          });
+
+          requestLogger?.log({
+            timestamp: new Date().toISOString(),
+            method: 'OPTIONS',
+            url,
+            headers: { Origin: evilOrigin, 'Access-Control-Request-Method': 'POST' },
+            responseStatus: preflight.status(),
+            phase: 'active-cors',
+          });
+
+          const preflightAcao = preflight.headers()['access-control-allow-origin'];
+          const allowMethods = preflight.headers()['access-control-allow-methods'];
+          const allowHeaders = preflight.headers()['access-control-allow-headers'];
+
+          // Overly permissive preflight
+          if (preflightAcao === '*' || preflightAcao === evilOrigin) {
+            if (allowMethods?.includes('*') || (allowMethods?.includes('DELETE') && allowMethods?.includes('PUT'))) {
+              findings.push({
+                id: randomUUID(),
+                category: 'cors-misconfiguration',
+                severity: 'high',
+                title: 'CORS Preflight Allows Dangerous Methods',
+                description:
+                  'The server CORS preflight response allows arbitrary origins with dangerous HTTP methods (DELETE, PUT). This enables cross-site state-changing requests.',
+                url,
+                evidence: `Origin: ${evilOrigin}\nAccess-Control-Allow-Origin: ${preflightAcao}\nAccess-Control-Allow-Methods: ${allowMethods}`,
+                response: {
+                  status: preflight.status(),
+                  headers: preflight.headers(),
+                },
+                timestamp: new Date().toISOString(),
+              });
+            }
+          }
+        } catch {
+          // OPTIONS preflight may not be supported
         }
       } catch {
         // Continue

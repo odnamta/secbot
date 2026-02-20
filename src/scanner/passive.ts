@@ -216,9 +216,15 @@ function checkInfoLeakage(
   }
 
   // Check for stack traces / verbose errors in HTML responses
-  const pageResponses = responses.filter(
-    (r) => r.url === page.url && r.body,
-  );
+  // Match responses by normalized URL or hostname to handle redirects
+  const pageHostname = (() => { try { return new URL(page.url).hostname; } catch { return ''; } })();
+  const normalizedPageUrl = normalizePassiveUrl(page.url);
+  const pageResponses = responses.filter((r) => {
+    if (!r.body) return false;
+    if (normalizePassiveUrl(r.url) === normalizedPageUrl) return true;
+    // Also check responses from same hostname (catches redirects)
+    try { return new URL(r.url).hostname === pageHostname && r.status >= 200 && r.status < 300; } catch { return false; }
+  });
   for (const resp of pageResponses) {
     if (!resp.body) continue;
 
@@ -262,10 +268,13 @@ function checkMixedContent(
   if (!page.url.startsWith('https://')) return findings;
 
   // Check for HTTP resources loaded on HTTPS page
+  const mixedHostname = (() => { try { return new URL(page.url).hostname; } catch { return ''; } })();
   const pageResponses = responses.filter((r) => {
     try {
+      // Match by referer or by same hostname
       const referer = r.headers['referer'] ?? '';
-      return referer.includes(new URL(page.url).hostname);
+      if (referer.includes(mixedHostname)) return true;
+      return new URL(r.url).hostname === mixedHostname;
     } catch {
       return false;
     }
@@ -319,4 +328,17 @@ function checkSensitiveUrlData(page: CrawledPage): RawFinding[] {
   }
 
   return findings;
+}
+
+function normalizePassiveUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    u.hash = '';
+    let path = u.pathname;
+    if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
+    u.pathname = path;
+    return u.href;
+  } catch {
+    return url;
+  }
 }

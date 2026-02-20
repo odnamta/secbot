@@ -105,9 +105,9 @@ export function buildValidatorUserPrompt(
     category: f.category,
     severity: f.severity,
     title: f.title,
-    description: f.description,
+    description: f.description.slice(0, 300),
     url: f.url,
-    evidence: f.evidence.slice(0, 500),
+    evidence: f.evidence.slice(0, 200),
   }));
 
   return `Validate these security findings for ${url}.
@@ -181,9 +181,9 @@ export function buildReporterUserPrompt(
       category: f.category,
       severity: validation?.adjustedSeverity ?? f.severity,
       title: f.title,
-      description: f.description,
+      description: f.description.slice(0, 300),
       url: f.url,
-      evidence: f.evidence.slice(0, 500),
+      evidence: f.evidence.slice(0, 200),
     };
   });
 

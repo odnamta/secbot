@@ -18,11 +18,13 @@ export function getClient(): Anthropic | null {
 export interface AskClaudeOptions {
   maxTokens?: number;
   temperature?: number;
+  /** Timeout in ms — defaults to 30s */
+  timeout?: number;
 }
 
 /**
  * Send a prompt to Claude and return the text response.
- * Returns null if client unavailable or API call fails.
+ * Returns null if client unavailable, API call fails, or timeout.
  */
 export async function askClaude(
   systemPrompt: string,
@@ -32,16 +34,24 @@ export async function askClaude(
   const client = getClient();
   if (!client) return null;
 
-  const { maxTokens = 4096, temperature = 0.1 } = options;
+  const { maxTokens = 4096, temperature = 0.1, timeout = 30000 } = options;
 
   try {
-    const message = await client.messages.create({
-      model: MODEL,
-      max_tokens: maxTokens,
-      temperature,
-      system: systemPrompt,
-      messages: [{ role: 'user', content: userPrompt }],
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+
+    const message = await client.messages.create(
+      {
+        model: MODEL,
+        max_tokens: maxTokens,
+        temperature,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }],
+      },
+      { signal: controller.signal },
+    );
+
+    clearTimeout(timer);
 
     const textBlock = message.content.find((b) => b.type === 'text');
     if (!textBlock || textBlock.type !== 'text') {
@@ -51,7 +61,12 @@ export async function askClaude(
 
     return textBlock.text;
   } catch (err) {
-    log.error(`Claude API error: ${(err as Error).message}`);
+    const msg = (err as Error).message;
+    if (msg.includes('abort') || msg.includes('cancel')) {
+      log.warn(`Claude API timed out after ${timeout}ms`);
+    } else {
+      log.error(`Claude API error: ${msg}`);
+    }
     return null;
   }
 }

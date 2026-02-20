@@ -6,8 +6,10 @@ import type {
   FormInfo,
   AttackPlan,
   CheckCategory,
+  ScanScope,
 } from '../types.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
+import { isInScope } from '../../utils/scope.js';
 import { xssCheck } from './xss.js';
 import { sqliCheck } from './sqli.js';
 import { corsCheck } from './cors.js';
@@ -43,17 +45,23 @@ export const CHECK_REGISTRY: ActiveCheck[] = [
   traversalCheck,
 ];
 
-/** Build scan targets from crawled pages */
-export function buildTargets(pages: CrawledPage[]): ScanTargets {
-  const allForms = pages.flatMap((p) => p.forms);
-  const urlsWithParams = pages.map((p) => p.url).filter((u) => u.includes('?'));
-  const apiEndpoints = pages.map((p) => p.url).filter((u) => /\/api\//i.test(u));
-  const redirectUrls = pages
+/** Build scan targets from crawled pages, filtering by scope */
+export function buildTargets(pages: CrawledPage[], targetUrl: string, scope?: ScanScope): ScanTargets {
+  const inScope = (url: string) => isInScope(url, targetUrl, scope);
+
+  const scopedPages = pages.filter((p) => inScope(p.url));
+  const allForms = scopedPages.flatMap((p) => p.forms).filter((f) => {
+    try { return inScope(new URL(f.action, f.pageUrl).href); } catch { return true; }
+  });
+  const urlsWithParams = scopedPages.map((p) => p.url).filter((u) => u.includes('?'));
+  const apiEndpoints = scopedPages.map((p) => p.url).filter((u) => /\/api\//i.test(u));
+  const redirectUrls = scopedPages
     .flatMap((p) => p.links)
-    .filter((l) => /[?&](url|redirect|next|return|goto|dest)=/i.test(l));
+    .filter((l) => /[?&](url|redirect|next|return|goto|dest)=/i.test(l))
+    .filter(inScope);
 
   return {
-    pages: pages.map((p) => p.url),
+    pages: scopedPages.map((p) => p.url),
     forms: allForms,
     urlsWithParams,
     apiEndpoints,
@@ -78,7 +86,7 @@ export async function runActiveChecks(
     return [];
   }
 
-  const targets = buildTargets(pages);
+  const targets = buildTargets(pages, config.targetUrl, config.scope);
   const findings: RawFinding[] = [];
 
   let checksToRun: ActiveCheck[];
@@ -100,12 +108,17 @@ export async function runActiveChecks(
     log.info(`Running ${checksToRun.length} active checks: ${checksToRun.map((c) => c.name).join(', ')}`);
   }
 
-  for (const check of checksToRun) {
+  for (let i = 0; i < checksToRun.length; i++) {
+    const check = checksToRun[i];
     try {
       const checkFindings = await check.run(context, targets, config, requestLogger);
       findings.push(...checkFindings);
     } catch (err) {
       log.warn(`Active check "${check.name}" failed: ${(err as Error).message}`);
+    }
+    // Rate limit between checks
+    if (i < checksToRun.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, config.requestDelay));
     }
   }
 

@@ -31,16 +31,20 @@ export async function validateFindings(
       log.info(`Validating batch ${batchNum}/${totalBatches} (${batch.length} findings)...`);
     }
 
-    const userPrompt = buildValidatorUserPrompt(url, batch, recon);
-    const response = await askClaude(VALIDATOR_SYSTEM_PROMPT, userPrompt);
+    try {
+      const userPrompt = buildValidatorUserPrompt(url, batch, recon);
+      const response = await askClaude(VALIDATOR_SYSTEM_PROMPT, userPrompt);
 
-    if (response) {
-      const parsed = parseJsonResponse<{ validations: ValidatedFinding[] }>(response);
-      if (parsed?.validations) {
-        allValidations.push(...parsed.validations);
-        continue;
+      if (response) {
+        const parsed = parseJsonResponse<{ validations: ValidatedFinding[] }>(response);
+        if (parsed?.validations) {
+          allValidations.push(...parsed.validations);
+          continue;
+        }
+        log.warn('AI validator returned invalid JSON — using fallback for this batch');
       }
-      log.warn('AI validator returned invalid JSON — using fallback for this batch');
+    } catch (err) {
+      log.warn(`Validator batch ${batchNum} failed: ${(err as Error).message} — using fallback`);
     }
 
     // Fallback: mark all as valid with medium confidence
