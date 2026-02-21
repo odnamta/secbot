@@ -1,0 +1,170 @@
+name: 'SecBot Security Scan'
+description: 'Run SecBot security scan on your web application and post results as PR comment'
+branding:
+  icon: 'shield'
+  color: 'red'
+
+inputs:
+  target-url:
+    description: 'Target URL to scan'
+    required: true
+  profile:
+    description: 'Scan profile: quick, standard, deep'
+    required: false
+    default: 'quick'
+  format:
+    description: 'Output formats (comma-separated): terminal,json,html,sarif,bounty'
+    required: false
+    default: 'terminal,sarif'
+  exclude-checks:
+    description: 'Checks to skip (comma-separated): traversal,cmdi,sqli,etc.'
+    required: false
+    default: ''
+  baseline:
+    description: 'Path to baseline file for diff mode'
+    required: false
+    default: ''
+  no-ai:
+    description: 'Skip AI interpretation'
+    required: false
+    default: 'false'
+  fail-on-findings:
+    description: 'Fail the action if high/critical findings are detected'
+    required: false
+    default: 'true'
+  comment-on-pr:
+    description: 'Post results as PR comment'
+    required: false
+    default: 'true'
+  anthropic-api-key:
+    description: 'Anthropic API key for AI features'
+    required: false
+    default: ''
+
+outputs:
+  findings-count:
+    description: 'Total number of findings'
+  exit-code:
+    description: 'SecBot exit code (0=clean, 1=findings, 2=error)'
+  report-path:
+    description: 'Path to the generated report directory'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install SecBot
+      shell: bash
+      run: |
+        cd ${{ github.action_path }}
+        npm ci
+        npx playwright install chromium --with-deps
+
+    - name: Run SecBot Scan
+      id: scan
+      shell: bash
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic-api-key }}
+      run: |
+        ARGS="scan ${{ inputs.target-url }} -p ${{ inputs.profile }} -f ${{ inputs.format }} -o ./secbot-reports"
+
+        if [ -n "${{ inputs.exclude-checks }}" ]; then
+          ARGS="$ARGS --exclude-checks ${{ inputs.exclude-checks }}"
+        fi
+
+        if [ -n "${{ inputs.baseline }}" ]; then
+          ARGS="$ARGS --baseline ${{ inputs.baseline }}"
+        fi
+
+        if [ "${{ inputs.no-ai }}" = "true" ]; then
+          ARGS="$ARGS --no-ai"
+        fi
+
+        set +e
+        cd ${{ github.action_path }}
+        node dist/index.js $ARGS 2>&1 | tee secbot-output.txt
+        EXIT_CODE=$?
+        set -e
+
+        echo "exit-code=$EXIT_CODE" >> $GITHUB_OUTPUT
+        echo "report-path=./secbot-reports" >> $GITHUB_OUTPUT
+
+        # Extract findings count from output
+        FINDINGS=$(grep -oP 'Total findings: \K\d+' secbot-output.txt || echo "0")
+        echo "findings-count=$FINDINGS" >> $GITHUB_OUTPUT
+
+    - name: Upload SARIF to GitHub Code Scanning
+      if: always() && contains(inputs.format, 'sarif')
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ./secbot-reports/
+      continue-on-error: true
+
+    - name: Comment on PR
+      if: github.event_name == 'pull_request' && inputs.comment-on-pr == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+
+          // Find the report file
+          const reportDir = './secbot-reports';
+          let body = '## SecBot Security Scan Results\n\n';
+
+          const exitCode = '${{ steps.scan.outputs.exit-code }}';
+          const findingsCount = '${{ steps.scan.outputs.findings-count }}';
+
+          if (exitCode === '0') {
+            body += '**Status:** No high/critical findings detected\n\n';
+          } else if (exitCode === '1') {
+            body += '**Status:** High/critical findings detected\n\n';
+          } else {
+            body += '**Status:** Scan error\n\n';
+          }
+
+          body += `**Findings:** ${findingsCount}\n`;
+          body += `**Profile:** ${{ inputs.profile }}\n`;
+          body += `**Target:** ${{ inputs.target-url }}\n\n`;
+
+          // Try to read JSON report for details
+          try {
+            const files = fs.readdirSync(reportDir);
+            const jsonFile = files.find(f => f.endsWith('.json'));
+            if (jsonFile) {
+              const report = JSON.parse(fs.readFileSync(path.join(reportDir, jsonFile), 'utf-8'));
+              if (report.interpretedFindings && report.interpretedFindings.length > 0) {
+                body += '### Findings\n\n';
+                body += '| Severity | Title | URL |\n';
+                body += '|----------|-------|-----|\n';
+                for (const f of report.interpretedFindings.slice(0, 10)) {
+                  body += `| ${f.severity} | ${f.title} | ${f.affectedUrls?.[0] || 'N/A'} |\n`;
+                }
+                if (report.interpretedFindings.length > 10) {
+                  body += `\n*...and ${report.interpretedFindings.length - 10} more findings*\n`;
+                }
+              }
+            }
+          } catch (e) {
+            body += '*Could not parse detailed report*\n';
+          }
+
+          body += '\n---\n*Generated by [SecBot](https://github.com/odnamta/secbot)*';
+
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: body,
+          });
+
+    - name: Fail on findings
+      if: inputs.fail-on-findings == 'true' && steps.scan.outputs.exit-code == '1'
+      shell: bash
+      run: |
+        echo "SecBot found high/critical security findings. Failing the check."
+        exit 1

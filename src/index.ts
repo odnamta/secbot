@@ -19,11 +19,15 @@ import { printTerminalReport } from './reporter/terminal.js';
 import { writeJsonReport } from './reporter/json.js';
 import { writeHtmlReport } from './reporter/html.js';
 import { writeBountyReport } from './reporter/bounty.js';
+import { writeSarifReport } from './reporter/sarif.js';
+import { writeJunitReport } from './reporter/junit.js';
 import { buildConfig } from './config/defaults.js';
+import { loadConfigFile } from './config/file.js';
 import { parseScopePatterns } from './utils/scope.js';
 import { RequestLogger } from './utils/request-logger.js';
 import { log, setLogLevel } from './utils/logger.js';
 import { deduplicateFindings } from './utils/dedup.js';
+import { loadBaseline, diffFindings, saveBaseline } from './utils/baseline.js';
 import { discoverRoutes } from './scanner/discovery/index.js';
 import type { ScanConfig, ScanProfile, ScanResult } from './scanner/types.js';
 
@@ -48,10 +52,10 @@ program
 program
   .command('scan')
   .description('Scan a target URL for security vulnerabilities')
-  .argument('<url>', 'Target URL to scan')
+  .argument('[url]', 'Target URL to scan (or set "target" in config file)')
   .option('-p, --profile <profile>', 'Scan profile: quick, standard, deep', 'standard')
   .option('-a, --auth <path>', 'Path to Playwright storage state JSON for authenticated scanning')
-  .option('-f, --format <formats>', 'Output formats: terminal,json,html,bounty (comma-separated)', 'terminal')
+  .option('-f, --format <formats>', 'Output formats: terminal,json,html,bounty,sarif,junit (comma-separated)', 'terminal')
   .option('-o, --output <path>', 'Output directory for reports', './secbot-reports')
   .option('--max-pages <n>', 'Maximum pages to crawl', undefined)
   .option('--timeout <ms>', 'Per-page timeout in milliseconds', undefined)
@@ -61,25 +65,37 @@ program
   .option('--log-requests', 'Log all HTTP requests for accountability', false)
   .option('--callback-url <url>', 'Callback URL for blind SSRF detection (e.g., your Burp Collaborator URL)')
   .option('--rate-limit <n>', 'Maximum requests per second (integer)', undefined)
+  .option('--exclude-checks <checks>', 'Comma-separated list of check names to skip (e.g., "traversal,cmdi,sqli")')
+  .option('--baseline <file>', 'Path to baseline JSON file — only report new findings')
   .option('--no-ai', 'Skip AI interpretation (use rule-based fallback)')
   .option('--verbose', 'Enable verbose logging', false)
-  .action(async (url: string, options: Record<string, unknown>) => {
+  .action(async (url: string | undefined, options: Record<string, unknown>) => {
     if (options.verbose) {
       setLogLevel('debug');
     }
 
     log.banner();
 
+    // Load config file early (needed for target fallback)
+    const fileConfig = loadConfigFile();
+
+    // Resolve URL: CLI arg > config file target
+    const rawUrl = url ?? fileConfig?.target;
+    if (!rawUrl) {
+      console.error(chalk.red('No target URL provided. Pass a URL argument or set "target" in a config file.'));
+      process.exit(1);
+    }
+
     // Validate URL
     let targetUrl: string;
     try {
-      const parsed = new URL(url);
+      const parsed = new URL(rawUrl);
       if (!['http:', 'https:'].includes(parsed.protocol)) {
         throw new Error('Only HTTP/HTTPS URLs are supported');
       }
       targetUrl = parsed.href;
     } catch {
-      console.error(chalk.red(`Invalid URL: ${url}`));
+      console.error(chalk.red(`Invalid URL: ${rawUrl}`));
       process.exit(1);
     }
 
@@ -109,28 +125,52 @@ program
       console.log();
     }
 
-    // Build config
-    const formats = (options.format as string).split(',').map((f) => f.trim()) as ScanConfig['outputFormat'];
-    const scope = options.scope ? parseScopePatterns(options.scope as string) : undefined;
-    const useAI = options.ai !== false;
+    // Build config — merge: CLI args > config file > defaults
+    const formatStr = options.format as string;
+    // Commander sets default 'terminal' — detect if user explicitly passed --format
+    const cliFormats = formatStr;
+    const effectiveFormat = cliFormats ?? fileConfig?.format ?? 'terminal';
+    const formats = effectiveFormat.split(',').map((f: string) => f.trim()) as ScanConfig['outputFormat'];
+
+    const scopeStr = (options.scope as string | undefined) ?? fileConfig?.scope;
+    const scope = scopeStr ? parseScopePatterns(scopeStr) : undefined;
+
+    // --no-ai: commander sets options.ai to false when --no-ai is passed
+    const useAI = options.ai === false ? false : (fileConfig?.noAi === true ? false : true);
+
+    // Parse --exclude-checks (CLI overrides config file)
+    const excludeChecksStr = options.excludeChecks as string | undefined;
+    const excludeChecks = excludeChecksStr
+      ? excludeChecksStr.split(',').map((s) => s.trim()).filter(Boolean)
+      : fileConfig?.excludeChecks;
 
     const config = buildConfig(targetUrl, {
-      profile: options.profile as ScanProfile,
-      authStorageState: options.auth as string | undefined,
+      profile: (options.profile as ScanProfile) ?? fileConfig?.profile,
+      authStorageState: (options.auth as string | undefined) ?? fileConfig?.auth,
       outputFormat: formats,
-      outputPath: options.output as string,
-      respectRobots: !options.ignoreRobots,
+      outputPath: (options.output as string) ?? fileConfig?.output,
+      respectRobots: options.ignoreRobots ? false : (fileConfig?.ignoreRobots ? false : true),
       scope,
-      logRequests: options.logRequests === true,
+      logRequests: options.logRequests === true || (fileConfig?.logRequests === true),
       useAI,
-      callbackUrl: options.callbackUrl as string | undefined,
-      ...(options.maxPages ? { maxPages: parseInt(options.maxPages as string, 10) } : {}),
-      ...(options.timeout ? { timeout: parseInt(options.timeout as string, 10) } : {}),
-      ...(options.rateLimit ? { rateLimitRps: parseInt(options.rateLimit as string, 10) } : {}),
+      callbackUrl: (options.callbackUrl as string | undefined) ?? fileConfig?.callbackUrl,
+      ...(excludeChecks ? { excludeChecks } : {}),
+      ...(options.maxPages ? { maxPages: parseInt(options.maxPages as string, 10) }
+        : fileConfig?.maxPages ? { maxPages: fileConfig.maxPages } : {}),
+      ...(options.timeout ? { timeout: parseInt(options.timeout as string, 10) }
+        : fileConfig?.timeout ? { timeout: fileConfig.timeout } : {}),
+      ...(options.rateLimit ? { rateLimitRps: parseInt(options.rateLimit as string, 10) }
+        : fileConfig?.rateLimit ? { rateLimitRps: fileConfig.rateLimit } : {}),
+      ...(options.baseline ? { baselinePath: options.baseline as string }
+        : fileConfig?.baseline ? { baselinePath: fileConfig.baseline } : {}),
     });
 
     if (config.callbackUrl) {
       log.info(`Callback URL configured: ${config.callbackUrl}`);
+    }
+
+    if (config.excludeChecks?.length) {
+      log.info(`Excluding checks: ${config.excludeChecks.join(', ')}`);
     }
 
     const scanId = new Date().toISOString().replace(/[:.]/g, '-');
@@ -199,15 +239,33 @@ program
         const dedupedFindings = deduplicateFindings(allRawFindings);
         log.info(`After dedup: ${dedupedFindings.length} unique findings`);
 
+        // ─── Baseline diff ─────────────────────────────────────
+        let findingsForValidation = dedupedFindings;
+        if (config.baselinePath) {
+          try {
+            const { existsSync } = await import('node:fs');
+            if (existsSync(config.baselinePath)) {
+              const baseline = loadBaseline(config.baselinePath);
+              const newFindings = diffFindings(dedupedFindings, baseline);
+              log.info(`${newFindings.length} findings are new (${baseline.length} in baseline, ${dedupedFindings.length} total)`);
+              findingsForValidation = newFindings;
+            } else {
+              log.info(`Baseline file not found at ${config.baselinePath} — treating all findings as new`);
+            }
+          } catch (err) {
+            log.warn(`Failed to load baseline: ${(err as Error).message} — treating all findings as new`);
+          }
+        }
+
         // ─── Phase 6: AI Validation ──────────────────────────────
         let validations;
-        if (config.useAI && dedupedFindings.length > 0) {
+        if (config.useAI && findingsForValidation.length > 0) {
           log.info('Phase 6: AI validating findings...');
-          validations = await validateFindings(targetUrl, dedupedFindings, recon);
+          validations = await validateFindings(targetUrl, findingsForValidation, recon);
         } else {
           log.info(config.useAI ? 'Phase 6: No findings to validate' : 'Phase 6: Skipping AI validation (--no-ai)');
           // Fallback: mark all as valid
-          validations = dedupedFindings.map((f) => ({
+          validations = findingsForValidation.map((f) => ({
             findingId: f.id,
             isValid: true,
             confidence: 'medium' as const,
@@ -219,7 +277,7 @@ program
         log.info('Phase 7: Generating report...');
         const { findings: interpretedFindings, summary } = await generateReport(
           targetUrl,
-          dedupedFindings,
+          findingsForValidation,
           validations,
           recon,
         );
@@ -303,6 +361,21 @@ program
           const bountyPath = join(outputDir, `secbot-${scanId}-bounty.md`);
           writeBountyReport(scanResult, bountyPath);
         }
+
+        if (formats.includes('sarif')) {
+          const sarifPath = join(outputDir, `secbot-${scanId}.sarif`);
+          writeSarifReport(scanResult, sarifPath);
+        }
+
+        if (formats.includes('junit')) {
+          const junitPath = join(outputDir, `secbot-${scanId}-junit.xml`);
+          writeJunitReport(scanResult, junitPath);
+        }
+
+        // Save current findings as baseline for future diff
+        const baselineOutPath = join(outputDir, 'secbot-baseline.json');
+        saveBaseline(dedupedFindings, baselineOutPath);
+        log.info(`Baseline saved: ${baselineOutPath}`);
 
         // Flush request log
         requestLogger?.flush();

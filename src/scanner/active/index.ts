@@ -164,6 +164,24 @@ export async function runActiveChecks(
     log.info(`Running ${checksToRun.length} active checks: ${checksToRun.map((c) => c.name).join(', ')}`);
   }
 
+  // Apply --exclude-checks filter
+  if (config.excludeChecks?.length) {
+    const excludeSet = new Set(config.excludeChecks);
+    const excluded = checksToRun.filter((c) => excludeSet.has(c.name));
+    checksToRun = checksToRun.filter((c) => !excludeSet.has(c.name));
+
+    if (excluded.length > 0) {
+      log.info(`Excluded checks: ${excluded.map((c) => c.name).join(', ')}`);
+    }
+
+    // Warn about invalid exclude names (names that don't match any registered check)
+    const validNames = new Set(CHECK_REGISTRY.map((c) => c.name));
+    const invalidNames = config.excludeChecks.filter((name) => !validNames.has(name));
+    if (invalidNames.length > 0) {
+      log.warn(`Unknown check names in --exclude-checks (ignored): ${invalidNames.join(', ')}`);
+    }
+  }
+
   for (let i = 0; i < checksToRun.length; i++) {
     const check = checksToRun[i];
     try {

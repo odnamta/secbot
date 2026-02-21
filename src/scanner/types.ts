@@ -65,7 +65,7 @@ export interface ScanConfig {
   timeout: number;
   respectRobots: boolean;
   authStorageState?: string;
-  outputFormat: ('terminal' | 'json' | 'html' | 'bounty')[];
+  outputFormat: ('terminal' | 'json' | 'html' | 'bounty' | 'sarif' | 'junit')[];
   outputPath?: string;
   concurrency: number;
   requestDelay: number;
@@ -77,6 +77,8 @@ export interface ScanConfig {
   wafDetection?: WafDetection;
   rateLimitRps?: number;
   idorAltAuthState?: string;
+  excludeChecks?: string[];
+  baselinePath?: string;
 }
 
 export interface CrawledPage {
