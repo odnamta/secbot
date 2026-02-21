@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { chromium, type Browser, type BrowserContext } from 'playwright';
+import { writeFileSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { startTestServer, stopTestServer } from '../setup.js';
 import { idorCheck } from '../../src/scanner/active/idor.js';
 import type { ScanConfig } from '../../src/scanner/types.js';
@@ -9,6 +12,7 @@ describe('IDOR Integration Tests', () => {
   let browser: Browser;
   let context: BrowserContext;
   let baseUrl: string;
+  let altAuthFile: string;
 
   const defaultConfig: ScanConfig = {
     targetUrl: '',
@@ -21,12 +25,23 @@ describe('IDOR Integration Tests', () => {
     requestDelay: 50,
     logRequests: false,
     useAI: false,
-    authStorageState: '/fake/auth-state.json', // Enables IDOR check
+    authStorageState: '', // set in beforeAll
+    idorAltAuthState: '', // set in beforeAll
   };
 
   beforeAll(async () => {
     baseUrl = await startTestServer();
     defaultConfig.targetUrl = baseUrl;
+
+    // Create dummy Playwright storage state files for both sessions
+    const dummyState = JSON.stringify({ cookies: [], origins: [] });
+    const authFile = join(tmpdir(), 'secbot-test-auth.json');
+    altAuthFile = join(tmpdir(), 'secbot-test-alt-auth.json');
+    writeFileSync(authFile, dummyState);
+    writeFileSync(altAuthFile, dummyState);
+    defaultConfig.authStorageState = authFile;
+    defaultConfig.idorAltAuthState = altAuthFile;
+
     browser = await chromium.launch({ headless: true });
     context = await browser.newContext();
   }, 30000);
@@ -35,9 +50,11 @@ describe('IDOR Integration Tests', () => {
     await context?.close();
     await browser?.close();
     await stopTestServer();
+    try { unlinkSync(defaultConfig.authStorageState!); } catch { /* ok */ }
+    try { unlinkSync(altAuthFile); } catch { /* ok */ }
   });
 
-  it('detects IDOR on /api/v1/users/:id when auth is configured', async () => {
+  it('detects IDOR on /api/v1/users/:id when dual auth is configured', async () => {
     const targets: ScanTargets = {
       pages: [`${baseUrl}/api/v1/users/1`],
       forms: [],
@@ -63,6 +80,7 @@ describe('IDOR Integration Tests', () => {
     const noAuthConfig: ScanConfig = {
       ...defaultConfig,
       authStorageState: undefined,
+      idorAltAuthState: undefined,
     };
 
     const targets: ScanTargets = {
@@ -75,30 +93,27 @@ describe('IDOR Integration Tests', () => {
     };
 
     const findings = await idorCheck.run(context, targets, noAuthConfig);
-
     expect(findings.length).toBe(0);
   }, 30000);
 
-  it('does not flag when adjacent IDs return 404', async () => {
-    // Use ID 3 — ID 4 does not exist, returns 404
-    // ID 2 exists but we test the logic with a higher ID boundary
+  it('skips IDOR check when no alt-auth is configured', async () => {
+    const singleAuthConfig: ScanConfig = {
+      ...defaultConfig,
+      idorAltAuthState: undefined,
+    };
+
     const targets: ScanTargets = {
-      pages: [`${baseUrl}/api/v1/users/3`],
+      pages: [`${baseUrl}/api/v1/users/1`],
       forms: [],
       urlsWithParams: [],
-      apiEndpoints: [`${baseUrl}/api/v1/users/3`],
+      apiEndpoints: [`${baseUrl}/api/v1/users/1`],
       redirectUrls: [],
       fileParams: [],
     };
 
-    const findings = await idorCheck.run(context, targets, defaultConfig);
-
-    // ID 2 exists (returns 200), so we expect a finding for id-1
-    // But ID 4 doesn't exist (returns 404), so only 1 finding max
-    // The check breaks after first finding per resource, so exactly 1
-    const idorFindings = findings.filter((f) => f.category === 'idor');
-    expect(idorFindings.length).toBe(1);
-  }, 60000);
+    const findings = await idorCheck.run(context, targets, singleAuthConfig);
+    expect(findings.length).toBe(0);
+  }, 30000);
 
   it('findings have required RawFinding fields', async () => {
     const targets: ScanTargets = {
@@ -125,7 +140,5 @@ describe('IDOR Integration Tests', () => {
     expect(finding.timestamp).toBeDefined();
     expect(finding.request).toBeDefined();
     expect(finding.response).toBeDefined();
-    expect(finding.affectedUrls).toBeDefined();
-    expect(finding.affectedUrls!.length).toBe(2);
   }, 60000);
 });

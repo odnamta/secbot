@@ -6,10 +6,10 @@
 Developer-friendly tool that scans web apps for OWASP Top 10 vulnerabilities with a single command. Claude AI drives the entire pipeline — planning attacks, validating findings, and writing reports.
 
 ## Status
-- Version: v1.0.0
-- Phase 1 complete — developer security tool ready
+- Version: v0.6.0
+- Path A in progress — foundation + checks implemented, hardening underway
 - 12 active check types + 6 passive check categories
-- 160+ tests (unit + integration)
+- 167 tests (unit + integration + negative)
 
 ## Tech Stack
 - **Language:** TypeScript 5 (strict mode)
@@ -145,6 +145,7 @@ secbot scan <url>
   --scope <patterns>          # Scope: "*.example.com,-admin.example.com"
   --urls <file>               # File with URLs to scan (one per line)
   --log-requests              # Log all HTTP requests (JSONL)
+  --idor-alt-auth <path>      # Second user auth state for IDOR testing
   --no-ai                     # Skip AI, use rule-based fallback
   --verbose                   # Debug logging
 ```
@@ -152,6 +153,7 @@ secbot scan <url>
 ## Environment Variables
 ```
 ANTHROPIC_API_KEY=            # Required for AI features (optional — fallback works without)
+SECBOT_MODEL=                 # AI model override (default: claude-sonnet-4-5-20250929)
 SECBOT_MAX_PAGES=50           # Max pages to crawl
 SECBOT_TIMEOUT=30000          # Per-page timeout (ms)
 ```

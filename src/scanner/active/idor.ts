@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { BrowserContext } from 'playwright';
+import { chromium, type BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig } from '../types.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
@@ -23,7 +23,6 @@ function extractIdPatterns(url: string): Array<{ url: string; resource: string; 
   const re = new RegExp(SEQUENTIAL_ID_RE.source, SEQUENTIAL_ID_RE.flags);
   while ((match = re.exec(path)) !== null) {
     const id = parseInt(match[2], 10);
-    // Skip very large IDs (likely not sequential), version numbers like v1/v2, and 0
     if (id === 0 || id > 999999) continue;
     if (/^v\d+$/.test(match[1])) continue;
 
@@ -31,7 +30,7 @@ function extractIdPatterns(url: string): Array<{ url: string; resource: string; 
       url,
       resource: match[1],
       id,
-      idIndex: match.index + match[1].length + 1, // position of the ID in path
+      idIndex: match.index + match[1].length + 1,
     });
   }
 
@@ -41,7 +40,6 @@ function extractIdPatterns(url: string): Array<{ url: string; resource: string; 
 /** Build a URL with a different ID at the given position */
 function replaceIdInUrl(url: string, pattern: { resource: string; id: number }, newId: number): string {
   const parsed = new URL(url);
-  // Replace the specific /resource/id pattern with /resource/newId
   parsed.pathname = parsed.pathname.replace(
     new RegExp(`(/${escapeRegex(pattern.resource)}/)(${pattern.id})(?=/|$)`),
     `$1${newId}`,
@@ -57,13 +55,17 @@ export const idorCheck: ActiveCheck = {
   name: 'idor',
   category: 'idor',
   async run(context, targets, config, requestLogger) {
-    // IDOR without auth is meaningless — skip entirely
+    // IDOR requires two different auth sessions to be meaningful.
+    // Single-session testing only proves resources exist — not a vulnerability.
     if (!config.authStorageState) {
-      log.info('IDOR check skipped: no auth storage state configured');
+      log.info('IDOR check skipped: no --auth provided (requires authentication)');
+      return [];
+    }
+    if (!config.idorAltAuthState) {
+      log.info('IDOR check skipped: no --idor-alt-auth provided. Single-session IDOR detection produces false positives. Provide a second user\'s auth state to enable meaningful IDOR testing.');
       return [];
     }
 
-    // Collect all URLs that have sequential numeric IDs
     const allUrls = [...new Set([...targets.pages, ...targets.apiEndpoints])];
     const idPatterns = allUrls.flatMap(extractIdPatterns);
 
@@ -72,7 +74,6 @@ export const idorCheck: ActiveCheck = {
       return [];
     }
 
-    // Deduplicate by resource name (test each resource pattern once)
     const seen = new Set<string>();
     const uniquePatterns = idPatterns.filter((p) => {
       const key = `${new URL(p.url).origin}:${p.resource}`;
@@ -87,111 +88,120 @@ export const idorCheck: ActiveCheck = {
 };
 
 async function testIdor(
-  context: BrowserContext,
+  primaryContext: BrowserContext,
   patterns: Array<{ url: string; resource: string; id: number; idIndex: number }>,
   config: ScanConfig,
   requestLogger?: RequestLogger,
 ): Promise<RawFinding[]> {
   const findings: RawFinding[] = [];
 
-  for (const pattern of patterns) {
-    try {
-      // Step 1: Fetch baseline (the original URL)
-      const baselinePage = await context.newPage();
-      let baselineStatus: number;
-      let baselineContentType: string;
-      let baselineBodyLength: number;
+  // Launch a separate browser with the alternate user's auth state.
+  // Primary context = User A (owner). Alt context = User B (attacker).
+  const altBrowser = await chromium.launch({ headless: true });
+  const altContext = await altBrowser.newContext({ storageState: config.idorAltAuthState });
+
+  try {
+    for (const pattern of patterns) {
       try {
-        const baselineResponse = await baselinePage.request.fetch(pattern.url);
-        baselineStatus = baselineResponse.status();
-        baselineContentType = baselineResponse.headers()['content-type'] ?? '';
-        const baselineBody = await baselineResponse.text();
-        baselineBodyLength = baselineBody.length;
-
-        requestLogger?.log({
-          timestamp: new Date().toISOString(),
-          method: 'GET',
-          url: pattern.url,
-          responseStatus: baselineStatus,
-          phase: 'active-idor',
-        });
-
-        // If baseline doesn't return 200, skip — can't establish access
-        if (baselineStatus !== 200) {
-          continue;
-        }
-      } finally {
-        await baselinePage.close();
-      }
-
-      // Step 2: Try adjacent IDs (id+1, id-1)
-      const adjacentIds = [pattern.id + 1, pattern.id - 1].filter((id) => id > 0);
-
-      for (const adjId of adjacentIds) {
-        const adjUrl = replaceIdInUrl(pattern.url, pattern, adjId);
-
-        const adjPage = await context.newPage();
+        // Step 1: Fetch baseline with User A (primary auth) — confirm resource exists
+        const baselinePage = await primaryContext.newPage();
+        let baselineStatus: number;
+        let baselineContentType: string;
+        let baselineBody: string;
         try {
-          const adjResponse = await adjPage.request.fetch(adjUrl);
-          const adjStatus = adjResponse.status();
-          const adjContentType = adjResponse.headers()['content-type'] ?? '';
-          const adjBody = await adjResponse.text();
-          const adjBodyLength = adjBody.length;
+          const baselineResponse = await baselinePage.request.fetch(pattern.url);
+          baselineStatus = baselineResponse.status();
+          baselineContentType = baselineResponse.headers()['content-type'] ?? '';
+          baselineBody = await baselineResponse.text();
 
           requestLogger?.log({
             timestamp: new Date().toISOString(),
             method: 'GET',
-            url: adjUrl,
-            responseStatus: adjStatus,
+            url: pattern.url,
+            responseStatus: baselineStatus,
             phase: 'active-idor',
           });
 
-          // Flag as potential IDOR if:
-          // 1. Adjacent ID returns 200 (same as baseline)
-          // 2. Same content-type
-          if (adjStatus === 200 && sameContentType(baselineContentType, adjContentType)) {
+          if (baselineStatus !== 200) continue;
+        } finally {
+          await baselinePage.close();
+        }
+
+        // Step 2: Probe User A's resource with User B's auth (alt context)
+        // If User B can access User A's resource, that's IDOR.
+        const probePage = await altContext.newPage();
+        try {
+          const probeResponse = await probePage.request.fetch(pattern.url);
+          const probeStatus = probeResponse.status();
+          const probeContentType = probeResponse.headers()['content-type'] ?? '';
+          const probeBody = await probeResponse.text();
+
+          requestLogger?.log({
+            timestamp: new Date().toISOString(),
+            method: 'GET',
+            url: pattern.url,
+            responseStatus: probeStatus,
+            phase: 'active-idor-alt',
+          });
+
+          // IDOR confirmed if:
+          // 1. User B gets 200 on User A's resource
+          // 2. Same content type (not an error page)
+          // 3. Response body is similar (not a generic "not found" with 200 status)
+          if (
+            probeStatus === 200 &&
+            sameContentType(baselineContentType, probeContentType) &&
+            bodySimilarity(baselineBody, probeBody) > 0.5
+          ) {
             findings.push({
               id: randomUUID(),
               category: 'idor',
               severity: 'high',
-              title: `Potential IDOR on /${pattern.resource}/:id`,
+              title: `IDOR: User B can access /${pattern.resource}/:id`,
               description:
-                `Accessing /${pattern.resource}/${adjId} with the current auth session returned a successful response (HTTP 200), ` +
-                `suggesting the application does not verify resource ownership. ` +
-                `An attacker could enumerate IDs to access other users' ${pattern.resource} data.`,
+                `A different authenticated user (User B) can access /${pattern.resource}/${pattern.id} which belongs to User A. ` +
+                `The application does not verify resource ownership. ` +
+                `Response bodies are ${Math.round(bodySimilarity(baselineBody, probeBody) * 100)}% similar.`,
               url: pattern.url,
               evidence:
-                `Baseline: GET ${pattern.url} -> ${baselineStatus} (${baselineBodyLength} bytes, ${baselineContentType})\n` +
-                `Adjacent: GET ${adjUrl} -> ${adjStatus} (${adjBodyLength} bytes, ${adjContentType})`,
-              request: { method: 'GET', url: adjUrl },
+                `User A: GET ${pattern.url} -> ${baselineStatus} (${baselineBody.length} bytes)\n` +
+                `User B: GET ${pattern.url} -> ${probeStatus} (${probeBody.length} bytes)\n` +
+                `Body similarity: ${Math.round(bodySimilarity(baselineBody, probeBody) * 100)}%`,
+              request: { method: 'GET', url: pattern.url },
               response: {
-                status: adjStatus,
-                headers: { 'content-type': adjContentType },
-                bodySnippet: adjBody.slice(0, 200),
+                status: probeStatus,
+                headers: { 'content-type': probeContentType },
+                bodySnippet: probeBody.slice(0, 200),
               },
               timestamp: new Date().toISOString(),
-              affectedUrls: [pattern.url, adjUrl],
+              affectedUrls: [pattern.url],
             });
-
-            // One finding per resource pattern is enough
-            break;
           }
         } catch (err) {
-          log.debug(`IDOR test: ${(err as Error).message}`);
+          log.debug(`IDOR probe: ${(err as Error).message}`);
         } finally {
-          await adjPage.close();
+          await probePage.close();
         }
 
         await delay(config.requestDelay);
+      } catch (err) {
+        log.debug(`IDOR baseline: ${(err as Error).message}`);
       }
-    } catch (err) {
-      log.debug(`IDOR baseline: ${(err as Error).message}`);
     }
-
-    await delay(config.requestDelay);
+  } finally {
+    await altContext.close();
+    await altBrowser.close();
   }
 
   return findings;
+}
+
+/** Rough body similarity based on length ratio */
+function bodySimilarity(a: string, b: string): number {
+  if (a.length === 0 && b.length === 0) return 1;
+  if (a.length === 0 || b.length === 0) return 0;
+  const ratio = Math.min(a.length, b.length) / Math.max(a.length, b.length);
+  return ratio;
 }
 
 /** Check if two content-type headers represent the same type (ignoring charset etc.) */

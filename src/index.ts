@@ -50,6 +50,7 @@ program
   .argument('<url>', 'Target URL to scan')
   .option('-p, --profile <profile>', 'Scan profile: quick, standard, deep', 'standard')
   .option('-a, --auth <path>', 'Path to Playwright storage state JSON for authenticated scanning')
+  .option('--idor-alt-auth <path>', 'Second user auth state for IDOR testing (requires --auth)')
   .option('-f, --format <formats>', 'Output formats: terminal,json,html,bounty (comma-separated)', 'terminal')
   .option('-o, --output <path>', 'Output directory for reports', './secbot-reports')
   .option('--max-pages <n>', 'Maximum pages to crawl', undefined)
@@ -114,6 +115,7 @@ program
     const config = buildConfig(targetUrl, {
       profile: options.profile as ScanProfile,
       authStorageState: options.auth as string | undefined,
+      idorAltAuthState: options.idorAltAuth as string | undefined,
       outputFormat: formats,
       outputPath: options.output as string,
       respectRobots: !options.ignoreRobots,

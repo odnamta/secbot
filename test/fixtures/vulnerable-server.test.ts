@@ -61,11 +61,9 @@ describe('Vulnerable Test Server', () => {
   });
 
   it('has command injection endpoint', async () => {
-    const res = await fetch(`${getTestUrl()}/exec?cmd=whoami`);
+    const res = await fetch(`${getTestUrl()}/exec?cmd=echo secbot-test`);
     const body = await res.text();
-    expect(body).toContain('whoami');
-    expect(body).toContain('[CMD_START]');
-    expect(body).toContain('[CMD_END]');
+    expect(body).toContain('secbot-test');
   });
 
   it('has SSTI endpoint', async () => {

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { CrawledPage, InterceptedResponse, RawFinding } from './types.js';
 import { log } from '../utils/logger.js';
+import { normalizeUrl } from '../utils/shared.js';
 
 // Cookies that don't need HttpOnly — they're intentionally JS-readable
 const SKIP_HTTPONLY_PATTERNS = [
@@ -344,10 +345,10 @@ function checkInfoLeakage(
   // Check for stack traces / verbose errors in HTML responses
   // Match responses by normalized URL or hostname to handle redirects
   const pageHostname = (() => { try { return new URL(page.url).hostname; } catch { return ''; } })();
-  const normalizedPageUrl = normalizePassiveUrl(page.url);
+  const normalizedPageUrl = normalizeUrl(page.url);
   const pageResponses = responses.filter((r) => {
     if (!r.body) return false;
-    if (normalizePassiveUrl(r.url) === normalizedPageUrl) return true;
+    if (normalizeUrl(r.url) === normalizedPageUrl) return true;
     // Also check responses from same hostname (catches redirects)
     try { return new URL(r.url).hostname === pageHostname && r.status >= 200 && r.status < 300; } catch { return false; }
   });
@@ -454,17 +455,4 @@ function checkSensitiveUrlData(page: CrawledPage): RawFinding[] {
   }
 
   return findings;
-}
-
-function normalizePassiveUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    u.hash = '';
-    let path = u.pathname;
-    if (path.length > 1 && path.endsWith('/')) path = path.slice(0, -1);
-    u.pathname = path;
-    return u.href;
-  } catch {
-    return url;
-  }
 }

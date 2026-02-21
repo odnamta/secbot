@@ -5,7 +5,7 @@ import { CMDI_PAYLOADS_OUTPUT, CMDI_PAYLOADS_TIMING } from '../../config/payload
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck } from './index.js';
-import { delay } from '../../utils/shared.js';
+import { delay, measureResponseTime } from '../../utils/shared.js';
 
 /** Threshold in ms — if response is this much slower than baseline, flag it */
 const CMDI_TIMING_THRESHOLD_MS = 4000;
@@ -33,31 +33,6 @@ export const cmdiCheck: ActiveCheck = {
     return findings;
   },
 };
-
-/**
- * Measure response time using median of 3 requests for reliable timing.
- */
-async function measureResponseTime(
-  context: BrowserContext,
-  url: string,
-): Promise<number> {
-  const times: number[] = [];
-  for (let i = 0; i < 3; i++) {
-    const page = await context.newPage();
-    try {
-      const start = Date.now();
-      await page.request.fetch(url);
-      times.push(Date.now() - start);
-    } catch {
-      // Skip failed measurements
-    } finally {
-      await page.close();
-    }
-  }
-  if (times.length === 0) return -1;
-  times.sort((a, b) => a - b);
-  return times[Math.floor(times.length / 2)]; // median
-}
 
 async function testCmdiParams(
   context: BrowserContext,

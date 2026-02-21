@@ -65,6 +65,7 @@ export interface ScanConfig {
   timeout: number;
   respectRobots: boolean;
   authStorageState?: string;
+  idorAltAuthState?: string;
   outputFormat: ('terminal' | 'json' | 'html' | 'bounty')[];
   outputPath?: string;
   concurrency: number;
