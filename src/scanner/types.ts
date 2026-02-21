@@ -91,6 +91,8 @@ export interface ScanConfig {
   callbackServerPort?: number;
   /** How long (ms) to wait for delayed out-of-band callbacks after injection (default: 30000) */
   oobWaitMs?: number;
+  /** Per-domain rate limits. Keys are domain patterns (e.g. "*.hackerone.com"), values are RPS. "default" for fallback. */
+  rateLimits?: Record<string, number>;
 }
 
 export interface CrawledPage {
@@ -197,6 +199,8 @@ export interface WafDetection {
   name?: string;
   confidence: Confidence;
   evidence: string[];
+  /** WAF-specific bypass techniques recommended by enhanced fingerprinting */
+  recommendedTechniques?: string[];
 }
 
 export interface FrameworkDetection {

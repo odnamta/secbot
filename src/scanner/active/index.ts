@@ -10,6 +10,7 @@ import type {
 } from '../types.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import { RateLimiter } from '../../utils/rate-limiter.js';
+import { DomainRateLimiter } from '../../utils/domain-rate-limiter.js';
 import { isInScope } from '../../utils/scope.js';
 import { xssCheck } from './xss.js';
 import { sqliCheck } from './sqli.js';
@@ -166,11 +167,20 @@ export async function runActiveChecks(
   const targets = buildTargets(pages, config.targetUrl, config.scope);
   const findings: RawFinding[] = [];
 
-  // Create adaptive rate limiter
-  const rateLimiter = new RateLimiter({
-    requestsPerSecond: config.rateLimitRps,
-    initialDelayMs: config.requestDelay,
-  });
+  // Create adaptive rate limiter — use per-domain limiter when rateLimits config is present
+  const domainRateLimiter = config.rateLimits
+    ? new DomainRateLimiter(config.rateLimits, { initialDelayMs: config.requestDelay })
+    : undefined;
+  const rateLimiter = domainRateLimiter
+    ? domainRateLimiter.getLimiter(config.targetUrl)
+    : new RateLimiter({
+        requestsPerSecond: config.rateLimitRps,
+        initialDelayMs: config.requestDelay,
+      });
+
+  if (domainRateLimiter) {
+    log.info(`Using per-domain rate limiter (${domainRateLimiter.getPatterns().size} patterns, default ${domainRateLimiter.getDefaultRps()} rps)`);
+  }
 
   let checksToRun: ActiveCheck[];
 

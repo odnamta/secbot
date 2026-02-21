@@ -9,7 +9,7 @@ import { resolve, join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { crawl, closeBrowser } from './scanner/browser.js';
 import { runPassiveChecks } from './scanner/passive.js';
-import { runActiveChecks, CHECK_REGISTRY } from './scanner/active/index.js';
+import { runActiveChecks, CHECK_REGISTRY, loadAndRegisterPlugins } from './scanner/active/index.js';
 import { runRecon } from './scanner/recon.js';
 import { planAttack } from './ai/planner.js';
 import { validateFindings } from './ai/validator.js';
@@ -35,6 +35,7 @@ import { validateCliOptions } from './utils/cli-validation.js';
 import { CallbackServer } from './scanner/oob/callback-server.js';
 import { waitForDelayedCallbacks, getDefaultWaitMs } from './scanner/oob/delayed-detection.js';
 import { startInteractiveMode } from './interactive/repl.js';
+import { authenticate } from './scanner/auth/authenticator.js';
 import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, AuthOptions } from './scanner/types.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
@@ -229,6 +230,7 @@ program
       ...(authOpts ? { auth: authOpts } : {}),
       ...(options.callbackServer ? { callbackServerPort: parseInt(options.callbackServer as string, 10) } : {}),
       ...(options.oobWait ? { oobWaitMs: parseInt(options.oobWait as string, 10) * 1000 } : {}),
+      ...(fileConfig?.rateLimits ? { rateLimits: fileConfig.rateLimits } : {}),
     });
 
     if (config.callbackUrl) {
@@ -260,6 +262,34 @@ program
       }
     }
 
+    // ─── Credential-based Authentication ─────────────────────────
+    if (config.auth) {
+      log.info('Authenticating with provided credentials...');
+      const { chromium } = await import('playwright');
+      const authBrowser = await chromium.launch({ headless: true });
+      const authPage = await authBrowser.newPage();
+      try {
+        const authResult = await authenticate(authPage, config.auth);
+        if (!authResult.success) {
+          log.error(`Authentication failed: ${authResult.error}`);
+          await authBrowser.close();
+          process.exit(2);
+        }
+        if (authResult.storageState) {
+          // Write storage state to a temp file so crawl() can consume it
+          const { mkdtempSync, writeFileSync } = await import('node:fs');
+          const { join: joinPath } = await import('node:path');
+          const tmpDir = mkdtempSync(joinPath((await import('node:os')).tmpdir(), 'secbot-auth-'));
+          const storageStatePath = joinPath(tmpDir, 'storage-state.json');
+          writeFileSync(storageStatePath, authResult.storageState, 'utf-8');
+          config.authStorageState = storageStatePath;
+          log.info('Authentication successful — session captured');
+        }
+      } finally {
+        await authBrowser.close();
+      }
+    }
+
     const scanId = new Date().toISOString().replace(/[:.]/g, '-');
     const outputDir = resolve(config.outputPath ?? './secbot-reports');
     const startedAt = new Date().toISOString();
@@ -270,6 +300,9 @@ program
       : undefined;
 
     try {
+      // ─── Load Plugins ────────────────────────────────────────────
+      await loadAndRegisterPlugins();
+
       // ─── Phase 0: Route Discovery ──────────────────────────────
       log.info('Phase 0: Discovering routes...');
       const discoveredRoutes = await discoverRoutes(targetUrl, options.urls as string | undefined);

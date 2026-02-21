@@ -303,11 +303,17 @@ export async function startInteractiveMode(
               confidence: 'medium' as const,
               reasoning: 'Interactive mode — no AI validation',
             }));
+            const reconForReport: ReconResult = state.recon ?? {
+              techStack: { languages: [], detected: [] },
+              waf: { detected: false, confidence: 'low', evidence: [] },
+              framework: { confidence: 'low', evidence: [] },
+              endpoints: { pages: [], apiRoutes: [], forms: [], staticAssets: [], graphql: [] },
+            };
             const report = await generateReport(
               targetUrl,
               deduped,
               validations,
-              state.recon ?? undefined,
+              reconForReport,
             );
             state.interpretedFindings = report.findings;
           }

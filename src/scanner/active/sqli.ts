@@ -10,9 +10,12 @@ import {
   NOSQL_PAYLOADS,
   NOSQL_ERROR_PATTERNS,
 } from '../../config/payloads/sqli.js';
+import { getPolyglotSqli } from '../../utils/polyglot-payloads.js';
+import { generateHppVariants } from '../../utils/param-pollution.js';
+import { generateBlindSqliPayloads } from '../oob/blind-payloads.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
-import type { ActiveCheck } from './index.js';
+import type { ActiveCheck, ScanTargets } from './index.js';
 import { delay, measureResponseTime } from '../../utils/shared.js';
 import { mutatePayload, pickStrategies, sqlCommentObfuscate } from '../../utils/payload-mutator.js';
 
@@ -21,6 +24,16 @@ const BLIND_SQLI_THRESHOLD_MS = 3000;
 
 /** Minimum body length difference ratio to flag boolean-based blind SQLi */
 const BOOLEAN_BLIND_THRESHOLD = 0.35;
+
+/** Select error-based SQLi payloads, appending polyglots when WAF detected or deep profile */
+function selectSqliPayloads(config: ScanConfig, maxNonDeep: number): string[] {
+  const base = config.profile === 'deep' ? SQLI_PAYLOADS : SQLI_PAYLOADS.slice(0, maxNonDeep);
+  const usePolyglots = config.wafDetection?.detected || config.profile === 'deep';
+  if (usePolyglots) {
+    return [...base, ...getPolyglotSqli()];
+  }
+  return base;
+}
 
 /**
  * Generate WAF-evasion variants of a SQLi payload.
@@ -53,6 +66,13 @@ export const sqliCheck: ActiveCheck = {
       findings.push(...(await testSqliOnUrls(context, targets.urlsWithParams, config, requestLogger)));
     }
 
+    // Blind SQLi: inject OOB payloads for out-of-band detection
+    if (config.callbackUrl) {
+      const blindPayloads = generateBlindSqliPayloads(config.callbackUrl);
+      log.info(`Injecting ${blindPayloads.length} blind SQLi OOB payloads (callback: ${config.callbackUrl})`);
+      findings.push(...(await injectBlindSqli(context, targets, blindPayloads, config, requestLogger)));
+    }
+
     return findings;
   },
 };
@@ -64,7 +84,7 @@ async function testSqliOnForms(
   requestLogger?: RequestLogger,
 ): Promise<RawFinding[]> {
   const findings: RawFinding[] = [];
-  const payloads = config.profile === 'deep' ? SQLI_PAYLOADS : SQLI_PAYLOADS.slice(0, 4);
+  const payloads = selectSqliPayloads(config, 4);
 
   for (const form of forms) {
     const textInputs = form.inputs.filter(
@@ -376,7 +396,7 @@ async function testSqliOnUrls(
   requestLogger?: RequestLogger,
 ): Promise<RawFinding[]> {
   const findings: RawFinding[] = [];
-  const errorPayloads = config.profile === 'deep' ? SQLI_PAYLOADS : SQLI_PAYLOADS.slice(0, 3);
+  const errorPayloads = selectSqliPayloads(config, 3);
   const timePayloads = config.profile === 'deep' ? SQLI_TIME_PAYLOADS : SQLI_TIME_PAYLOADS.slice(0, 1);
 
   for (const originalUrl of urls) {
@@ -443,6 +463,55 @@ async function testSqliOnUrls(
           }
 
           await delay(config.requestDelay);
+        }
+
+        // HPP bypass: when WAF detected, duplicate the parameter to bypass
+        // WAFs that only inspect the first (or last) occurrence
+        if (!foundForParam && config.wafDetection?.detected) {
+          const hppUrls = generateHppVariants(originalUrl, param, payload);
+          for (const hppUrl of hppUrls) {
+            if (foundForParam) break;
+
+            const page = await context.newPage();
+            try {
+              const response = await page.request.fetch(hppUrl);
+              const body = await response.text();
+
+              requestLogger?.log({
+                timestamp: new Date().toISOString(),
+                method: 'GET',
+                url: hppUrl,
+                responseStatus: response.status(),
+                phase: 'active-sqli-hpp',
+              });
+
+              for (const pattern of SQL_ERROR_PATTERNS) {
+                const match = body.match(pattern);
+                if (match) {
+                  findings.push({
+                    id: randomUUID(),
+                    category: 'sqli',
+                    severity: 'critical',
+                    title: `SQL Injection in URL Parameter "${param}" (HPP bypass)`,
+                    description: `SQL error message detected when injecting payload into URL parameter "${param}" via HTTP Parameter Pollution. WAF was bypassed by duplicating the parameter.`,
+                    url: originalUrl,
+                    evidence: `Payload: ${payload}\nHPP URL: ${hppUrl}\nSQL error: ${match[0]}\nWAF bypass: HPP`,
+                    request: { method: 'GET', url: hppUrl },
+                    response: { status: response.status(), bodySnippet: body.slice(0, 300) },
+                    timestamp: new Date().toISOString(),
+                  });
+                  foundForParam = true;
+                  break;
+                }
+              }
+            } catch (err) {
+              log.debug(`SQLi HPP test: ${(err as Error).message}`);
+            } finally {
+              await page.close();
+            }
+
+            await delay(config.requestDelay);
+          }
         }
       }
 
@@ -685,4 +754,107 @@ async function testSqliOnUrls(
   }
 
   return findings;
+}
+
+/**
+ * Inject blind SQLi payloads (OOB: DNS exfiltration, outbound HTTP, etc.)
+ * into forms and URL parameters. These payloads use database-specific features
+ * (LOAD_FILE, UTL_HTTP, xp_cmdshell, dblink, COPY TO PROGRAM) to make the
+ * database server connect to the callback URL, confirming exploitation.
+ *
+ * Detection happens out-of-band on the user's callback server.
+ */
+async function injectBlindSqli(
+  context: BrowserContext,
+  targets: ScanTargets,
+  blindPayloads: string[],
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  let injectedCount = 0;
+
+  // Inject into forms
+  for (const form of targets.forms) {
+    const textInputs = form.inputs.filter(
+      (i) => ['text', 'search', 'email', 'url', 'tel', 'number', ''].includes(i.type) && i.name,
+    );
+    if (textInputs.length === 0) continue;
+
+    for (const payload of blindPayloads) {
+      const page = await context.newPage();
+      try {
+        const fetchMethod = form.method.toUpperCase() === 'GET' ? 'GET' : 'POST';
+        const payloadBody = textInputs
+          .map((i) => `${encodeURIComponent(i.name)}=${encodeURIComponent(payload)}`)
+          .join('&');
+
+        await page.request.fetch(form.action, {
+          method: fetchMethod,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          data: payloadBody,
+        });
+
+        requestLogger?.log({
+          timestamp: new Date().toISOString(),
+          method: form.method,
+          url: form.action,
+          body: payloadBody,
+          phase: 'active-sqli-blind-oob',
+        });
+
+        injectedCount++;
+      } catch (err) {
+        log.debug(`Blind SQLi form inject: ${(err as Error).message}`);
+      } finally {
+        await page.close();
+      }
+
+      await delay(config.requestDelay);
+    }
+  }
+
+  // Inject into URL parameters
+  for (const originalUrl of targets.urlsWithParams) {
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(originalUrl);
+    } catch {
+      continue;
+    }
+    const params = Array.from(parsedUrl.searchParams.keys());
+
+    for (const param of params) {
+      for (const payload of blindPayloads) {
+        const testUrl = new URL(originalUrl);
+        testUrl.searchParams.set(param, payload);
+
+        const page = await context.newPage();
+        try {
+          await page.request.fetch(testUrl.href);
+
+          requestLogger?.log({
+            timestamp: new Date().toISOString(),
+            method: 'GET',
+            url: testUrl.href,
+            phase: 'active-sqli-blind-oob',
+          });
+
+          injectedCount++;
+        } catch (err) {
+          log.debug(`Blind SQLi URL inject: ${(err as Error).message}`);
+        } finally {
+          await page.close();
+        }
+
+        await delay(config.requestDelay);
+      }
+    }
+  }
+
+  if (injectedCount > 0) {
+    log.info(`Injected ${injectedCount} blind SQLi OOB payloads. Check your callback server for hits.`);
+  }
+
+  // Blind SQLi findings are detected out-of-band — no immediate findings to return
+  return [];
 }

@@ -18,7 +18,7 @@ export class CallbackServer {
   private port = 0;
 
   constructor(host?: string) {
-    this.host = host ?? '0.0.0.0';
+    this.host = host ?? '127.0.0.1';
   }
 
   /**

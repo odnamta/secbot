@@ -8,7 +8,11 @@ import type {
   EndpointMap,
   Confidence,
 } from './types.js';
+import { fingerprintWaf } from './waf-fingerprint.js';
 import { log } from '../utils/logger.js';
+
+/** Map WafFingerprint confidence to a comparable numeric value */
+const CONFIDENCE_RANK: Record<Confidence, number> = { high: 3, medium: 2, low: 1 };
 
 export function runRecon(
   pages: CrawledPage[],
@@ -17,9 +21,30 @@ export function runRecon(
   log.info('Running reconnaissance...');
 
   const techStack = fingerprintTechStack(pages, responses);
-  const waf = detectWaf(pages, responses);
+  let waf = detectWaf(pages, responses);
   const framework = detectFramework(pages, responses);
   const endpoints = mapEndpoints(pages);
+
+  // Enhanced WAF fingerprinting — augments basic detection with specific
+  // WAF product identification and recommended bypass techniques
+  const enhanced = fingerprintWaf(responses);
+  const enhancedRank = CONFIDENCE_RANK[enhanced.confidence] ?? 0;
+  const basicRank = CONFIDENCE_RANK[waf.confidence] ?? 0;
+
+  if (enhanced.wafName !== 'Unknown' && enhancedRank >= basicRank) {
+    // Enhanced detection identified a specific WAF with equal or higher confidence
+    waf = {
+      detected: true,
+      name: enhanced.wafName,
+      confidence: enhanced.confidence,
+      evidence: [...new Set([...waf.evidence, ...enhanced.evidence])],
+      recommendedTechniques: enhanced.recommendedTechniques,
+    };
+    log.info(`Enhanced WAF fingerprint: ${enhanced.wafName} (${enhanced.confidence} confidence)`);
+  } else if (waf.detected) {
+    // Basic detection found a WAF but enhanced didn't beat it — still store techniques
+    waf.recommendedTechniques = enhanced.recommendedTechniques;
+  }
 
   log.info(
     `Recon complete: ${techStack.detected.length} technologies, ` +

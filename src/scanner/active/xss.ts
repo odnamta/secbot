@@ -2,6 +2,9 @@ import { randomUUID } from 'node:crypto';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig, FormInfo } from '../types.js';
 import { XSS_PAYLOADS, type XSSPayload } from '../../config/payloads/xss.js';
+import { getPolyglotXss } from '../../utils/polyglot-payloads.js';
+import { generateHppVariants } from '../../utils/param-pollution.js';
+import { generateBlindXssPayloads } from '../oob/blind-payloads.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck, ScanTargets } from './index.js';
@@ -123,6 +126,13 @@ export const xssCheck: ActiveCheck = {
       findings.push(...(await testStoredXss(context, targets.pages, config)));
     }
 
+    // Blind XSS: inject callback payloads for out-of-band detection
+    if (config.callbackUrl) {
+      const blindPayloads = generateBlindXssPayloads(config.callbackUrl);
+      log.info(`Injecting ${blindPayloads.length} blind XSS payloads (callback: ${config.callbackUrl})`);
+      findings.push(...(await injectBlindXss(context, targets, blindPayloads, config, requestLogger)));
+    }
+
     return findings;
   },
 };
@@ -183,10 +193,26 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Select payloads based on scan profile, excluding DOM-type payloads for non-DOM checks */
+/** Select payloads based on scan profile, excluding DOM-type payloads for non-DOM checks.
+ *  Appends polyglot XSS payloads when WAF is detected or profile is 'deep'. */
 function selectPayloads(config: ScanConfig, maxQuick: number): XSSPayload[] {
   const nonDomPayloads = XSS_PAYLOADS.filter(p => p.type !== 'dom');
-  return config.profile === 'deep' ? nonDomPayloads : nonDomPayloads.slice(0, maxQuick);
+  const base = config.profile === 'deep' ? nonDomPayloads : nonDomPayloads.slice(0, maxQuick);
+
+  // Append polyglot payloads when WAF detected or deep profile —
+  // polyglots work across multiple contexts and can bypass WAF patterns
+  const usePolyglots = config.wafDetection?.detected || config.profile === 'deep';
+  if (usePolyglots) {
+    const polyglots = getPolyglotXss();
+    const polyglotPayloads: XSSPayload[] = polyglots.map((payload, i) => ({
+      payload,
+      marker: `secbot-polyglot-xss-${i}`,
+      type: 'reflected' as const,
+    }));
+    return [...base, ...polyglotPayloads];
+  }
+
+  return base;
 }
 
 /**
@@ -401,6 +427,51 @@ async function testXssOnUrls(
 
           await delay(config.requestDelay);
         }
+
+        // HPP bypass: when WAF detected, duplicate the parameter to bypass
+        // WAFs that only inspect the first (or last) occurrence
+        if (!foundForParam && config.wafDetection?.detected) {
+          const hppUrls = generateHppVariants(originalUrl, param, xssPayload.payload);
+          for (const hppUrl of hppUrls) {
+            if (foundForParam) break;
+
+            const page = await context.newPage();
+            try {
+              await page.goto(hppUrl, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
+
+              requestLogger?.log({
+                timestamp: new Date().toISOString(),
+                method: 'GET',
+                url: hppUrl,
+                phase: 'active-xss-hpp',
+              });
+
+              const content = await page.content();
+              const dangerousContext = checkDangerousReflection(content, xssPayload.payload, xssPayload.marker);
+
+              if (dangerousContext) {
+                findings.push({
+                  id: randomUUID(),
+                  category: 'xss',
+                  severity: 'high',
+                  title: `Reflected XSS in URL Parameter "${param}" (HPP bypass)`,
+                  description: `The URL parameter "${param}" reflects XSS payload (${xssPayload.type}) via HTTP Parameter Pollution. ${dangerousContext}. WAF was bypassed by duplicating the parameter.`,
+                  url: originalUrl,
+                  evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nHPP URL: ${hppUrl}\n${dangerousContext}\nWAF bypass: HPP`,
+                  request: { method: 'GET', url: hppUrl },
+                  timestamp: new Date().toISOString(),
+                });
+                foundForParam = true;
+              }
+            } catch (err) {
+              log.debug(`XSS HPP test: ${(err as Error).message}`);
+            } finally {
+              await page.close();
+            }
+
+            await delay(config.requestDelay);
+          }
+        }
       }
     }
   }
@@ -541,4 +612,117 @@ async function testStoredXss(
   }
 
   return findings;
+}
+
+/**
+ * Inject blind XSS payloads into forms and URL parameters.
+ * These payloads phone home to the callback URL — actual detection happens
+ * on the user's callback server (Burp Collaborator, interactsh, etc.).
+ * We don't expect a reflected response; we just inject and log.
+ */
+async function injectBlindXss(
+  context: BrowserContext,
+  targets: ScanTargets,
+  blindPayloads: string[],
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  let injectedCount = 0;
+
+  // Inject into forms
+  for (const form of targets.forms) {
+    const textInputs = form.inputs.filter(
+      (i) => ['text', 'search', 'email', 'url', 'tel', ''].includes(i.type) && i.name,
+    );
+    if (textInputs.length === 0) continue;
+
+    for (const payload of blindPayloads) {
+      const page = await context.newPage();
+      try {
+        await page.goto(form.pageUrl, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
+
+        for (const input of textInputs) {
+          try {
+            await page.fill(`[name="${input.name}"]`, payload);
+          } catch (err) {
+            log.debug(`Blind XSS fill: ${(err as Error).message}`);
+          }
+        }
+
+        try {
+          const submitBtn = page.locator('form button[type="submit"], form input[type="submit"]').first();
+          if (await submitBtn.count() > 0) {
+            await submitBtn.click({ timeout: 5000 });
+          } else {
+            await page.locator('form').first().evaluate((f) => (f as HTMLFormElement).submit());
+          }
+          // Brief wait for submission to complete
+          await delay(1000);
+        } catch (err) {
+          log.debug(`Blind XSS submit: ${(err as Error).message}`);
+        }
+
+        requestLogger?.log({
+          timestamp: new Date().toISOString(),
+          method: form.method,
+          url: form.action,
+          body: textInputs.map((i) => `${i.name}=${payload}`).join('&'),
+          phase: 'active-xss-blind',
+        });
+
+        injectedCount++;
+      } catch (err) {
+        log.debug(`Blind XSS form inject: ${(err as Error).message}`);
+      } finally {
+        await page.close();
+      }
+
+      await delay(config.requestDelay);
+    }
+  }
+
+  // Inject into URL parameters
+  for (const originalUrl of targets.urlsWithParams) {
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(originalUrl);
+    } catch {
+      continue;
+    }
+    const params = Array.from(parsedUrl.searchParams.keys());
+
+    for (const param of params) {
+      for (const payload of blindPayloads) {
+        const testUrl = new URL(originalUrl);
+        testUrl.searchParams.set(param, payload);
+
+        const page = await context.newPage();
+        try {
+          await page.goto(testUrl.href, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
+
+          requestLogger?.log({
+            timestamp: new Date().toISOString(),
+            method: 'GET',
+            url: testUrl.href,
+            phase: 'active-xss-blind',
+          });
+
+          injectedCount++;
+        } catch (err) {
+          log.debug(`Blind XSS URL inject: ${(err as Error).message}`);
+        } finally {
+          await page.close();
+        }
+
+        await delay(config.requestDelay);
+      }
+    }
+  }
+
+  if (injectedCount > 0) {
+    log.info(`Injected ${injectedCount} blind XSS callback payloads. Check your callback server for hits.`);
+  }
+
+  // Blind XSS findings are detected out-of-band — no immediate findings to return
+  return [];
 }

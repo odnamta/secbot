@@ -11,7 +11,13 @@ import type {
 import { log } from '../utils/logger.js';
 import { normalizeUrl, delay } from '../utils/shared.js';
 import { getRandomUserAgent, jitteredDelay } from '../utils/stealth.js';
-import { MiddlewarePipeline } from './middleware.js';
+import {
+  MiddlewarePipeline,
+  createCustomHeaderMiddleware,
+  createResponseLoggerMiddleware,
+  createWafBlockDetector,
+} from './middleware.js';
+import { detectFramework, waitForHydration, getFrameworkHints } from './discovery/framework-detector.js';
 
 export interface CrawlResult {
   pages: CrawledPage[];
@@ -42,6 +48,39 @@ export async function crawl(
   activeBrowser = browser;
 
   const mwPipeline = middleware ?? new MiddlewarePipeline();
+
+  // ─── Populate middleware pipeline (only when we created a fresh one) ───
+  if (!middleware) {
+    // Always add WAF block detector — useful for all scans
+    const { middleware: wafMiddleware } = createWafBlockDetector();
+    mwPipeline.addResponseMiddleware(wafMiddleware);
+
+    // Add response logger when request logging is enabled
+    if (config.logRequests) {
+      mwPipeline.addResponseMiddleware(createResponseLoggerMiddleware());
+    }
+
+    // If auth storage state contains a CSRF token cookie, add it as a custom header
+    if (config.authStorageState && existsSync(config.authStorageState)) {
+      try {
+        const storageState = JSON.parse(readFileSync(config.authStorageState, 'utf-8'));
+        const csrfCookie = (storageState.cookies ?? []).find(
+          (c: { name: string }) =>
+            /^(csrf|xsrf|_csrf|_token)/i.test(c.name),
+        );
+        if (csrfCookie) {
+          mwPipeline.addRequestMiddleware(
+            createCustomHeaderMiddleware({ 'X-CSRF-Token': csrfCookie.value }),
+          );
+          log.debug(`Middleware: added CSRF header from cookie "${csrfCookie.name}"`);
+        }
+      } catch {
+        // Storage state already validated below — ignore parse errors here
+      }
+    }
+
+    log.debug(`Middleware pipeline: ${mwPipeline.requestCount} request, ${mwPipeline.responseCount} response`);
+  }
 
   const contextOptions: Parameters<Browser['newContext']>[0] = {
     userAgent: isStealth
@@ -288,9 +327,17 @@ async function crawlPage(
     // Now wait for response handlers to finish (populates shared responses[])
     await Promise.allSettled(pendingResponses);
 
+    // Detect SPA framework and wait for hydration before extracting content.
+    // This ensures client-rendered links are visible in the DOM.
+    const framework = await detectFramework(page);
+    if (framework) {
+      await waitForHydration(page, framework);
+    }
+    const hints = getFrameworkHints(framework);
+
     // Extract page info
     const title = await page.title();
-    const links = await extractLinks(page, finalUrl);
+    const links = await extractLinks(page, finalUrl, hints.linkSelectors);
     const forms = await extractForms(page, finalUrl);
     const scripts = await extractScripts(page);
     const cookies = await extractCookies(context, finalUrl);
@@ -310,10 +357,31 @@ async function crawlPage(
   }
 }
 
-async function extractLinks(page: Page, baseUrl: string): Promise<string[]> {
-  const hrefs = await page.$$eval('a[href]', (anchors) =>
-    anchors.map((a) => a.getAttribute('href')).filter(Boolean) as string[],
-  );
+async function extractLinks(page: Page, baseUrl: string, linkSelectors: string[] = ['a[href]']): Promise<string[]> {
+  // Deduplicate selectors while preserving order
+  const uniqueSelectors = [...new Set(linkSelectors)];
+  const combinedSelector = uniqueSelectors.join(', ');
+
+  const hrefs = await page.$$eval(combinedSelector, (elements) => {
+    const urls: string[] = [];
+    for (const el of elements) {
+      // Primary: href attribute (works for <a>, <area>, <link>)
+      const href = el.getAttribute('href');
+      if (href) {
+        urls.push(href);
+        continue;
+      }
+      // Fallback for framework-specific elements: check common route attributes
+      for (const attr of ['to', 'routerLink', 'routerlink', 'ng-reflect-router-link', 'data-href']) {
+        const val = el.getAttribute(attr);
+        if (val) {
+          urls.push(val);
+          break;
+        }
+      }
+    }
+    return urls;
+  });
 
   return hrefs
     .map((href) => {

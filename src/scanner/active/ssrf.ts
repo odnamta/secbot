@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig, Severity } from '../types.js';
 import { SSRF_PAYLOADS, SSRF_PARAM_PATTERNS, SSRF_INDICATORS, getSSRFPayloads } from '../../config/payloads/ssrf.js';
+import { generateDnsCanary } from '../oob/dns-canary.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck } from './index.js';
@@ -56,8 +57,31 @@ async function testSsrf(
     log.info(`Including ${callbackPayloads.length} callback-based SSRF payloads for blind detection`);
   }
 
-  // All payloads: base first, then callback payloads
-  const payloadsToTest = [...basePayloads, ...callbackPayloads];
+  // Generate DNS canary payloads for out-of-band detection via DNS resolution.
+  // These complement the HTTP callback payloads — even when outbound HTTP is blocked,
+  // DNS queries often succeed because they go through the system resolver.
+  const dnsCanaryPayloads: string[] = [];
+  if (config.callbackUrl) {
+    try {
+      const callbackDomain = new URL(config.callbackUrl).hostname;
+      // Generate several DNS canary subdomains for different SSRF vectors
+      const canaryPrefixes = ['ssrf-http', 'ssrf-dns', 'ssrf-redirect', 'ssrf-file'];
+      for (const prefix of canaryPrefixes) {
+        const canaryId = `${prefix}-${randomUUID().slice(0, 8)}`;
+        const canaryDomain = generateDnsCanary(canaryId, callbackDomain);
+        // HTTP URL pointing to DNS canary subdomain
+        dnsCanaryPayloads.push(`http://${canaryDomain}/`);
+        // DNS-only: just the domain (useful for DNS rebinding / resolution-only vectors)
+        dnsCanaryPayloads.push(`https://${canaryDomain}/`);
+      }
+      log.info(`Including ${dnsCanaryPayloads.length} DNS canary payloads for OOB SSRF detection`);
+    } catch (err) {
+      log.debug(`DNS canary generation failed: ${(err as Error).message}`);
+    }
+  }
+
+  // All payloads: base first, then callback payloads, then DNS canaries
+  const payloadsToTest = [...basePayloads, ...callbackPayloads, ...dnsCanaryPayloads];
 
   let callbacksInjected = 0;
 
@@ -89,6 +113,8 @@ async function testSsrf(
 
       for (const payload of payloadsToTest) {
         const isCallbackPayload = config.callbackUrl && payload.includes(config.callbackUrl.replace(/\/+$/, ''));
+        const isDnsCanary = dnsCanaryPayloads.includes(payload);
+        const isOobPayload = isCallbackPayload || isDnsCanary;
 
         const testUrl = new URL(originalUrl);
         testUrl.searchParams.set(param, payload);
@@ -104,14 +130,14 @@ async function testSsrf(
             method: 'GET',
             url: testUrl.href,
             responseStatus: status,
-            phase: isCallbackPayload ? 'active-ssrf-callback' : 'active-ssrf',
+            phase: isDnsCanary ? 'active-ssrf-dns-canary' : (isCallbackPayload ? 'active-ssrf-callback' : 'active-ssrf'),
           });
 
-          if (isCallbackPayload) {
-            // For callback payloads, we just inject and count — verification
+          if (isOobPayload) {
+            // For callback/DNS canary payloads, we just inject and count — verification
             // happens on the user's callback server (Burp Collaborator, interactsh, etc.)
             callbacksInjected++;
-            log.debug(`Injected callback SSRF payload: ${payload} into param "${param}" at ${originalUrl}`);
+            log.debug(`Injected ${isDnsCanary ? 'DNS canary' : 'callback'} SSRF payload: ${payload} into param "${param}" at ${originalUrl}`);
             // Don't break — keep injecting callback payloads even if we found something with base payloads
           } else {
             // Check response body for SSRF indicators

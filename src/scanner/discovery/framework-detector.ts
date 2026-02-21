@@ -31,7 +31,7 @@ export interface CrawlHints {
 export async function detectFramework(page: Page): Promise<FrameworkInfo | null> {
   try {
     const result = await page.evaluate(() => {
-      const w = window as Record<string, unknown>;
+      const w = window as unknown as Record<string, unknown>;
       const doc = document;
       const evidence: string[] = [];
 
@@ -235,7 +235,7 @@ export async function waitForHydration(
         // Wait for __NEXT_DATA__ and #__next to have children (content rendered)
         await page.waitForFunction(
           () => {
-            const w = window as Record<string, unknown>;
+            const w = window as unknown as Record<string, unknown>;
             const nextRoot = document.querySelector('#__next');
             return (w.__NEXT_DATA__ || nextRoot) && nextRoot && nextRoot.children.length > 0;
           },
@@ -262,7 +262,7 @@ export async function waitForHydration(
         // Wait for Vue app to be mounted
         await page.waitForFunction(
           () => {
-            const w = window as Record<string, unknown>;
+            const w = window as unknown as Record<string, unknown>;
             // Vue 3: __vue_app__ on root element
             const appEl = document.querySelector('#app') ?? document.querySelector('#__nuxt');
             if (appEl && (appEl as unknown as Record<string, unknown>).__vue_app__) return true;
