@@ -86,8 +86,13 @@ export function mapToOwasp(category: string): string {
     'open-redirect': 'A01:2021 - Broken Access Control',
     'cors-misconfiguration': 'A05:2021 - Security Misconfiguration',
     'directory-traversal': 'A01:2021 - Broken Access Control',
+    ssrf: 'A10:2021 - Server-Side Request Forgery',
+    ssti: 'A03:2021 - Injection',
+    'command-injection': 'A03:2021 - Injection',
     idor: 'A01:2021 - Broken Access Control',
     tls: 'A02:2021 - Cryptographic Failures',
+    sri: 'A08:2021 - Software and Data Integrity Failures',
+    'cross-origin-policy': 'A05:2021 - Security Misconfiguration',
   };
   return map[category] ?? 'Unknown';
 }
@@ -104,6 +109,13 @@ export function getGenericImpact(category: string): string {
     'open-redirect': 'Attackers can redirect users to malicious sites, enabling phishing and credential theft.',
     'cors-misconfiguration': 'Attackers can read authenticated API responses from their own malicious website.',
     'directory-traversal': 'Attackers can read arbitrary files from the server, including configuration and credentials.',
+    ssrf: 'An attacker can make the server send requests to internal services, potentially accessing cloud metadata, internal APIs, or pivoting to internal networks.',
+    ssti: 'An attacker can execute arbitrary code on the server through template engine injection, leading to full server compromise.',
+    'command-injection': 'An attacker can execute arbitrary OS commands on the server, leading to full system compromise.',
+    idor: 'An attacker can access, modify, or delete other users\' data by manipulating object references (IDs) in requests.',
+    tls: 'Weak TLS configuration allows attackers to intercept or downgrade encrypted communications, exposing sensitive data in transit.',
+    sri: 'External resources loaded without integrity verification can be tampered with if the CDN or third-party host is compromised.',
+    'cross-origin-policy': 'Missing cross-origin isolation policies allow cross-origin attacks like Spectre to read sensitive data from the application.',
   };
   return map[category] ?? 'Unknown impact.';
 }
@@ -120,6 +132,13 @@ export function getGenericFix(category: string): string {
     'open-redirect': 'Validate redirect URLs against an allowlist of trusted domains.',
     'cors-misconfiguration': 'Configure CORS to allow only specific trusted origins, not wildcards with credentials.',
     'directory-traversal': 'Validate and sanitize file path inputs. Use allowlists for permitted paths.',
+    ssrf: 'Validate and restrict URLs to allowed domains/IPs. Block internal/private IP ranges. Use an allowlist for permitted URL schemes and hosts.',
+    ssti: 'Avoid passing user input directly into template engines. Use sandboxed template environments. Prefer logic-less templates (e.g., Mustache).',
+    'command-injection': 'Never pass user input to shell commands. Use language-native APIs instead of shell exec. If unavoidable, use strict allowlists and escape all input.',
+    idor: 'Implement proper authorization checks on every object access. Use non-sequential, unpredictable identifiers (UUIDs). Verify the authenticated user owns the requested resource.',
+    tls: 'Use TLS 1.2+ only. Disable weak cipher suites. Enable HSTS with a long max-age. Use certificates from trusted CAs and keep them up to date.',
+    sri: 'Add integrity attributes to all external <script> and <link> tags. Use the crossorigin="anonymous" attribute. Generate hashes with shasum or online SRI generators.',
+    'cross-origin-policy': 'Set Cross-Origin-Opener-Policy, Cross-Origin-Embedder-Policy, and Cross-Origin-Resource-Policy headers to enable cross-origin isolation.',
   };
   return map[category] ?? 'Review and fix the identified vulnerability.';
 }
