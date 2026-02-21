@@ -9,12 +9,15 @@ import type {
   InterceptedResponse,
 } from './types.js';
 import { log } from '../utils/logger.js';
+import { getRandomUserAgent, jitteredDelay } from '../utils/stealth.js';
+import { MiddlewarePipeline } from './middleware.js';
 
 export interface CrawlResult {
   pages: CrawledPage[];
   responses: InterceptedResponse[];
   browser: Browser;
   context: BrowserContext;
+  middleware: MiddlewarePipeline;
 }
 
 /** Realistic Chrome UA to avoid WAF blocks. SecBot identifier only sent in non-stealth mode. */
@@ -26,11 +29,23 @@ let activeBrowser: Browser | null = null;
 export async function crawl(
   config: ScanConfig,
   additionalUrls: string[] = [],
+  middleware?: MiddlewarePipeline,
 ): Promise<CrawlResult> {
-  const browser = await chromium.launch({ headless: true });
+  const isStealth = config.profile === 'stealth';
+  const launchOptions: Parameters<typeof chromium.launch>[0] = { headless: true };
+  if (config.proxy) {
+    launchOptions.proxy = { server: config.proxy };
+    log.info(`Using proxy: ${config.proxy}`);
+  }
+  const browser = await chromium.launch(launchOptions);
   activeBrowser = browser;
+
+  const mwPipeline = middleware ?? new MiddlewarePipeline();
+
   const contextOptions: Parameters<Browser['newContext']>[0] = {
-    userAgent: config.userAgent ?? DEFAULT_USER_AGENT,
+    userAgent: isStealth
+      ? getRandomUserAgent()
+      : (config.userAgent ?? DEFAULT_USER_AGENT),
     ignoreHTTPSErrors: true,
   };
 
@@ -84,7 +99,7 @@ export async function crawl(
     const results = await Promise.allSettled(
       batch.map(async (normalized) => {
         log.info(`Crawling [${visited.size}/${config.maxPages}]: ${normalized}`);
-        return crawlPage(context, normalized, config, responses);
+        return crawlPage(context, normalized, config, responses, mwPipeline);
       }),
     );
 
@@ -113,12 +128,16 @@ export async function crawl(
       }
     }
 
-    // Rate limiting between batches
-    await delay(config.requestDelay);
+    // Rate limiting between batches — stealth mode uses randomized jitter
+    if (isStealth) {
+      await jitteredDelay(config.requestDelay);
+    } else {
+      await delay(config.requestDelay);
+    }
   }
 
   log.info(`Crawl complete: ${pages.length} pages scanned`);
-  return { pages, responses, browser, context };
+  return { pages, responses, browser, context, middleware: mwPipeline };
 }
 
 /** Close all pages, contexts, and the browser when scanning is complete */
@@ -144,8 +163,34 @@ async function crawlPage(
   url: string,
   config: ScanConfig,
   responses: InterceptedResponse[],
+  mwPipeline: MiddlewarePipeline,
 ): Promise<CrawledPage> {
   const page = await context.newPage();
+
+  // Stealth: rotate User-Agent per page to reduce fingerprinting
+  if (config.profile === 'stealth') {
+    await page.setExtraHTTPHeaders({ 'User-Agent': getRandomUserAgent() });
+  }
+
+  // Wire request middleware via page.route() — intercept all HTTP(S) traffic
+  if (mwPipeline.requestCount > 0) {
+    await page.route('**/*', async (route) => {
+      const request = route.request();
+      const original = {
+        url: request.url(),
+        method: request.method(),
+        headers: { ...request.headers() },
+        body: request.postData() ?? undefined,
+      };
+      const processed = mwPipeline.processRequest(original);
+      await route.continue({
+        url: processed.url,
+        method: processed.method,
+        headers: processed.headers,
+        postData: processed.body,
+      });
+    });
+  }
 
   // Track pending response captures so we can await them before reading
   const pendingResponses: Promise<void>[] = [];
@@ -177,12 +222,17 @@ async function crawlPage(
           }
         }
 
-        responses.push({
+        const intercepted = {
           url: response.url(),
           status: response.status(),
           headers,
           body,
-        });
+        };
+
+        // Run response middleware (observation only)
+        mwPipeline.processResponse(intercepted);
+
+        responses.push(intercepted);
       } catch (err) {
         log.debug(`Response capture: ${(err as Error).message}`);
       }

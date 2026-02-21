@@ -21,6 +21,8 @@ import { writeHtmlReport } from './reporter/html.js';
 import { writeBountyReport } from './reporter/bounty.js';
 import { writeSarifReport } from './reporter/sarif.js';
 import { writeJunitReport } from './reporter/junit.js';
+import { writeBurpExport } from './reporter/burp-xml.js';
+import { writeHarExport } from './reporter/har.js';
 import { buildConfig } from './config/defaults.js';
 import { loadConfigFile } from './config/file.js';
 import { parseScopePatterns } from './utils/scope.js';
@@ -68,6 +70,9 @@ program
   .option('--rate-limit <n>', 'Maximum requests per second (integer)', undefined)
   .option('--exclude-checks <checks>', 'Comma-separated list of check names to skip (e.g., "traversal,cmdi,sqli")')
   .option('--baseline <file>', 'Path to baseline JSON file — only report new findings')
+  .option('--proxy <url>', 'HTTP or SOCKS5 proxy URL (e.g. http://host:8080 or socks5://host:1080)')
+  .option('--export-burp', 'Export captured traffic as Burp Suite XML (requires --log-requests)', false)
+  .option('--export-har', 'Export captured traffic as HAR 1.2 file (requires --log-requests)', false)
   .option('--no-ai', 'Skip AI interpretation (use rule-based fallback)')
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (url: string | undefined, options: Record<string, unknown>) => {
@@ -161,6 +166,11 @@ program
       ? excludeChecksStr.split(',').map((s) => s.trim()).filter(Boolean)
       : fileConfig?.excludeChecks;
 
+    // --export-burp / --export-har auto-enable --log-requests
+    const exportBurp = options.exportBurp === true;
+    const exportHar = options.exportHar === true;
+    const logRequests = options.logRequests === true || fileConfig?.logRequests === true || exportBurp || exportHar;
+
     const config = buildConfig(targetUrl, {
       profile: (options.profile as ScanProfile) ?? fileConfig?.profile,
       authStorageState: (options.auth as string | undefined) ?? fileConfig?.auth,
@@ -168,9 +178,11 @@ program
       outputPath: (options.output as string) ?? fileConfig?.output,
       respectRobots: options.ignoreRobots ? false : (fileConfig?.ignoreRobots ? false : true),
       scope,
-      logRequests: options.logRequests === true || (fileConfig?.logRequests === true),
+      logRequests,
       useAI,
       callbackUrl: (options.callbackUrl as string | undefined) ?? fileConfig?.callbackUrl,
+      exportBurp,
+      exportHar,
       ...(excludeChecks ? { excludeChecks } : {}),
       ...(options.maxPages ? { maxPages: parseInt(options.maxPages as string, 10) }
         : fileConfig?.maxPages ? { maxPages: fileConfig.maxPages } : {}),
@@ -180,6 +192,8 @@ program
         : fileConfig?.rateLimit ? { rateLimitRps: fileConfig.rateLimit } : {}),
       ...(options.baseline ? { baselinePath: options.baseline as string }
         : fileConfig?.baseline ? { baselinePath: fileConfig.baseline } : {}),
+      ...(options.proxy ? { proxy: options.proxy as string }
+        : fileConfig?.proxy ? { proxy: fileConfig.proxy } : {}),
     });
 
     if (config.callbackUrl) {
@@ -188,6 +202,10 @@ program
 
     if (config.excludeChecks?.length) {
       log.info(`Excluding checks: ${config.excludeChecks.join(', ')}`);
+    }
+
+    if (config.proxy) {
+      log.info(`Proxy configured: ${config.proxy}`);
     }
 
     const scanId = new Date().toISOString().replace(/[:.]/g, '-');
@@ -389,13 +407,28 @@ program
           writeJunitReport(scanResult, junitPath);
         }
 
+        // Flush request log before reading entries for export
+        requestLogger?.flush();
+
+        // Export traffic captures (Burp XML / HAR)
+        if (requestLogger && (config.exportBurp || config.exportHar)) {
+          const capturedEntries = requestLogger.readAllEntries();
+
+          if (config.exportBurp) {
+            const burpPath = join(outputDir, `secbot-${scanId}.burp.xml`);
+            writeBurpExport(capturedEntries, burpPath);
+          }
+
+          if (config.exportHar) {
+            const harPath = join(outputDir, `secbot-${scanId}.har`);
+            writeHarExport(capturedEntries, harPath);
+          }
+        }
+
         // Save current findings as baseline for future diff
         const baselineOutPath = join(outputDir, 'secbot-baseline.json');
         saveBaseline(dedupedFindings, baselineOutPath);
         log.info(`Baseline saved: ${baselineOutPath}`);
-
-        // Flush request log
-        requestLogger?.flush();
 
         process.exitCode = exitCode;
 

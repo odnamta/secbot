@@ -19,7 +19,7 @@ export type CheckCategory =
   | 'tls'
   | 'sri';
 
-export type ScanProfile = 'quick' | 'standard' | 'deep';
+export type ScanProfile = 'quick' | 'standard' | 'deep' | 'stealth';
 
 export interface RawFinding {
   id: string;
@@ -79,6 +79,10 @@ export interface ScanConfig {
   idorAltAuthState?: string;
   excludeChecks?: string[];
   baselinePath?: string;
+  /** HTTP or SOCKS5 proxy URL (e.g. http://host:port or socks5://host:port) */
+  proxy?: string;
+  exportBurp?: boolean;
+  exportHar?: boolean;
 }
 
 export interface CrawledPage {
@@ -261,3 +265,22 @@ export interface RequestLogEntry {
   responseHeaders?: Record<string, string>;
   phase: string;
 }
+
+// ─── Middleware Types ───────────────────────────────────────────────
+
+export interface MiddlewareRequest {
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  body?: string;
+}
+
+export interface MiddlewareResponse {
+  url: string;
+  status: number;
+  headers: Record<string, string>;
+  body?: string;
+}
+
+export type RequestMiddleware = (request: MiddlewareRequest) => MiddlewareRequest;
+export type ResponseMiddleware = (response: MiddlewareResponse) => void;

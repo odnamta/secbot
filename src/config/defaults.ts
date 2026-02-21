@@ -19,6 +19,12 @@ const PROFILE_SETTINGS: Record<ScanProfile, Partial<ScanConfig>> = {
     concurrency: 10,
     requestDelay: 100,
   },
+  stealth: {
+    maxPages: 3,
+    timeout: 30000,
+    concurrency: 1,
+    requestDelay: 500, // base delay; actual delay randomized 200-800ms by stealth module
+  },
 };
 
 export function buildConfig(

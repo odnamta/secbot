@@ -22,6 +22,7 @@ export interface SecbotConfig {
   callbackUrl?: string;
   rateLimit?: number;
   baseline?: string;
+  proxy?: string;
 }
 
 const CONFIG_FILE_NAMES = ['.secbotrc.json', 'secbot.config.json'] as const;

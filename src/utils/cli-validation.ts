@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 
-export const VALID_PROFILES = ['quick', 'standard', 'deep'] as const;
+export const VALID_PROFILES = ['quick', 'standard', 'deep', 'stealth'] as const;
 
 export interface CliValidationError {
   field: string;

@@ -1,13 +1,14 @@
 import type { DiscoveredRoute, RouteDiscoverer } from './types.js';
 import { NextJsExtractor } from './nextjs-extractor.js';
 import { UrlFileLoader } from './url-file-loader.js';
+import { SPACrawler } from './spa-crawler.js';
 import { log } from '../../utils/logger.js';
 
 export async function discoverRoutes(
   targetUrl: string,
   urlsFile?: string,
 ): Promise<DiscoveredRoute[]> {
-  const discoverers: RouteDiscoverer[] = [new NextJsExtractor()];
+  const discoverers: RouteDiscoverer[] = [new NextJsExtractor(), new SPACrawler()];
   if (urlsFile) {
     discoverers.push(new UrlFileLoader(urlsFile));
   }

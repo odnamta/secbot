@@ -1,6 +1,6 @@
 export interface DiscoveredRoute {
   url: string;
-  source: 'crawl' | 'nextjs' | 'sitemap' | 'file' | 'probe';
+  source: 'crawl' | 'nextjs' | 'sitemap' | 'file' | 'probe' | 'spa-history' | 'spa-click' | 'spa-xhr';
   confidence: 'high' | 'medium' | 'low';
 }
 
