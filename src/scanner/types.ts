@@ -14,6 +14,7 @@ export type CheckCategory =
   | 'ssrf'
   | 'ssti'
   | 'idor'
+  | 'command-injection'
   | 'tls';
 
 export type ScanProfile = 'quick' | 'standard' | 'deep';
