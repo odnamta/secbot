@@ -25,6 +25,8 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
 <head><title>Vulnerable Test Server</title></head>
 <body>
   <h1>Vulnerable Test Server</h1>
+  <script src="https://cdn.example.com/lib.js"></script>
+  <link rel="stylesheet" href="https://cdn.example.com/style.css">
   <ul>
     <li><a href="/search?q=test">Search (XSS)</a></li>
     <li><a href="/login">Login Form</a></li>
