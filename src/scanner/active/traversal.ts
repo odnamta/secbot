@@ -11,32 +11,37 @@ export const traversalCheck: ActiveCheck = {
   name: 'traversal',
   category: 'directory-traversal',
   async run(context, targets, config, requestLogger) {
-    if (targets.apiEndpoints.length === 0) return [];
+    // Combine API endpoints and file-param URLs, deduplicated
+    const allTargets = [...new Set([...targets.apiEndpoints, ...targets.fileParams])];
 
-    log.info(`Testing ${targets.apiEndpoints.length} API endpoints for directory traversal...`);
-    return testDirectoryTraversal(context, targets.apiEndpoints, config, requestLogger);
+    if (allTargets.length === 0) return [];
+
+    log.info(`Testing ${allTargets.length} URLs for directory traversal...`);
+    return testDirectoryTraversal(context, allTargets, config, requestLogger);
   },
 };
 
 /** Common query params that accept file paths */
-const FILE_PARAMS = /^(file|path|page|template|include|doc|folder|dir|name|src|resource|load)$/i;
+const FILE_PARAMS = /^(file|path|page|template|include|doc|folder|dir|name|src|resource|load|image|img|document|attachment)$/i;
 
 async function testDirectoryTraversal(
   context: BrowserContext,
-  apiEndpoints: string[],
+  endpoints: string[],
   config: ScanConfig,
   requestLogger?: RequestLogger,
 ): Promise<RawFinding[]> {
   const findings: RawFinding[] = [];
   const payloadsToTest = config.profile === 'deep' ? TRAVERSAL_PAYLOADS : TRAVERSAL_PAYLOADS.slice(0, 2);
 
-  for (const endpoint of apiEndpoints) {
-    // Strategy 1: Path segment replacement (original approach)
-    for (const payload of payloadsToTest.slice(0, 2)) {
-      const testUrl = endpoint.replace(/\/[^/]*$/, `/${payload}`);
-      const found = await testTraversalUrl(context, testUrl, endpoint, payload, requestLogger);
-      if (found) { findings.push(found); break; }
-      await delay(config.requestDelay);
+  for (const endpoint of endpoints) {
+    // Strategy 1: Path segment replacement (for API-like endpoints with path segments)
+    if (/\/[^/?]+$/.test(new URL(endpoint).pathname)) {
+      for (const payload of payloadsToTest.slice(0, 2)) {
+        const testUrl = endpoint.replace(/\/[^/?]*(\?|$)/, `/${payload}$1`);
+        const found = await testTraversalUrl(context, testUrl, endpoint, payload, requestLogger);
+        if (found) { findings.push(found); break; }
+        await delay(config.requestDelay);
+      }
     }
 
     // Strategy 2: Query parameter injection — test any params that look file-related
@@ -52,8 +57,8 @@ async function testDirectoryTraversal(
           await delay(config.requestDelay);
         }
       }
-    } catch {
-      // URL parsing failed, skip query param testing
+    } catch (err) {
+      log.debug(`Traversal URL parse: ${(err as Error).message}`);
     }
   }
 
@@ -86,8 +91,8 @@ async function testTraversalUrl(
           id: randomUUID(),
           category: 'directory-traversal',
           severity: 'critical',
-          title: 'Directory Traversal on API Endpoint',
-          description: `The API endpoint is vulnerable to directory traversal, allowing access to system files.`,
+          title: 'Directory Traversal',
+          description: `The endpoint is vulnerable to directory traversal, allowing access to system files.`,
           url: originalEndpoint,
           evidence: `Payload: ${payload}\nTest URL: ${testUrl}\nResponse contains system file content`,
           request: { method: 'GET', url: testUrl },
@@ -96,11 +101,10 @@ async function testTraversalUrl(
         };
       }
     }
-  } catch {
-    // Continue
+  } catch (err) {
+    log.debug(`Traversal test: ${(err as Error).message}`);
   } finally {
     await page.close();
   }
   return null;
 }
-

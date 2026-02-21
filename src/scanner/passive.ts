@@ -2,14 +2,29 @@ import { randomUUID } from 'node:crypto';
 import type { CrawledPage, InterceptedResponse, RawFinding } from './types.js';
 import { log } from '../utils/logger.js';
 
+// Cookies that don't need HttpOnly — they're intentionally JS-readable
+const SKIP_HTTPONLY_PATTERNS = [
+  /^_ga/i, /^_gid/i, /^_gat/i, /^_fbp/i, /^_gcl/i,  // analytics
+  /^csrf/i, /^xsrf/i, /^_csrf/i,                        // CSRF tokens
+  /^locale$/i, /^lang$/i, /^theme$/i, /^i18n/i,         // preferences
+  /^__utm/i,                                              // UTM tracking
+];
+
+export function shouldCheckHttpOnly(cookieName: string): boolean {
+  return !SKIP_HTTPONLY_PATTERNS.some(p => p.test(cookieName));
+}
+
 export function runPassiveChecks(
   pages: CrawledPage[],
   responses: InterceptedResponse[],
 ): RawFinding[] {
   const findings: RawFinding[] = [];
 
+  // Track reported missing headers across all pages for dedup
+  const reportedHeaders = new Map<string, RawFinding>();
+
   for (const page of pages) {
-    findings.push(...checkSecurityHeaders(page));
+    findings.push(...checkSecurityHeaders(page, reportedHeaders));
     findings.push(...checkCookieFlags(page));
     findings.push(...checkInfoLeakage(page, responses));
     findings.push(...checkMixedContent(page, responses));
@@ -20,7 +35,10 @@ export function runPassiveChecks(
   return findings;
 }
 
-function checkSecurityHeaders(page: CrawledPage): RawFinding[] {
+function checkSecurityHeaders(
+  page: CrawledPage,
+  reportedHeaders: Map<string, RawFinding>,
+): RawFinding[] {
   const findings: RawFinding[] = [];
   const headers = page.headers;
 
@@ -76,7 +94,17 @@ function checkSecurityHeaders(page: CrawledPage): RawFinding[] {
 
   for (const req of requiredHeaders) {
     if (!headers[req.name]) {
-      findings.push({
+      // Dedup: if this header was already reported, just add URL to affectedUrls
+      const existing = reportedHeaders.get(req.name);
+      if (existing) {
+        if (!existing.affectedUrls) existing.affectedUrls = [existing.url];
+        if (!existing.affectedUrls.includes(page.url)) {
+          existing.affectedUrls.push(page.url);
+        }
+        continue;
+      }
+
+      const finding: RawFinding = {
         id: randomUUID(),
         category: 'security-headers',
         severity: req.severity,
@@ -88,8 +116,11 @@ function checkSecurityHeaders(page: CrawledPage): RawFinding[] {
           status: page.status,
           headers: page.headers,
         },
+        affectedUrls: [page.url],
         timestamp: new Date().toISOString(),
-      });
+      };
+      reportedHeaders.set(req.name, finding);
+      findings.push(finding);
     }
   }
 
@@ -126,6 +157,101 @@ function checkSecurityHeaders(page: CrawledPage): RawFinding[] {
     }
   }
 
+  // Cross-origin isolation headers (COOP, COEP, CORP)
+  const crossOriginHeaders: {
+    name: string;
+    title: string;
+    description: string;
+    validValues: string[];
+  }[] = [
+    {
+      name: 'cross-origin-opener-policy',
+      title: 'Missing Cross-Origin-Opener-Policy Header',
+      description:
+        'The Cross-Origin-Opener-Policy header is missing. This header isolates the browsing context, preventing cross-origin attacks like Spectre.',
+      validValues: ['same-origin'],
+    },
+    {
+      name: 'cross-origin-embedder-policy',
+      title: 'Missing Cross-Origin-Embedder-Policy Header',
+      description:
+        'The Cross-Origin-Embedder-Policy header is missing. This header ensures all cross-origin resources are loaded with CORS or CORP, enabling cross-origin isolation.',
+      validValues: ['require-corp'],
+    },
+    {
+      name: 'cross-origin-resource-policy',
+      title: 'Missing Cross-Origin-Resource-Policy Header',
+      description:
+        'The Cross-Origin-Resource-Policy header is missing. This header prevents other origins from loading this resource, mitigating side-channel attacks.',
+      validValues: ['same-origin', 'same-site'],
+    },
+  ];
+
+  for (const coHeader of crossOriginHeaders) {
+    const value = headers[coHeader.name];
+    if (!value || !coHeader.validValues.includes(value)) {
+      const existing = reportedHeaders.get(coHeader.name);
+      if (existing) {
+        if (!existing.affectedUrls) existing.affectedUrls = [existing.url];
+        if (!existing.affectedUrls.includes(page.url)) {
+          existing.affectedUrls.push(page.url);
+        }
+        continue;
+      }
+
+      const evidence = value
+        ? `Header "${coHeader.name}" has value "${value}" (expected: ${coHeader.validValues.join(' or ')})`
+        : `Header "${coHeader.name}" not present in response`;
+
+      const finding: RawFinding = {
+        id: randomUUID(),
+        category: 'cross-origin-policy',
+        severity: 'low',
+        title: value
+          ? coHeader.title.replace('Missing ', 'Weak ')
+          : coHeader.title,
+        description: coHeader.description,
+        url: page.url,
+        evidence,
+        response: {
+          status: page.status,
+          headers: page.headers,
+        },
+        affectedUrls: [page.url],
+        timestamp: new Date().toISOString(),
+      };
+      reportedHeaders.set(coHeader.name, finding);
+      findings.push(finding);
+    }
+  }
+
+  // Check for overly permissive Permissions-Policy
+  const permissionsPolicy = headers['permissions-policy'];
+  if (permissionsPolicy) {
+    const dangerousFeatures = ['camera', 'microphone', 'geolocation'];
+    const permissive: string[] = [];
+    for (const feature of dangerousFeatures) {
+      // Match patterns like camera=*, camera=(*), or camera=(*)
+      const pattern = new RegExp(`${feature}\\s*=\\s*\\(?\\s*\\*\\s*\\)?`, 'i');
+      if (pattern.test(permissionsPolicy)) {
+        permissive.push(feature);
+      }
+    }
+    if (permissive.length > 0) {
+      findings.push({
+        id: randomUUID(),
+        category: 'security-headers',
+        severity: 'medium',
+        title: 'Overly Permissive Permissions-Policy',
+        description: `The Permissions-Policy header allows wildcard access to sensitive features: ${permissive.join(', ')}. These should be restricted to specific origins or disabled.`,
+        url: page.url,
+        evidence: `Permissions-Policy: ${permissionsPolicy}`,
+        response: { status: page.status, headers: page.headers },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
   return findings;
 }
 
@@ -133,7 +259,7 @@ function checkCookieFlags(page: CrawledPage): RawFinding[] {
   const findings: RawFinding[] = [];
 
   for (const cookie of page.cookies) {
-    if (!cookie.httpOnly) {
+    if (!cookie.httpOnly && shouldCheckHttpOnly(cookie.name)) {
       findings.push({
         id: randomUUID(),
         category: 'cookie-flags',

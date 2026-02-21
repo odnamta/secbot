@@ -9,10 +9,15 @@ export type CheckCategory =
   | 'xss'
   | 'sqli'
   | 'open-redirect'
+  | 'cross-origin-policy'
   | 'cors-misconfiguration'
   | 'directory-traversal'
+  | 'ssrf'
+  | 'ssti'
   | 'idor'
-  | 'tls';
+  | 'command-injection'
+  | 'tls'
+  | 'sri';
 
 export type ScanProfile = 'quick' | 'standard' | 'deep';
 
@@ -36,6 +41,7 @@ export interface RawFinding {
     bodySnippet?: string;
   };
   timestamp: string;
+  affectedUrls?: string[];
 }
 
 export interface InterpretedFinding {
@@ -129,6 +135,9 @@ export interface ScanResult {
   recon?: ReconResult;
   attackPlan?: AttackPlan;
   validatedFindings?: ValidatedFinding[];
+  exitCode: number;
+  scanDuration: number; // ms
+  checksRun: string[];
 }
 
 export interface ScanSummary {
@@ -136,6 +145,7 @@ export interface ScanSummary {
   totalInterpretedFindings: number;
   bySeverity: Record<Severity, number>;
   topIssues: string[];
+  passedChecks: string[]; // check types that ran but found nothing
 }
 
 // ─── Scope ─────────────────────────────────────────────────────────

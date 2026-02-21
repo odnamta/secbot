@@ -29,7 +29,7 @@ async function testOpenRedirect(
   for (const originalUrl of urls) {
     const parsedUrl = new URL(originalUrl);
     const redirectParams = Array.from(parsedUrl.searchParams.keys()).filter((k) =>
-      /^(url|redirect|next|return|goto|dest|continue|rurl|target)$/i.test(k),
+      /^(url|redirect|next|return|goto|dest|callback|redir|forward|ref|out|continue|target|path|link|returnUrl|redirectUrl|returnTo|return_to|redirect_uri|redirect_url|rurl)$/i.test(k),
     );
 
     for (const param of redirectParams) {
@@ -61,8 +61,8 @@ async function testOpenRedirect(
                 timestamp: new Date().toISOString(),
               });
             }
-          } catch {
-            // fetch with maxRedirects may not be supported, fall through to browser check
+          } catch (err) {
+            log.debug(`Redirect fetch check: ${(err as Error).message}`);
           }
 
           requestLogger?.log({
@@ -96,8 +96,8 @@ async function testOpenRedirect(
           }
 
           if (findings.some((f) => f.url === originalUrl && f.category === 'open-redirect')) break;
-        } catch {
-          // Continue
+        } catch (err) {
+          log.debug(`Redirect test: ${(err as Error).message}`);
         } finally {
           await page.close();
         }

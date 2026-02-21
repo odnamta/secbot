@@ -7,10 +7,9 @@ import { program } from 'commander';
 import chalk from 'chalk';
 import { resolve, join } from 'node:path';
 import { readFileSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
 import { crawl, closeBrowser } from './scanner/browser.js';
 import { runPassiveChecks } from './scanner/passive.js';
-import { runActiveChecks } from './scanner/active/index.js';
+import { runActiveChecks, CHECK_REGISTRY } from './scanner/active/index.js';
 import { runRecon } from './scanner/recon.js';
 import { planAttack } from './ai/planner.js';
 import { validateFindings } from './ai/validator.js';
@@ -23,9 +22,22 @@ import { buildConfig } from './config/defaults.js';
 import { parseScopePatterns } from './utils/scope.js';
 import { RequestLogger } from './utils/request-logger.js';
 import { log, setLogLevel } from './utils/logger.js';
+import { deduplicateFindings } from './utils/dedup.js';
+import { discoverRoutes } from './scanner/discovery/index.js';
 import type { ScanConfig, ScanProfile, ScanResult } from './scanner/types.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
+
+let cleanupDone = false;
+async function cleanup() {
+  if (cleanupDone) return;
+  cleanupDone = true;
+  log.warn('Interrupted — cleaning up...');
+  try { await closeBrowser(); } catch { /* best effort */ }
+  process.exit(130);
+}
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
 
 program
   .name('secbot')
@@ -44,6 +56,7 @@ program
   .option('--timeout <ms>', 'Per-page timeout in milliseconds', undefined)
   .option('--ignore-robots', 'Ignore robots.txt restrictions', false)
   .option('--scope <patterns>', 'Scope patterns: "*.example.com,-admin.example.com"')
+  .option('--urls <file>', 'File with URLs to scan (one per line)')
   .option('--log-requests', 'Log all HTTP requests for accountability', false)
   .option('--no-ai', 'Skip AI interpretation (use rule-based fallback)')
   .option('--verbose', 'Enable verbose logging', false)
@@ -121,9 +134,17 @@ program
       : undefined;
 
     try {
+      // ─── Phase 0: Route Discovery ──────────────────────────────
+      log.info('Phase 0: Discovering routes...');
+      const discoveredRoutes = await discoverRoutes(targetUrl, options.urls as string | undefined);
+      if (discoveredRoutes.length > 0) {
+        log.info(`Discovered ${discoveredRoutes.length} additional routes`);
+      }
+      const seedUrls = discoveredRoutes.map((r) => r.url);
+
       // ─── Phase 1: Crawl ────────────────────────────────────────
       log.info('Phase 1: Crawling target...');
-      const { pages, responses, browser, context } = await crawl(config);
+      const { pages, responses, browser, context } = await crawl(config, seedUrls);
 
       if (pages.length === 0) {
         console.log(chalk.yellow('No pages were successfully crawled. Check the URL and try again.'));
@@ -161,15 +182,20 @@ program
 
         const allRawFindings = [...passiveFindings, ...activeFindings];
 
+        // Deduplicate before AI validation to save tokens
+        log.info(`Raw findings before dedup: ${allRawFindings.length}`);
+        const dedupedFindings = deduplicateFindings(allRawFindings);
+        log.info(`After dedup: ${dedupedFindings.length} unique findings`);
+
         // ─── Phase 6: AI Validation ──────────────────────────────
         let validations;
-        if (config.useAI && allRawFindings.length > 0) {
+        if (config.useAI && dedupedFindings.length > 0) {
           log.info('Phase 6: AI validating findings...');
-          validations = await validateFindings(targetUrl, allRawFindings, recon);
+          validations = await validateFindings(targetUrl, dedupedFindings, recon);
         } else {
           log.info(config.useAI ? 'Phase 6: No findings to validate' : 'Phase 6: Skipping AI validation (--no-ai)');
           // Fallback: mark all as valid
-          validations = allRawFindings.map((f) => ({
+          validations = dedupedFindings.map((f) => ({
             findingId: f.id,
             isValid: true,
             confidence: 'medium' as const,
@@ -181,12 +207,43 @@ program
         log.info('Phase 7: Generating report...');
         const { findings: interpretedFindings, summary } = await generateReport(
           targetUrl,
-          allRawFindings,
+          dedupedFindings,
           validations,
           recon,
         );
 
         const completedAt = new Date().toISOString();
+
+        // Compute new output fields
+        const scanDuration = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+
+        // Determine which checks ran
+        const passiveCheckNames = ['security-headers', 'cookie-flags', 'info-leakage', 'mixed-content', 'sensitive-url-data', 'cross-origin-policy'];
+        const activeCheckNames = attackPlan
+          ? [...attackPlan.recommendedChecks]
+              .sort((a, b) => a.priority - b.priority)
+              .map((rec) => CHECK_REGISTRY.find((c) => c.name === rec.name))
+              .filter((c) => c !== undefined)
+              .map((c) => c.name)
+          : CHECK_REGISTRY
+              .filter((c) => {
+                if (c.name === 'traversal' && config.profile !== 'deep') return false;
+                return true;
+              })
+              .map((c) => c.name);
+        const checksRun = [...passiveCheckNames, ...activeCheckNames];
+
+        // Determine which checks passed (ran but produced 0 findings)
+        const categoriesWithFindings = new Set(allRawFindings.map((f) => f.category));
+        const passedChecks = checksRun.filter((name) => !categoriesWithFindings.has(name));
+
+        // Include passedChecks in the summary
+        summary.passedChecks = passedChecks;
+
+        const hasHighOrCritical = interpretedFindings.some(
+          (f) => f.severity === 'high' || f.severity === 'critical'
+        );
+        const exitCode = hasHighOrCritical ? 1 : 0;
 
         const scanResult: ScanResult = {
           targetUrl,
@@ -200,6 +257,9 @@ program
           recon,
           attackPlan,
           validatedFindings: validations,
+          exitCode,
+          scanDuration,
+          checksRun,
         };
 
         // ─── Phase 8: Output Reports ─────────────────────────────
@@ -227,6 +287,8 @@ program
         // Flush request log
         requestLogger?.flush();
 
+        process.exitCode = exitCode;
+
         log.info('Scan complete!');
       } finally {
         // Always close browser
@@ -237,7 +299,7 @@ program
       if (options.verbose) {
         console.error(err);
       }
-      process.exit(1);
+      process.exit(2);
     }
   });
 

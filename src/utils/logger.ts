@@ -1,4 +1,7 @@
 import chalk from 'chalk';
+import { readFileSync } from 'node:fs';
+
+const loggerPkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf-8'));
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -56,7 +59,7 @@ export const log = {
   banner(): void {
     console.log(chalk.bold.cyan(`
   ╔═══════════════════════════════════════╗
-  ║         SecBot v0.0.1                 ║
+  ║         SecBot v${loggerPkg.version.padEnd(22)}║
   ║   AI-Powered Security Scanner        ║
   ╚═══════════════════════════════════════╝
 `));

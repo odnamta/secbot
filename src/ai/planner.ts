@@ -3,7 +3,7 @@ import { askClaude, parseJsonResponse } from './client.js';
 import { PLANNER_SYSTEM_PROMPT, buildPlannerUserPrompt } from './prompts.js';
 import { log } from '../utils/logger.js';
 
-const CHECK_NAMES = ['xss', 'sqli', 'cors', 'redirect', 'traversal'] as const;
+const CHECK_NAMES = ['xss', 'sqli', 'cors', 'redirect', 'traversal', 'ssrf', 'ssti', 'cmdi', 'idor', 'tls', 'sri'] as const;
 
 /**
  * Use AI to plan which active checks to run based on reconnaissance.
@@ -50,6 +50,7 @@ function buildDefaultPlan(
     /[?&](url|redirect|next|return|goto|dest)=/i.test(l),
   );
   const apiEndpoints = pages.map((p) => p.url).filter((u) => /\/api\//i.test(u));
+  const targetUrl = recon.endpoints.pages[0] ?? '';
 
   const checks: AttackPlan['recommendedChecks'] = [];
   const skipReasons: Record<string, string> = {};
@@ -61,6 +62,28 @@ function buildDefaultPlan(
     priority: priority++,
     reason: 'Low-cost check with high-value findings',
   });
+
+  // TLS: always on HTTPS targets
+  if (targetUrl.startsWith('https://')) {
+    checks.push({
+      name: 'tls',
+      priority: priority++,
+      reason: 'HTTPS target — verify TLS configuration',
+    });
+  } else {
+    skipReasons['tls'] = 'Not an HTTPS target';
+  }
+
+  // SRI: always check when pages have been crawled
+  if (pages.length > 0) {
+    checks.push({
+      name: 'sri',
+      priority: priority++,
+      reason: 'Check external resources for subresource integrity',
+    });
+  } else {
+    skipReasons['sri'] = 'No pages crawled';
+  }
 
   // XSS if forms or URL params exist
   if (allForms.length > 0 || urlsWithParams.length > 0) {
@@ -95,6 +118,52 @@ function buildDefaultPlan(
     skipReasons['redirect'] = 'No redirect parameters found';
   }
 
+  // SSRF: when URL-accepting parameters exist
+  if (allForms.some((f) => f.inputs.some((i) => /url|link|src|image|proxy/i.test(i.name)))
+      || apiEndpoints.length > 0) {
+    checks.push({
+      name: 'ssrf',
+      priority: priority++,
+      reason: 'URL-accepting parameters or API routes detected',
+    });
+  } else {
+    skipReasons['ssrf'] = 'No URL-accepting parameters or API routes found';
+  }
+
+  // SSTI: when template engine detected or forms exist
+  if (recon.techStack.detected.some((t: string) => /jinja|django|flask|express|ejs|pug/i.test(t))
+      || allForms.length > 0) {
+    checks.push({
+      name: 'ssti',
+      priority: priority++,
+      reason: 'Template engine detected or forms available for injection testing',
+    });
+  } else {
+    skipReasons['ssti'] = 'No template engine detected and no forms found';
+  }
+
+  // Command injection: when API routes or forms exist
+  if (apiEndpoints.length > 0 || allForms.length > 0) {
+    checks.push({
+      name: 'cmdi',
+      priority: priority++,
+      reason: `${apiEndpoints.length} API endpoints, ${allForms.length} forms for command injection testing`,
+    });
+  } else {
+    skipReasons['cmdi'] = 'No API endpoints or forms found';
+  }
+
+  // IDOR: when sequential IDs in URLs
+  if (recon.endpoints.apiRoutes.some((r: string) => /\/\d+/.test(r))) {
+    checks.push({
+      name: 'idor',
+      priority: priority++,
+      reason: 'Sequential numeric IDs detected in API routes',
+    });
+  } else {
+    skipReasons['idor'] = 'No sequential numeric IDs found in URLs';
+  }
+
   // Directory traversal on deep profile with API endpoints
   if (profile === 'deep' && apiEndpoints.length > 0) {
     checks.push({
@@ -109,7 +178,7 @@ function buildDefaultPlan(
   }
 
   // Limit by profile
-  const maxChecks = profile === 'quick' ? 2 : profile === 'standard' ? 4 : checks.length;
+  const maxChecks = profile === 'quick' ? 3 : profile === 'standard' ? 6 : checks.length;
   const limited = checks.slice(0, maxChecks);
 
   return {
