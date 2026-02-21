@@ -73,6 +73,7 @@ export interface ScanConfig {
   logRequests: boolean;
   useAI: boolean;
   userAgent?: string;
+  callbackUrl?: string;
 }
 
 export interface CrawledPage {
@@ -138,6 +139,8 @@ export interface ScanResult {
   exitCode: number;
   scanDuration: number; // ms
   checksRun: string[];
+  tokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
+  callbackUrl?: string;
 }
 
 export interface ScanSummary {

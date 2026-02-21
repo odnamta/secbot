@@ -4,6 +4,36 @@ import { log } from '../utils/logger.js';
 const MODEL = 'claude-sonnet-4-5-20250929';
 let cachedClient: Anthropic | null = null;
 
+// ─── Token Tracking ───────────────────────────────────────────────
+let totalInputTokens = 0;
+let totalOutputTokens = 0;
+
+export interface TokenUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+}
+
+export function getTokenUsage(): TokenUsage {
+  return {
+    inputTokens: totalInputTokens,
+    outputTokens: totalOutputTokens,
+    totalTokens: totalInputTokens + totalOutputTokens,
+  };
+}
+
+export function resetTokenUsage(): void {
+  totalInputTokens = 0;
+  totalOutputTokens = 0;
+}
+
+function getTokenBudget(): number {
+  const env = process.env.SECBOT_TOKEN_BUDGET;
+  if (!env) return Infinity;
+  const parsed = parseInt(env, 10);
+  return isNaN(parsed) ? Infinity : parsed;
+}
+
 export function getClient(): Anthropic | null {
   if (cachedClient) return cachedClient;
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -24,13 +54,21 @@ export interface AskClaudeOptions {
 
 /**
  * Send a prompt to Claude and return the text response.
- * Returns null if client unavailable, API call fails, or timeout.
+ * Returns null if client unavailable, API call fails, budget exceeded, or timeout.
  */
 export async function askClaude(
   systemPrompt: string,
   userPrompt: string,
   options: AskClaudeOptions = {},
 ): Promise<string | null> {
+  // Budget check before making the call
+  const budget = getTokenBudget();
+  const currentTotal = totalInputTokens + totalOutputTokens;
+  if (currentTotal >= budget) {
+    log.warn(`Token budget exceeded (${currentTotal}/${budget}) — skipping AI call`);
+    return null;
+  }
+
   const client = getClient();
   if (!client) return null;
 
@@ -52,6 +90,12 @@ export async function askClaude(
     );
 
     clearTimeout(timer);
+
+    // Track token usage from the response
+    if (message.usage) {
+      totalInputTokens += message.usage.input_tokens;
+      totalOutputTokens += message.usage.output_tokens;
+    }
 
     const textBlock = message.content.find((b) => b.type === 'text');
     if (!textBlock || textBlock.type !== 'text') {

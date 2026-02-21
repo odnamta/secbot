@@ -14,6 +14,7 @@ import { runRecon } from './scanner/recon.js';
 import { planAttack } from './ai/planner.js';
 import { validateFindings } from './ai/validator.js';
 import { generateReport } from './ai/reporter.js';
+import { getTokenUsage } from './ai/client.js';
 import { printTerminalReport } from './reporter/terminal.js';
 import { writeJsonReport } from './reporter/json.js';
 import { writeHtmlReport } from './reporter/html.js';
@@ -245,6 +246,12 @@ program
         );
         const exitCode = hasHighOrCritical ? 1 : 0;
 
+        // ─── Token Usage ──────────────────────────────────────────
+        const tokenUsage = getTokenUsage();
+        if (tokenUsage.totalTokens > 0) {
+          log.info(`AI tokens used: ${tokenUsage.totalTokens} (input: ${tokenUsage.inputTokens}, output: ${tokenUsage.outputTokens})`);
+        }
+
         const scanResult: ScanResult = {
           targetUrl,
           profile: config.profile,
@@ -260,6 +267,7 @@ program
           exitCode,
           scanDuration,
           checksRun,
+          ...(tokenUsage.totalTokens > 0 ? { tokenUsage } : {}),
         };
 
         // ─── Phase 8: Output Reports ─────────────────────────────
