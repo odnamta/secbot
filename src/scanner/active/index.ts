@@ -59,6 +59,33 @@ export const CHECK_REGISTRY: ActiveCheck[] = [
   sriCheck,
 ];
 
+/**
+ * Register an additional check (e.g. from a plugin) into the global registry.
+ * Duplicates (by name) are skipped with a warning.
+ */
+export function registerPlugin(check: ActiveCheck): void {
+  const existing = CHECK_REGISTRY.find((c) => c.name === check.name);
+  if (existing) {
+    log.warn(`Plugin "${check.name}" conflicts with existing check — skipping`);
+    return;
+  }
+  CHECK_REGISTRY.push(check);
+  log.info(`Registered plugin check: ${check.name}`);
+}
+
+/**
+ * Load plugins from disk and register them into CHECK_REGISTRY.
+ * Called once at startup before running scans.
+ */
+export async function loadAndRegisterPlugins(pluginDir?: string): Promise<void> {
+  // Dynamic import to avoid circular dependency issues at module level
+  const { loadPlugins } = await import('../../plugins/loader.js');
+  const plugins = await loadPlugins(pluginDir);
+  for (const plugin of plugins) {
+    registerPlugin(plugin);
+  }
+}
+
 /** Regex for redirect-related parameter names */
 const REDIRECT_PARAM_RE = /[?&](url|redirect|next|return|goto|dest|callback|redir|forward|ref|out|continue|target|path|link|returnUrl|redirectUrl|returnTo|return_to|redirect_uri|redirect_url)=/i;
 

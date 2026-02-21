@@ -83,6 +83,14 @@ export interface ScanConfig {
   proxy?: string;
   exportBurp?: boolean;
   exportHar?: boolean;
+  /** Auth options for credential-based login */
+  auth?: AuthOptions;
+  /** Multiple role configs for multi-role scanning */
+  roles?: AuthOptions[];
+  /** Port to auto-start the built-in OOB callback server on */
+  callbackServerPort?: number;
+  /** How long (ms) to wait for delayed out-of-band callbacks after injection (default: 30000) */
+  oobWaitMs?: number;
 }
 
 export interface CrawledPage {
@@ -284,3 +292,31 @@ export interface MiddlewareResponse {
 
 export type RequestMiddleware = (request: MiddlewareRequest) => MiddlewareRequest;
 export type ResponseMiddleware = (response: MiddlewareResponse) => void;
+
+// ─── Auth Types ───────────────────────────────────────────────────
+
+export interface AuthOptions {
+  loginUrl: string;
+  username: string;
+  password: string;
+  usernameSelector?: string;
+  passwordSelector?: string;
+  submitSelector?: string;
+  /** Optional role label for multi-role scanning */
+  role?: string;
+}
+
+export interface AuthResult {
+  success: boolean;
+  storageState?: string; // JSON-stringified Playwright storage state
+  csrfToken?: string;
+  cookies: CookieInfo[];
+  error?: string;
+}
+
+export interface LoginForm {
+  formSelector: string;
+  usernameSelector: string;
+  passwordSelector: string;
+  submitSelector: string;
+}

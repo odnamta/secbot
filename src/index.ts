@@ -32,7 +32,10 @@ import { deduplicateFindings } from './utils/dedup.js';
 import { loadBaseline, diffFindings, saveBaseline } from './utils/baseline.js';
 import { discoverRoutes } from './scanner/discovery/index.js';
 import { validateCliOptions } from './utils/cli-validation.js';
-import type { ScanConfig, ScanProfile, ScanResult, CheckCategory } from './scanner/types.js';
+import { CallbackServer } from './scanner/oob/callback-server.js';
+import { waitForDelayedCallbacks, getDefaultWaitMs } from './scanner/oob/delayed-detection.js';
+import { startInteractiveMode } from './interactive/repl.js';
+import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, AuthOptions } from './scanner/types.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
 
@@ -73,6 +76,10 @@ program
   .option('--proxy <url>', 'HTTP or SOCKS5 proxy URL (e.g. http://host:8080 or socks5://host:1080)')
   .option('--export-burp', 'Export captured traffic as Burp Suite XML (requires --log-requests)', false)
   .option('--export-har', 'Export captured traffic as HAR 1.2 file (requires --log-requests)', false)
+  .option('--login-url <url>', 'URL of login page for credential-based authentication')
+  .option('--credentials <user:pass>', 'Username:password pair for login (use with --login-url)')
+  .option('--callback-server <port>', 'Auto-start built-in OOB callback server on specified port')
+  .option('--oob-wait <seconds>', 'How long to wait for delayed OOB callbacks (default: 30)')
   .option('--no-ai', 'Skip AI interpretation (use rule-based fallback)')
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (url: string | undefined, options: Record<string, unknown>) => {
@@ -171,6 +178,29 @@ program
     const exportHar = options.exportHar === true;
     const logRequests = options.logRequests === true || fileConfig?.logRequests === true || exportBurp || exportHar;
 
+    // Parse --login-url + --credentials into AuthOptions
+    let authOpts: AuthOptions | undefined;
+    const loginUrl = options.loginUrl as string | undefined;
+    const credentials = options.credentials as string | undefined;
+    if (loginUrl && credentials) {
+      const colonIdx = credentials.indexOf(':');
+      if (colonIdx === -1) {
+        console.error(chalk.red('--credentials must be in user:pass format'));
+        process.exit(1);
+      }
+      authOpts = {
+        loginUrl,
+        username: credentials.slice(0, colonIdx),
+        password: credentials.slice(colonIdx + 1),
+      };
+    } else if (loginUrl && !credentials) {
+      console.error(chalk.red('--login-url requires --credentials'));
+      process.exit(1);
+    } else if (!loginUrl && credentials) {
+      console.error(chalk.red('--credentials requires --login-url'));
+      process.exit(1);
+    }
+
     const config = buildConfig(targetUrl, {
       profile: (options.profile as ScanProfile) ?? fileConfig?.profile,
       authStorageState: (options.auth as string | undefined) ?? fileConfig?.auth,
@@ -194,6 +224,9 @@ program
         : fileConfig?.baseline ? { baselinePath: fileConfig.baseline } : {}),
       ...(options.proxy ? { proxy: options.proxy as string }
         : fileConfig?.proxy ? { proxy: fileConfig.proxy } : {}),
+      ...(authOpts ? { auth: authOpts } : {}),
+      ...(options.callbackServer ? { callbackServerPort: parseInt(options.callbackServer as string, 10) } : {}),
+      ...(options.oobWait ? { oobWaitMs: parseInt(options.oobWait as string, 10) * 1000 } : {}),
     });
 
     if (config.callbackUrl) {
@@ -206,6 +239,23 @@ program
 
     if (config.proxy) {
       log.info(`Proxy configured: ${config.proxy}`);
+    }
+
+    // ─── OOB Callback Server ──────────────────────────────────
+    let callbackServer: CallbackServer | undefined;
+    if (config.callbackServerPort) {
+      callbackServer = new CallbackServer();
+      try {
+        await callbackServer.start(config.callbackServerPort);
+        // Auto-set callbackUrl if not already set
+        if (!config.callbackUrl) {
+          config.callbackUrl = `http://127.0.0.1:${config.callbackServerPort}`;
+          log.info(`Callback URL auto-configured: ${config.callbackUrl}`);
+        }
+      } catch (err) {
+        log.error(`Failed to start callback server on port ${config.callbackServerPort}: ${(err as Error).message}`);
+        process.exit(2);
+      }
     }
 
     const scanId = new Date().toISOString().replace(/[:.]/g, '-');
@@ -433,9 +483,27 @@ program
         process.exitCode = exitCode;
 
         // Post-scan callback URL reminder
-        if (config.callbackUrl) {
-          log.info('Callback URLs injected for blind SSRF detection. Check your callback server for hits.');
+        if (config.callbackUrl && !callbackServer) {
+          log.info('Callback URLs injected for blind detection. Check your callback server for hits.');
           log.info(`Callback URL prefix: ${config.callbackUrl}`);
+        }
+
+        // ─── OOB Delayed Detection ─────────────────────────────
+        if (callbackServer) {
+          const oobWait = config.oobWaitMs ?? getDefaultWaitMs();
+          const delayedHits = await waitForDelayedCallbacks(callbackServer, oobWait);
+          const allHits = callbackServer.getHits();
+
+          if (allHits.length > 0) {
+            log.info(`OOB callback server received ${allHits.length} total hit(s):`);
+            for (const hit of allHits) {
+              log.info(`  ${hit.method} ${hit.path} from ${hit.sourceIp} at ${hit.timestamp} (payload: ${hit.payloadId})`);
+            }
+          } else {
+            log.info('OOB callback server received no hits during scan');
+          }
+
+          await callbackServer.stop();
         }
 
         log.info('Scan complete!');
@@ -444,7 +512,63 @@ program
         await closeBrowser(browser);
       }
     } catch (err) {
+      // Clean up callback server on error
+      if (callbackServer?.isRunning()) {
+        try { await callbackServer.stop(); } catch { /* best effort */ }
+      }
       log.error(`Scan failed: ${(err as Error).message}`);
+      if (options.verbose) {
+        console.error(err);
+      }
+      process.exit(2);
+    }
+  });
+
+program
+  .command('interactive')
+  .description('Interactive security testing REPL')
+  .argument('<url>', 'Target URL')
+  .option('-p, --profile <profile>', 'Scan profile: quick, standard, deep', 'standard')
+  .option('-a, --auth <path>', 'Path to Playwright storage state JSON for authenticated scanning')
+  .option('-o, --output <path>', 'Output directory for reports', './secbot-reports')
+  .option('--scope <patterns>', 'Scope patterns: "*.example.com,-admin.example.com"')
+  .option('--proxy <url>', 'HTTP or SOCKS5 proxy URL')
+  .option('--verbose', 'Enable verbose logging', false)
+  .action(async (url: string, options: Record<string, unknown>) => {
+    if (options.verbose) {
+      setLogLevel('debug');
+    }
+
+    // Validate URL
+    let targetUrl: string;
+    try {
+      const parsed = new URL(url);
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        throw new Error('Only HTTP/HTTPS URLs are supported');
+      }
+      targetUrl = parsed.href;
+    } catch {
+      console.error(chalk.red(`Invalid URL: ${url}`));
+      process.exit(1);
+    }
+
+    const scopeStr = options.scope as string | undefined;
+    const scope = scopeStr ? parseScopePatterns(scopeStr) : undefined;
+
+    const config = buildConfig(targetUrl, {
+      profile: (options.profile as ScanProfile) ?? 'standard',
+      authStorageState: options.auth as string | undefined,
+      outputPath: (options.output as string) ?? './secbot-reports',
+      scope,
+      useAI: true,
+      logRequests: false,
+      ...(options.proxy ? { proxy: options.proxy as string } : {}),
+    });
+
+    try {
+      await startInteractiveMode(targetUrl, config);
+    } catch (err) {
+      log.error(`Interactive mode failed: ${(err as Error).message}`);
       if (options.verbose) {
         console.error(err);
       }

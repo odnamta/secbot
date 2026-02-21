@@ -23,6 +23,10 @@ export interface SecbotConfig {
   rateLimit?: number;
   baseline?: string;
   proxy?: string;
+  /** Per-domain rate limits. Keys are domain patterns (e.g. "*.hackerone.com"), values are RPS. Use "default" for fallback. */
+  rateLimits?: Record<string, number>;
+  /** Custom plugin directory. Default: ~/.secbot/plugins/ */
+  pluginDir?: string;
 }
 
 const CONFIG_FILE_NAMES = ['.secbotrc.json', 'secbot.config.json'] as const;
