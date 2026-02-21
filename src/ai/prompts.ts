@@ -1,21 +1,20 @@
 import type { ReconResult, CrawledPage, RawFinding, ValidatedFinding } from '../scanner/types.js';
 
-// ─── Planner Prompts ─────────────────────────────────────────────────
+// ─── Planner Check Types ────────────────────────────────────────────
 
-export const PLANNER_SYSTEM_PROMPT = `You are SecBot's AI attack planner. You analyze reconnaissance data from a web application and recommend which security checks to run.
+export type PlannerCheckType =
+  | 'xss' | 'sqli' | 'cors' | 'redirect' | 'traversal'
+  | 'ssrf' | 'ssti' | 'cmdi' | 'idor' | 'tls' | 'sri';
 
-Available checks (12 total):
-- xss: Cross-site scripting — test forms and URL parameters for reflected/stored XSS
-- sqli: SQL injection — test form inputs and URL parameters for SQL injection
-- cors: CORS misconfiguration — test if cross-origin requests are improperly allowed
-- redirect: Open redirect — test redirect parameters for open redirect vulnerabilities
-- traversal: Directory traversal — test file-like parameters for path traversal attacks
-- ssrf: Server-side request forgery — test URL-accepting parameters for internal network access
-- ssti: Server-side template injection — test inputs for template engine code execution
-- cmdi: Command injection — test inputs for OS command injection
-- idor: Insecure direct object reference — test sequential IDs for unauthorized access
-- tls: TLS/crypto checks — verify certificate, protocol versions, and cipher strength
-- sri: Subresource integrity — check external scripts/stylesheets for missing SRI hashes
+export const ALL_PLANNER_CHECKS: PlannerCheckType[] = [
+  'xss', 'sqli', 'cors', 'redirect', 'traversal',
+  'ssrf', 'ssti', 'cmdi', 'idor', 'tls', 'sri',
+];
+
+// ─── Planner Prompt Sections ────────────────────────────────────────
+
+/** Base planner context — always included regardless of relevant checks */
+const PLANNER_BASE_PROMPT = `You are SecBot's AI attack planner. You analyze reconnaissance data from a web application and recommend which security checks to run.
 
 Your job:
 1. Analyze the tech stack, WAF presence, framework, and endpoints
@@ -25,16 +24,6 @@ Your job:
 
 Rules:
 - If a WAF is detected with high confidence, lower priority of checks that WAFs typically block (XSS, SQLi, SSTI, CMDi)
-- If no forms exist, skip form-based XSS, SQLi, SSTI, and CMDi
-- If no API endpoints exist, skip directory traversal and command injection
-- If no redirect parameters exist, skip open redirect
-- Always recommend CORS check (low cost, high value)
-- Recommend ssrf when URL-accepting parameters are detected (url, link, src, image, proxy)
-- Recommend ssti when a template engine is detected (Jinja, Django, Flask, Express, EJS, Pug) or forms exist
-- Recommend cmdi when non-static API routes or form inputs exist
-- Recommend idor when sequential numeric IDs appear in URLs AND authentication is present
-- Recommend tls always on HTTPS targets
-- Recommend sri when pages have been crawled (external scripts/stylesheets are common)
 - For "quick" profile, recommend max 3 checks
 - For "standard" profile, recommend max 6 checks
 - For "deep" profile, recommend all applicable checks
@@ -47,6 +36,68 @@ Output ONLY valid JSON matching this schema:
   "reasoning": "string - overall analysis",
   "skipReasons": { "checkName": "reason for skipping" }
 }`;
+
+/** Per-check description sections for the planner system prompt */
+const CHECK_SECTIONS: Record<PlannerCheckType, string> = {
+  xss: `- xss: Cross-site scripting — test forms and URL parameters for reflected/stored XSS
+  Rule: If no forms exist and no URL parameters, skip. If WAF detected, lower priority.`,
+
+  sqli: `- sqli: SQL injection — test form inputs and URL parameters for SQL injection
+  Rule: If no forms exist, skip. If WAF detected, lower priority.`,
+
+  cors: `- cors: CORS misconfiguration — test if cross-origin requests are improperly allowed
+  Rule: Always recommend (low cost, high value).`,
+
+  redirect: `- redirect: Open redirect — test redirect parameters for open redirect vulnerabilities
+  Rule: If no redirect parameters exist, skip.`,
+
+  traversal: `- traversal: Directory traversal — test file-like parameters for path traversal attacks
+  Rule: If no API endpoints exist, skip.`,
+
+  ssrf: `- ssrf: Server-side request forgery — test URL-accepting parameters for internal network access
+  Rule: Recommend when URL-accepting parameters are detected (url, link, src, image, proxy).`,
+
+  ssti: `- ssti: Server-side template injection — test inputs for template engine code execution
+  Rule: Recommend when a template engine is detected (Jinja, Django, Flask, Express, EJS, Pug) or forms exist. If WAF detected, lower priority.`,
+
+  cmdi: `- cmdi: Command injection — test inputs for OS command injection
+  Rule: Recommend when non-static API routes or form inputs exist. If WAF detected, lower priority.`,
+
+  idor: `- idor: Insecure direct object reference — test sequential IDs for unauthorized access
+  Rule: Recommend when sequential numeric IDs appear in URLs AND authentication is present.`,
+
+  tls: `- tls: TLS/crypto checks — verify certificate, protocol versions, and cipher strength
+  Rule: Recommend always on HTTPS targets.`,
+
+  sri: `- sri: Subresource integrity — check external scripts/stylesheets for missing SRI hashes
+  Rule: Recommend when pages have been crawled (external scripts/stylesheets are common).`,
+};
+
+/**
+ * Build a planner system prompt containing only the check descriptions
+ * relevant to discovered targets. Reduces token usage by omitting
+ * check types that have no applicable targets.
+ */
+export function buildPlannerPrompt(relevantChecks: PlannerCheckType[]): string {
+  const sections: string[] = [PLANNER_BASE_PROMPT];
+
+  if (relevantChecks.length > 0) {
+    const checkDescriptions = relevantChecks
+      .map((check) => CHECK_SECTIONS[check])
+      .join('\n');
+    sections.push(`\nAvailable checks (${relevantChecks.length} applicable):\n${checkDescriptions}`);
+  } else {
+    sections.push('\nNo specific checks are applicable based on discovered targets.');
+  }
+
+  return sections.join('\n');
+}
+
+/**
+ * @deprecated Use buildPlannerPrompt() for dynamic prompts.
+ * Kept for backward compatibility — equivalent to buildPlannerPrompt(ALL_PLANNER_CHECKS).
+ */
+export const PLANNER_SYSTEM_PROMPT = buildPlannerPrompt(ALL_PLANNER_CHECKS);
 
 export function buildPlannerUserPrompt(
   url: string,

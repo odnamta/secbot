@@ -1,9 +1,93 @@
 import type { ReconResult, CrawledPage, AttackPlan, ScanProfile } from '../scanner/types.js';
 import { askClaude, parseJsonResponse } from './client.js';
-import { PLANNER_SYSTEM_PROMPT, buildPlannerUserPrompt } from './prompts.js';
+import { buildPlannerPrompt, buildPlannerUserPrompt } from './prompts.js';
+import type { PlannerCheckType } from './prompts.js';
 import { log } from '../utils/logger.js';
 
 const CHECK_NAMES = ['xss', 'sqli', 'cors', 'redirect', 'traversal', 'ssrf', 'ssti', 'cmdi', 'idor', 'tls', 'sri'] as const;
+
+/**
+ * Determine which check types are relevant based on discovered targets.
+ * This avoids sending irrelevant check descriptions to the AI planner,
+ * saving tokens.
+ */
+export function determineRelevantChecks(
+  url: string,
+  recon: ReconResult,
+  pages: CrawledPage[],
+): PlannerCheckType[] {
+  const relevant: PlannerCheckType[] = [];
+
+  const allForms = pages.flatMap((p) => p.forms);
+  const urlsWithParams = pages.map((p) => p.url).filter((u) => u.includes('?'));
+  const redirectParams = pages.flatMap((p) => p.links).filter((l) =>
+    /[?&](url|redirect|next|return|goto|dest)=/i.test(l),
+  );
+  const urlAcceptingParams = allForms.filter((f) =>
+    f.inputs.some((i) => /url|link|src|image|proxy/i.test(i.name)),
+  );
+  const numericIdUrls = recon.endpoints.apiRoutes.filter((r) => /\/\d+/.test(r));
+  const apiEndpoints = pages.map((p) => p.url).filter((u) => /\/api\//i.test(u));
+  const isHttps = url.startsWith('https://');
+  const hasTemplateEngine = recon.techStack.detected.some(
+    (t: string) => /jinja|django|flask|express|ejs|pug/i.test(t),
+  );
+
+  // CORS — always relevant (low cost, high value)
+  relevant.push('cors');
+
+  // XSS — needs forms or URL params
+  if (allForms.length > 0 || urlsWithParams.length > 0) {
+    relevant.push('xss');
+  }
+
+  // SQLi — needs forms or URL params
+  if (allForms.length > 0 || urlsWithParams.length > 0) {
+    relevant.push('sqli');
+  }
+
+  // Redirect — needs redirect params
+  if (redirectParams.length > 0) {
+    relevant.push('redirect');
+  }
+
+  // Traversal — needs API endpoints or file-like params
+  if (apiEndpoints.length > 0 || urlsWithParams.length > 0) {
+    relevant.push('traversal');
+  }
+
+  // SSRF — needs URL-accepting params or API routes
+  if (urlAcceptingParams.length > 0 || apiEndpoints.length > 0 || urlsWithParams.length > 0) {
+    relevant.push('ssrf');
+  }
+
+  // SSTI — needs template engine or forms
+  if (hasTemplateEngine || allForms.length > 0) {
+    relevant.push('ssti');
+  }
+
+  // CMDi — needs API routes or forms
+  if (apiEndpoints.length > 0 || allForms.length > 0) {
+    relevant.push('cmdi');
+  }
+
+  // IDOR — needs sequential IDs in API routes
+  if (numericIdUrls.length > 0) {
+    relevant.push('idor');
+  }
+
+  // TLS — only for HTTPS targets
+  if (isHttps) {
+    relevant.push('tls');
+  }
+
+  // SRI — needs crawled pages (external scripts/stylesheets)
+  if (pages.length > 0) {
+    relevant.push('sri');
+  }
+
+  return relevant;
+}
 
 /**
  * Use AI to plan which active checks to run based on reconnaissance.
@@ -17,8 +101,12 @@ export async function planAttack(
 ): Promise<AttackPlan> {
   log.info('AI planning attack strategy...');
 
+  const relevantChecks = determineRelevantChecks(url, recon, pages);
+  log.info(`Relevant checks for target: ${relevantChecks.join(', ')} (${relevantChecks.length}/${CHECK_NAMES.length})`);
+
+  const systemPrompt = buildPlannerPrompt(relevantChecks);
   const userPrompt = buildPlannerUserPrompt(url, recon, pages, profile);
-  const response = await askClaude(PLANNER_SYSTEM_PROMPT, userPrompt);
+  const response = await askClaude(systemPrompt, userPrompt);
 
   if (response) {
     const parsed = parseJsonResponse<AttackPlan>(response);
