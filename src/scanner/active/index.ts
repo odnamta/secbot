@@ -9,6 +9,7 @@ import type {
   ScanScope,
 } from '../types.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
+import { RateLimiter } from '../../utils/rate-limiter.js';
 import { isInScope } from '../../utils/scope.js';
 import { xssCheck } from './xss.js';
 import { sqliCheck } from './sqli.js';
@@ -138,6 +139,12 @@ export async function runActiveChecks(
   const targets = buildTargets(pages, config.targetUrl, config.scope);
   const findings: RawFinding[] = [];
 
+  // Create adaptive rate limiter
+  const rateLimiter = new RateLimiter({
+    requestsPerSecond: config.rateLimitRps,
+    initialDelayMs: config.requestDelay,
+  });
+
   let checksToRun: ActiveCheck[];
 
   if (attackPlan) {
@@ -160,16 +167,20 @@ export async function runActiveChecks(
   for (let i = 0; i < checksToRun.length; i++) {
     const check = checksToRun[i];
     try {
+      // Acquire rate limiter before each check
+      if (i > 0) {
+        await rateLimiter.acquire();
+      }
       const checkFindings = await check.run(context, targets, config, requestLogger);
       findings.push(...checkFindings);
     } catch (err) {
       log.warn(`Active check "${check.name}" failed: ${(err as Error).message}`);
     }
-    // Rate limit between checks
-    if (i < checksToRun.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, config.requestDelay));
-    }
   }
+
+  // Log rate limiter stats
+  const stats = rateLimiter.getStats();
+  log.info(`Rate limiter: ${stats.totalRequests} inter-check delays, ${stats.backoffs} backoffs, final delay ${stats.currentDelayMs}ms`);
 
   log.info(`Active scan: ${findings.length} raw findings`);
   return findings;

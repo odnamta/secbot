@@ -3,6 +3,9 @@ import { askClaude, parseJsonResponse } from './client.js';
 import { buildPlannerPrompt, buildPlannerUserPrompt } from './prompts.js';
 import type { PlannerCheckType } from './prompts.js';
 import { log } from '../utils/logger.js';
+import { AICache } from '../utils/ai-cache.js';
+
+const aiCache = new AICache();
 
 const CHECK_NAMES = ['xss', 'sqli', 'cors', 'redirect', 'traversal', 'ssrf', 'ssti', 'cmdi', 'idor', 'tls', 'sri'] as const;
 
@@ -104,6 +107,19 @@ export async function planAttack(
   const relevantChecks = determineRelevantChecks(url, recon, pages);
   log.info(`Relevant checks for target: ${relevantChecks.join(', ')} (${relevantChecks.length}/${CHECK_NAMES.length})`);
 
+  // Check AI response cache before making an API call
+  const reconHash = aiCache.generateKey({ recon });
+  const cacheKey = aiCache.generateKey({ targetUrl: url, reconHash, profile });
+  const cached = await aiCache.get(cacheKey);
+
+  if (cached) {
+    const parsed = parseJsonResponse<AttackPlan>(cached);
+    if (parsed?.recommendedChecks) {
+      log.info('Using cached attack plan');
+      return parsed;
+    }
+  }
+
   const systemPrompt = buildPlannerPrompt(relevantChecks);
   const userPrompt = buildPlannerUserPrompt(url, recon, pages, profile);
   const response = await askClaude(systemPrompt, userPrompt);
@@ -117,6 +133,8 @@ export async function planAttack(
           ? `, ${Object.keys(parsed.skipReasons).length} skipped`
           : ''),
       );
+      // Cache the raw response for future runs
+      await aiCache.set(cacheKey, response);
       return parsed;
     }
     log.warn('AI planner returned invalid JSON — using default plan');

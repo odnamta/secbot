@@ -2,6 +2,9 @@ import type { RawFinding, ReconResult, ValidatedFinding } from '../scanner/types
 import { askClaude, parseJsonResponse } from './client.js';
 import { VALIDATOR_SYSTEM_PROMPT, buildValidatorUserPrompt } from './prompts.js';
 import { log } from '../utils/logger.js';
+import { AICache } from '../utils/ai-cache.js';
+
+const aiCache = new AICache();
 
 const BATCH_SIZE = 10;
 
@@ -32,12 +35,31 @@ export async function validateFindings(
     }
 
     try {
+      // Build a cache key from each finding's category + URL + evidence
+      const batchHash = aiCache.generateKey({
+        findings: batch.map((f) => ({ category: f.category, url: f.url, evidence: f.evidence })),
+      });
+      const cacheKey = aiCache.generateKey({ type: 'validator', batchHash });
+
+      // Check cache before making an API call
+      const cached = await aiCache.get(cacheKey);
+      if (cached) {
+        const parsed = parseJsonResponse<{ validations: ValidatedFinding[] }>(cached);
+        if (parsed?.validations) {
+          log.info(`Using cached validation for batch ${batchNum}`);
+          allValidations.push(...parsed.validations);
+          continue;
+        }
+      }
+
       const userPrompt = buildValidatorUserPrompt(url, batch, recon);
       const response = await askClaude(VALIDATOR_SYSTEM_PROMPT, userPrompt);
 
       if (response) {
         const parsed = parseJsonResponse<{ validations: ValidatedFinding[] }>(response);
         if (parsed?.validations) {
+          // Cache the raw response for future runs
+          await aiCache.set(cacheKey, response);
           allValidations.push(...parsed.validations);
           continue;
         }

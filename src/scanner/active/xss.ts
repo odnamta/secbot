@@ -6,6 +6,7 @@ import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck, ScanTargets } from './index.js';
 import { delay } from '../../utils/shared.js';
+import { mutatePayload, pickStrategies, caseRandomize } from '../../utils/payload-mutator.js';
 
 /**
  * Dangerous HTML contexts — safe to match against both markers and full payloads.
@@ -188,6 +189,22 @@ function selectPayloads(config: ScanConfig, maxQuick: number): XSSPayload[] {
   return config.profile === 'deep' ? nonDomPayloads : nonDomPayloads.slice(0, maxQuick);
 }
 
+/**
+ * Generate WAF-evasion variants of an XSS payload.
+ * Returns array of payload strings (original + encoded variants + case-randomized).
+ * The marker stays the same since the server will decode the payload.
+ */
+function getWafVariants(payload: string, config: ScanConfig): string[] {
+  const strategies = pickStrategies(config.wafDetection);
+  const variants = mutatePayload(payload, strategies);
+  // Also add case-randomized variant for HTML tag payloads
+  if (payload.includes('<')) {
+    const cased = caseRandomize(payload);
+    if (cased !== payload) variants.push(cased);
+  }
+  return variants;
+}
+
 async function testXssOnForms(
   context: BrowserContext,
   forms: FormInfo[],
@@ -333,45 +350,57 @@ async function testXssOnUrls(
     const params = Array.from(parsedUrl.searchParams.keys());
 
     for (const param of params) {
+      let foundForParam = false;
       for (const xssPayload of payloads) {
-        const testUrl = new URL(originalUrl);
-        testUrl.searchParams.set(param, xssPayload.payload);
+        if (foundForParam) break;
 
-        const page = await context.newPage();
-        try {
-          await page.goto(testUrl.href, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
+        // Get WAF-evasion variants (includes original)
+        const variants = getWafVariants(xssPayload.payload, config);
 
-          requestLogger?.log({
-            timestamp: new Date().toISOString(),
-            method: 'GET',
-            url: testUrl.href,
-            phase: 'active-xss',
-          });
+        for (const variant of variants) {
+          if (foundForParam) break;
+          const testUrl = new URL(originalUrl);
+          testUrl.searchParams.set(param, variant);
 
-          const content = await page.content();
-          const dangerousContext = checkDangerousReflection(content, xssPayload.payload, xssPayload.marker);
+          const page = await context.newPage();
+          try {
+            await page.goto(testUrl.href, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
 
-          if (dangerousContext) {
-            findings.push({
-              id: randomUUID(),
-              category: 'xss',
-              severity: 'high',
-              title: `Reflected XSS in URL Parameter "${param}"`,
-              description: `The URL parameter "${param}" reflects XSS payload (${xssPayload.type}) in a dangerous context without proper encoding. ${dangerousContext}.`,
-              url: originalUrl,
-              evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nTest URL: ${testUrl.href}\n${dangerousContext}`,
-              request: { method: 'GET', url: testUrl.href },
+            requestLogger?.log({
               timestamp: new Date().toISOString(),
+              method: 'GET',
+              url: testUrl.href,
+              phase: 'active-xss',
             });
-            break;
-          }
-        } catch (err) {
-          log.debug(`XSS URL test: ${(err as Error).message}`);
-        } finally {
-          await page.close();
-        }
 
-        await delay(config.requestDelay);
+            const content = await page.content();
+            // Check for both the variant and original payload reflection
+            const dangerousContext = checkDangerousReflection(content, variant, xssPayload.marker)
+              || (variant !== xssPayload.payload ? checkDangerousReflection(content, xssPayload.payload, xssPayload.marker) : null);
+
+            if (dangerousContext) {
+              const isWafBypass = variant !== xssPayload.payload;
+              findings.push({
+                id: randomUUID(),
+                category: 'xss',
+                severity: 'high',
+                title: `Reflected XSS in URL Parameter "${param}"${isWafBypass ? ' (WAF bypass)' : ''}`,
+                description: `The URL parameter "${param}" reflects XSS payload (${xssPayload.type}) in a dangerous context without proper encoding. ${dangerousContext}.${isWafBypass ? ' Payload was encoded to bypass WAF detection.' : ''}`,
+                url: originalUrl,
+                evidence: `Payload: ${variant}\nOriginal: ${xssPayload.payload}\nType: ${xssPayload.type}\nTest URL: ${testUrl.href}\n${dangerousContext}${isWafBypass ? '\nWAF bypass: yes' : ''}`,
+                request: { method: 'GET', url: testUrl.href },
+                timestamp: new Date().toISOString(),
+              });
+              foundForParam = true;
+            }
+          } catch (err) {
+            log.debug(`XSS URL test: ${(err as Error).message}`);
+          } finally {
+            await page.close();
+          }
+
+          await delay(config.requestDelay);
+        }
       }
     }
   }

@@ -14,12 +14,28 @@ import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck } from './index.js';
 import { delay } from '../../utils/shared.js';
+import { mutatePayload, pickStrategies, sqlCommentObfuscate } from '../../utils/payload-mutator.js';
 
 /** Threshold in ms — if response is this much slower than baseline, it's suspicious */
 const BLIND_SQLI_THRESHOLD_MS = 1500;
 
 /** Minimum body length difference ratio to flag boolean-based blind SQLi */
 const BOOLEAN_BLIND_THRESHOLD = 0.20;
+
+/**
+ * Generate WAF-evasion variants of a SQLi payload.
+ * Returns array including original + encoded variants + SQL comment obfuscated.
+ */
+function getSqliWafVariants(payload: string, config: ScanConfig): string[] {
+  const strategies = pickStrategies(config.wafDetection);
+  const variants = mutatePayload(payload, strategies);
+  // Add SQL comment obfuscation variant (breaks up keywords WAFs pattern-match)
+  const obfuscated = sqlCommentObfuscate(payload);
+  if (obfuscated !== payload && !variants.includes(obfuscated)) {
+    variants.push(obfuscated);
+  }
+  return variants;
+}
 
 export const sqliCheck: ActiveCheck = {
   name: 'sqli',
@@ -412,51 +428,57 @@ async function testSqliOnUrls(
     for (const param of params) {
       let foundForParam = false;
 
-      // --- Error-based detection ---
+      // --- Error-based detection (with WAF-evasion variants) ---
       for (const payload of errorPayloads) {
         if (foundForParam) break;
-        const testUrl = new URL(originalUrl);
-        testUrl.searchParams.set(param, payload);
 
-        const page = await context.newPage();
-        try {
-          const response = await page.request.fetch(testUrl.href);
-          const body = await response.text();
+        const variants = getSqliWafVariants(payload, config);
+        for (const variant of variants) {
+          if (foundForParam) break;
+          const testUrl = new URL(originalUrl);
+          testUrl.searchParams.set(param, variant);
 
-          requestLogger?.log({
-            timestamp: new Date().toISOString(),
-            method: 'GET',
-            url: testUrl.href,
-            responseStatus: response.status(),
-            phase: 'active-sqli',
-          });
+          const page = await context.newPage();
+          try {
+            const response = await page.request.fetch(testUrl.href);
+            const body = await response.text();
 
-          for (const pattern of SQL_ERROR_PATTERNS) {
-            const match = body.match(pattern);
-            if (match) {
-              findings.push({
-                id: randomUUID(),
-                category: 'sqli',
-                severity: 'critical',
-                title: `SQL Injection in URL Parameter "${param}"`,
-                description: `SQL error message detected when injecting payload into URL parameter "${param}". This indicates the parameter is directly interpolated into SQL queries.`,
-                url: originalUrl,
-                evidence: `Payload: ${payload}\nTest URL: ${testUrl.href}\nSQL error: ${match[0]}`,
-                request: { method: 'GET', url: testUrl.href },
-                response: { status: response.status(), bodySnippet: body.slice(0, 300) },
-                timestamp: new Date().toISOString(),
-              });
-              foundForParam = true;
-              break;
+            requestLogger?.log({
+              timestamp: new Date().toISOString(),
+              method: 'GET',
+              url: testUrl.href,
+              responseStatus: response.status(),
+              phase: 'active-sqli',
+            });
+
+            for (const pattern of SQL_ERROR_PATTERNS) {
+              const match = body.match(pattern);
+              if (match) {
+                const isWafBypass = variant !== payload;
+                findings.push({
+                  id: randomUUID(),
+                  category: 'sqli',
+                  severity: 'critical',
+                  title: `SQL Injection in URL Parameter "${param}"${isWafBypass ? ' (WAF bypass)' : ''}`,
+                  description: `SQL error message detected when injecting payload into URL parameter "${param}". This indicates the parameter is directly interpolated into SQL queries.${isWafBypass ? ' Encoded payload bypassed WAF detection.' : ''}`,
+                  url: originalUrl,
+                  evidence: `Payload: ${variant}\nOriginal: ${payload}\nTest URL: ${testUrl.href}\nSQL error: ${match[0]}${isWafBypass ? '\nWAF bypass: yes' : ''}`,
+                  request: { method: 'GET', url: testUrl.href },
+                  response: { status: response.status(), bodySnippet: body.slice(0, 300) },
+                  timestamp: new Date().toISOString(),
+                });
+                foundForParam = true;
+                break;
+              }
             }
+          } catch (err) {
+            log.debug(`SQLi URL error test: ${(err as Error).message}`);
+          } finally {
+            await page.close();
           }
-        } catch (err) {
-          log.debug(`SQLi URL error test: ${(err as Error).message}`);
-        } finally {
-          await page.close();
-        }
 
-        await delay(config.requestDelay);
+          await delay(config.requestDelay);
+        }
       }
 
       // --- Time-based blind detection (improved with median-of-3) ---

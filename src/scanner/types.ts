@@ -74,6 +74,9 @@ export interface ScanConfig {
   useAI: boolean;
   userAgent?: string;
   callbackUrl?: string;
+  wafDetection?: WafDetection;
+  rateLimitRps?: number;
+  idorAltAuthState?: string;
 }
 
 export interface CrawledPage {

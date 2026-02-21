@@ -60,6 +60,7 @@ program
   .option('--urls <file>', 'File with URLs to scan (one per line)')
   .option('--log-requests', 'Log all HTTP requests for accountability', false)
   .option('--callback-url <url>', 'Callback URL for blind SSRF detection (e.g., your Burp Collaborator URL)')
+  .option('--rate-limit <n>', 'Maximum requests per second (integer)', undefined)
   .option('--no-ai', 'Skip AI interpretation (use rule-based fallback)')
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (url: string, options: Record<string, unknown>) => {
@@ -125,6 +126,7 @@ program
       callbackUrl: options.callbackUrl as string | undefined,
       ...(options.maxPages ? { maxPages: parseInt(options.maxPages as string, 10) } : {}),
       ...(options.timeout ? { timeout: parseInt(options.timeout as string, 10) } : {}),
+      ...(options.rateLimit ? { rateLimitRps: parseInt(options.rateLimit as string, 10) } : {}),
     });
 
     if (config.callbackUrl) {
@@ -163,6 +165,9 @@ program
         // ─── Phase 2: Recon ──────────────────────────────────────
         log.info('Phase 2: Running reconnaissance...');
         const recon = runRecon(pages, responses);
+
+        // Pass WAF detection to config so active checks can use WAF-aware encoding
+        config.wafDetection = recon.waf;
 
         // ─── Phase 3: AI Attack Plan ─────────────────────────────
         let attackPlan;
