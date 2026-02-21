@@ -12,6 +12,7 @@ export type CheckCategory =
   | 'cors-misconfiguration'
   | 'directory-traversal'
   | 'ssrf'
+  | 'ssti'
   | 'idor'
   | 'tls';
 

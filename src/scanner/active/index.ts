@@ -16,6 +16,7 @@ import { corsCheck } from './cors.js';
 import { redirectCheck } from './redirect.js';
 import { traversalCheck } from './traversal.js';
 import { ssrfCheck } from './ssrf.js';
+import { sstiCheck } from './ssti.js';
 import { log } from '../../utils/logger.js';
 
 export interface ScanTargets {
@@ -46,6 +47,7 @@ export const CHECK_REGISTRY: ActiveCheck[] = [
   redirectCheck,
   traversalCheck,
   ssrfCheck,
+  sstiCheck,
 ];
 
 /** Regex for redirect-related parameter names */
