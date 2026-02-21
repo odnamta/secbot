@@ -29,7 +29,8 @@ import { log, setLogLevel } from './utils/logger.js';
 import { deduplicateFindings } from './utils/dedup.js';
 import { loadBaseline, diffFindings, saveBaseline } from './utils/baseline.js';
 import { discoverRoutes } from './scanner/discovery/index.js';
-import type { ScanConfig, ScanProfile, ScanResult } from './scanner/types.js';
+import { validateCliOptions } from './utils/cli-validation.js';
+import type { ScanConfig, ScanProfile, ScanResult, CheckCategory } from './scanner/types.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
 
@@ -96,6 +97,22 @@ program
       targetUrl = parsed.href;
     } catch {
       console.error(chalk.red(`Invalid URL: ${rawUrl}`));
+      process.exit(1);
+    }
+
+    // Validate CLI options
+    const validationErrors = validateCliOptions({
+      profile: options.profile as string | undefined,
+      auth: options.auth as string | undefined,
+      urls: options.urls as string | undefined,
+      maxPages: options.maxPages as string | undefined,
+      timeout: options.timeout as string | undefined,
+      rateLimit: options.rateLimit as string | undefined,
+    });
+    if (validationErrors.length > 0) {
+      for (const err of validationErrors) {
+        console.error(chalk.red(`${err.field}: ${err.message}`));
+      }
       process.exit(1);
     }
 
@@ -288,7 +305,7 @@ program
         const scanDuration = new Date(completedAt).getTime() - new Date(startedAt).getTime();
 
         // Determine which checks ran
-        const passiveCheckNames = ['security-headers', 'cookie-flags', 'info-leakage', 'mixed-content', 'sensitive-url-data', 'cross-origin-policy'];
+        const passiveCheckNames: CheckCategory[] = ['security-headers', 'cookie-flags', 'info-leakage', 'mixed-content', 'sensitive-url-data', 'cross-origin-policy'];
         const activeCheckNames = attackPlan
           ? [...attackPlan.recommendedChecks]
               .sort((a, b) => a.priority - b.priority)
@@ -305,7 +322,7 @@ program
 
         // Determine which checks passed (ran but produced 0 findings)
         const categoriesWithFindings = new Set(allRawFindings.map((f) => f.category));
-        const passedChecks = checksRun.filter((name) => !categoriesWithFindings.has(name));
+        const passedChecks = checksRun.filter((name) => !categoriesWithFindings.has(name as CheckCategory));
 
         // Include passedChecks in the summary
         summary.passedChecks = passedChecks;

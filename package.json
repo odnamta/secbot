@@ -3,13 +3,20 @@
   "version": "1.0.0",
   "description": "AI-powered security testing CLI — Playwright for security",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "./dist/index.js",
   "bin": {
-    "secbot": "dist/index.js"
+    "secbot": "./dist/index.js"
   },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE",
+    "action.yml"
+  ],
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "tsup src/index.ts --format esm --dts --clean",
+    "build": "tsc",
+    "prepublishOnly": "npm run build && npm test",
     "test": "vitest run",
     "test:watch": "vitest",
     "scan": "tsx src/index.ts scan"
