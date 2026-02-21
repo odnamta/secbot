@@ -1,4 +1,5 @@
 import express from 'express';
+import { execSync } from 'node:child_process';
 import type { Server } from 'node:http';
 
 export async function createVulnerableServer(): Promise<{ server: Server; url: string }> {
@@ -164,13 +165,19 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
 </body></html>`);
   });
 
-  // Command injection
+  // Command injection — actually executes commands (test fixture only!)
   app.get('/exec', (req, res) => {
     const cmd = req.query.cmd as string || '';
+    let output = '';
+    try {
+      output = execSync(cmd, { timeout: 5000, encoding: 'utf-8' });
+    } catch (err) {
+      output = (err as Error).message;
+    }
     res.type('html').send(`<!DOCTYPE html>
 <html><body>
 <h1>Command Output</h1>
-<pre>$ ${cmd}\n[CMD_START]${cmd}[CMD_END]</pre>
+<pre>$ ${cmd}\n${output}</pre>
 </body></html>`);
   });
 

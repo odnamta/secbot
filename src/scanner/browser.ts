@@ -9,6 +9,7 @@ import type {
   InterceptedResponse,
 } from './types.js';
 import { log } from '../utils/logger.js';
+import { normalizeUrl, delay } from '../utils/shared.js';
 import { getRandomUserAgent, jitteredDelay } from '../utils/stealth.js';
 import { MiddlewarePipeline } from './middleware.js';
 
@@ -411,30 +412,10 @@ function isDisallowed(url: string, disallowedPaths: string[], targetUrl: string)
   return disallowedPaths.some((d) => path.startsWith(d));
 }
 
-function normalizeUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    u.hash = '';
-    // Remove trailing slash for consistency
-    let path = u.pathname;
-    if (path.length > 1 && path.endsWith('/')) {
-      path = path.slice(0, -1);
-    }
-    u.pathname = path;
-    return u.href;
-  } catch {
-    return url;
-  }
-}
-
 function isSameOrigin(url: string, target: string): boolean {
   try {
     return new URL(url).origin === new URL(target).origin;
   } catch {
     return false;
   }
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

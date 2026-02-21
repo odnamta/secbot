@@ -13,14 +13,14 @@ import {
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck } from './index.js';
-import { delay } from '../../utils/shared.js';
+import { delay, measureResponseTime } from '../../utils/shared.js';
 import { mutatePayload, pickStrategies, sqlCommentObfuscate } from '../../utils/payload-mutator.js';
 
 /** Threshold in ms — if response is this much slower than baseline, it's suspicious */
-const BLIND_SQLI_THRESHOLD_MS = 1500;
+const BLIND_SQLI_THRESHOLD_MS = 3000;
 
 /** Minimum body length difference ratio to flag boolean-based blind SQLi */
-const BOOLEAN_BLIND_THRESHOLD = 0.20;
+const BOOLEAN_BLIND_THRESHOLD = 0.35;
 
 /**
  * Generate WAF-evasion variants of a SQLi payload.
@@ -56,41 +56,6 @@ export const sqliCheck: ActiveCheck = {
     return findings;
   },
 };
-
-/**
- * Measure response time using median of 3 requests for more reliable timing.
- * Used by time-based blind SQLi detection to reduce false positives from network jitter.
- */
-async function measureResponseTime(
-  context: BrowserContext,
-  url: string,
-  options?: { method?: string; headers?: Record<string, string>; data?: string },
-): Promise<number> {
-  const times: number[] = [];
-  for (let i = 0; i < 3; i++) {
-    const page = await context.newPage();
-    try {
-      const start = Date.now();
-      if (options?.method && options.method !== 'GET') {
-        await page.request.fetch(url, {
-          method: options.method,
-          headers: options.headers,
-          data: options.data,
-        });
-      } else {
-        await page.request.fetch(url);
-      }
-      times.push(Date.now() - start);
-    } catch {
-      // Skip failed measurements
-    } finally {
-      await page.close();
-    }
-  }
-  if (times.length === 0) return -1;
-  times.sort((a, b) => a - b);
-  return times[Math.floor(times.length / 2)]; // median
-}
 
 async function testSqliOnForms(
   context: BrowserContext,
