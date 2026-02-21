@@ -11,6 +11,7 @@ export type CheckCategory =
   | 'open-redirect'
   | 'cors-misconfiguration'
   | 'directory-traversal'
+  | 'ssrf'
   | 'idor'
   | 'tls';
 
