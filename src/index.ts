@@ -9,7 +9,7 @@ import { resolve, join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { crawl, closeBrowser } from './scanner/browser.js';
 import { runPassiveChecks } from './scanner/passive.js';
-import { runActiveChecks } from './scanner/active/index.js';
+import { runActiveChecks, CHECK_REGISTRY } from './scanner/active/index.js';
 import { runRecon } from './scanner/recon.js';
 import { planAttack } from './ai/planner.js';
 import { validateFindings } from './ai/validator.js';
@@ -214,6 +214,37 @@ program
 
         const completedAt = new Date().toISOString();
 
+        // Compute new output fields
+        const scanDuration = new Date(completedAt).getTime() - new Date(startedAt).getTime();
+
+        // Determine which checks ran
+        const passiveCheckNames = ['security-headers', 'cookie-flags', 'info-leakage', 'mixed-content', 'sensitive-url-data', 'cross-origin-policy'];
+        const activeCheckNames = attackPlan
+          ? [...attackPlan.recommendedChecks]
+              .sort((a, b) => a.priority - b.priority)
+              .map((rec) => CHECK_REGISTRY.find((c) => c.name === rec.name))
+              .filter((c) => c !== undefined)
+              .map((c) => c.name)
+          : CHECK_REGISTRY
+              .filter((c) => {
+                if (c.name === 'traversal' && config.profile !== 'deep') return false;
+                return true;
+              })
+              .map((c) => c.name);
+        const checksRun = [...passiveCheckNames, ...activeCheckNames];
+
+        // Determine which checks passed (ran but produced 0 findings)
+        const categoriesWithFindings = new Set(allRawFindings.map((f) => f.category));
+        const passedChecks = checksRun.filter((name) => !categoriesWithFindings.has(name));
+
+        // Include passedChecks in the summary
+        summary.passedChecks = passedChecks;
+
+        const hasHighOrCritical = interpretedFindings.some(
+          (f) => f.severity === 'high' || f.severity === 'critical'
+        );
+        const exitCode = hasHighOrCritical ? 1 : 0;
+
         const scanResult: ScanResult = {
           targetUrl,
           profile: config.profile,
@@ -226,6 +257,9 @@ program
           recon,
           attackPlan,
           validatedFindings: validations,
+          exitCode,
+          scanDuration,
+          checksRun,
         };
 
         // ─── Phase 8: Output Reports ─────────────────────────────
@@ -253,10 +287,7 @@ program
         // Flush request log
         requestLogger?.flush();
 
-        const hasHighOrCritical = interpretedFindings.some(
-          (f) => f.severity === 'high' || f.severity === 'critical'
-        );
-        process.exitCode = hasHighOrCritical ? 1 : 0;
+        process.exitCode = exitCode;
 
         log.info('Scan complete!');
       } finally {

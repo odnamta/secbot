@@ -19,6 +19,7 @@ export function fallbackInterpretation(rawFindings: RawFinding[]): {
         totalInterpretedFindings: 0,
         bySeverity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
         topIssues: ['No vulnerabilities found'],
+        passedChecks: [],
       },
     };
   }
@@ -68,6 +69,7 @@ export function fallbackInterpretation(rawFindings: RawFinding[]): {
         .sort((a, b) => severityOrder(b.severity) - severityOrder(a.severity))
         .slice(0, 3)
         .map((f) => f.title),
+      passedChecks: [],
     },
   };
 }

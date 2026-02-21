@@ -135,6 +135,9 @@ export interface ScanResult {
   recon?: ReconResult;
   attackPlan?: AttackPlan;
   validatedFindings?: ValidatedFinding[];
+  exitCode: number;
+  scanDuration: number; // ms
+  checksRun: string[];
 }
 
 export interface ScanSummary {
@@ -142,6 +145,7 @@ export interface ScanSummary {
   totalInterpretedFindings: number;
   bySeverity: Record<Severity, number>;
   topIssues: string[];
+  passedChecks: string[]; // check types that ran but found nothing
 }
 
 // ─── Scope ─────────────────────────────────────────────────────────
