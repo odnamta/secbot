@@ -2,14 +2,29 @@ import { randomUUID } from 'node:crypto';
 import type { CrawledPage, InterceptedResponse, RawFinding } from './types.js';
 import { log } from '../utils/logger.js';
 
+// Cookies that don't need HttpOnly — they're intentionally JS-readable
+const SKIP_HTTPONLY_PATTERNS = [
+  /^_ga/i, /^_gid/i, /^_gat/i, /^_fbp/i, /^_gcl/i,  // analytics
+  /^csrf/i, /^xsrf/i, /^_csrf/i,                        // CSRF tokens
+  /^locale$/i, /^lang$/i, /^theme$/i, /^i18n/i,         // preferences
+  /^__utm/i,                                              // UTM tracking
+];
+
+export function shouldCheckHttpOnly(cookieName: string): boolean {
+  return !SKIP_HTTPONLY_PATTERNS.some(p => p.test(cookieName));
+}
+
 export function runPassiveChecks(
   pages: CrawledPage[],
   responses: InterceptedResponse[],
 ): RawFinding[] {
   const findings: RawFinding[] = [];
 
+  // Track reported missing headers across all pages for dedup
+  const reportedHeaders = new Map<string, RawFinding>();
+
   for (const page of pages) {
-    findings.push(...checkSecurityHeaders(page));
+    findings.push(...checkSecurityHeaders(page, reportedHeaders));
     findings.push(...checkCookieFlags(page));
     findings.push(...checkInfoLeakage(page, responses));
     findings.push(...checkMixedContent(page, responses));
@@ -20,7 +35,10 @@ export function runPassiveChecks(
   return findings;
 }
 
-function checkSecurityHeaders(page: CrawledPage): RawFinding[] {
+function checkSecurityHeaders(
+  page: CrawledPage,
+  reportedHeaders: Map<string, RawFinding>,
+): RawFinding[] {
   const findings: RawFinding[] = [];
   const headers = page.headers;
 
@@ -76,7 +94,17 @@ function checkSecurityHeaders(page: CrawledPage): RawFinding[] {
 
   for (const req of requiredHeaders) {
     if (!headers[req.name]) {
-      findings.push({
+      // Dedup: if this header was already reported, just add URL to affectedUrls
+      const existing = reportedHeaders.get(req.name);
+      if (existing) {
+        if (!existing.affectedUrls) existing.affectedUrls = [existing.url];
+        if (!existing.affectedUrls.includes(page.url)) {
+          existing.affectedUrls.push(page.url);
+        }
+        continue;
+      }
+
+      const finding: RawFinding = {
         id: randomUUID(),
         category: 'security-headers',
         severity: req.severity,
@@ -88,8 +116,11 @@ function checkSecurityHeaders(page: CrawledPage): RawFinding[] {
           status: page.status,
           headers: page.headers,
         },
+        affectedUrls: [page.url],
         timestamp: new Date().toISOString(),
-      });
+      };
+      reportedHeaders.set(req.name, finding);
+      findings.push(finding);
     }
   }
 
@@ -133,7 +164,7 @@ function checkCookieFlags(page: CrawledPage): RawFinding[] {
   const findings: RawFinding[] = [];
 
   for (const cookie of page.cookies) {
-    if (!cookie.httpOnly) {
+    if (!cookie.httpOnly && shouldCheckHttpOnly(cookie.name)) {
       findings.push({
         id: randomUUID(),
         category: 'cookie-flags',
