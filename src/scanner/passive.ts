@@ -157,6 +157,101 @@ function checkSecurityHeaders(
     }
   }
 
+  // Cross-origin isolation headers (COOP, COEP, CORP)
+  const crossOriginHeaders: {
+    name: string;
+    title: string;
+    description: string;
+    validValues: string[];
+  }[] = [
+    {
+      name: 'cross-origin-opener-policy',
+      title: 'Missing Cross-Origin-Opener-Policy Header',
+      description:
+        'The Cross-Origin-Opener-Policy header is missing. This header isolates the browsing context, preventing cross-origin attacks like Spectre.',
+      validValues: ['same-origin'],
+    },
+    {
+      name: 'cross-origin-embedder-policy',
+      title: 'Missing Cross-Origin-Embedder-Policy Header',
+      description:
+        'The Cross-Origin-Embedder-Policy header is missing. This header ensures all cross-origin resources are loaded with CORS or CORP, enabling cross-origin isolation.',
+      validValues: ['require-corp'],
+    },
+    {
+      name: 'cross-origin-resource-policy',
+      title: 'Missing Cross-Origin-Resource-Policy Header',
+      description:
+        'The Cross-Origin-Resource-Policy header is missing. This header prevents other origins from loading this resource, mitigating side-channel attacks.',
+      validValues: ['same-origin', 'same-site'],
+    },
+  ];
+
+  for (const coHeader of crossOriginHeaders) {
+    const value = headers[coHeader.name];
+    if (!value || !coHeader.validValues.includes(value)) {
+      const existing = reportedHeaders.get(coHeader.name);
+      if (existing) {
+        if (!existing.affectedUrls) existing.affectedUrls = [existing.url];
+        if (!existing.affectedUrls.includes(page.url)) {
+          existing.affectedUrls.push(page.url);
+        }
+        continue;
+      }
+
+      const evidence = value
+        ? `Header "${coHeader.name}" has value "${value}" (expected: ${coHeader.validValues.join(' or ')})`
+        : `Header "${coHeader.name}" not present in response`;
+
+      const finding: RawFinding = {
+        id: randomUUID(),
+        category: 'cross-origin-policy',
+        severity: 'low',
+        title: value
+          ? coHeader.title.replace('Missing ', 'Weak ')
+          : coHeader.title,
+        description: coHeader.description,
+        url: page.url,
+        evidence,
+        response: {
+          status: page.status,
+          headers: page.headers,
+        },
+        affectedUrls: [page.url],
+        timestamp: new Date().toISOString(),
+      };
+      reportedHeaders.set(coHeader.name, finding);
+      findings.push(finding);
+    }
+  }
+
+  // Check for overly permissive Permissions-Policy
+  const permissionsPolicy = headers['permissions-policy'];
+  if (permissionsPolicy) {
+    const dangerousFeatures = ['camera', 'microphone', 'geolocation'];
+    const permissive: string[] = [];
+    for (const feature of dangerousFeatures) {
+      // Match patterns like camera=*, camera=(*), or camera=(*)
+      const pattern = new RegExp(`${feature}\\s*=\\s*\\(?\\s*\\*\\s*\\)?`, 'i');
+      if (pattern.test(permissionsPolicy)) {
+        permissive.push(feature);
+      }
+    }
+    if (permissive.length > 0) {
+      findings.push({
+        id: randomUUID(),
+        category: 'security-headers',
+        severity: 'medium',
+        title: 'Overly Permissive Permissions-Policy',
+        description: `The Permissions-Policy header allows wildcard access to sensitive features: ${permissive.join(', ')}. These should be restricted to specific origins or disabled.`,
+        url: page.url,
+        evidence: `Permissions-Policy: ${permissionsPolicy}`,
+        response: { status: page.status, headers: page.headers },
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
   return findings;
 }
 

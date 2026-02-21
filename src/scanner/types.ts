@@ -9,6 +9,7 @@ export type CheckCategory =
   | 'xss'
   | 'sqli'
   | 'open-redirect'
+  | 'cross-origin-policy'
   | 'cors-misconfiguration'
   | 'directory-traversal'
   | 'ssrf'
