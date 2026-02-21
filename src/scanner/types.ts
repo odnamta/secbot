@@ -36,6 +36,7 @@ export interface RawFinding {
     bodySnippet?: string;
   };
   timestamp: string;
+  affectedUrls?: string[];
 }
 
 export interface InterpretedFinding {

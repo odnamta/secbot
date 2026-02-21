@@ -23,6 +23,7 @@ import { buildConfig } from './config/defaults.js';
 import { parseScopePatterns } from './utils/scope.js';
 import { RequestLogger } from './utils/request-logger.js';
 import { log, setLogLevel } from './utils/logger.js';
+import { deduplicateFindings } from './utils/dedup.js';
 import type { ScanConfig, ScanProfile, ScanResult } from './scanner/types.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
@@ -161,15 +162,20 @@ program
 
         const allRawFindings = [...passiveFindings, ...activeFindings];
 
+        // Deduplicate before AI validation to save tokens
+        log.info(`Raw findings before dedup: ${allRawFindings.length}`);
+        const dedupedFindings = deduplicateFindings(allRawFindings);
+        log.info(`After dedup: ${dedupedFindings.length} unique findings`);
+
         // ─── Phase 6: AI Validation ──────────────────────────────
         let validations;
-        if (config.useAI && allRawFindings.length > 0) {
+        if (config.useAI && dedupedFindings.length > 0) {
           log.info('Phase 6: AI validating findings...');
-          validations = await validateFindings(targetUrl, allRawFindings, recon);
+          validations = await validateFindings(targetUrl, dedupedFindings, recon);
         } else {
           log.info(config.useAI ? 'Phase 6: No findings to validate' : 'Phase 6: Skipping AI validation (--no-ai)');
           // Fallback: mark all as valid
-          validations = allRawFindings.map((f) => ({
+          validations = dedupedFindings.map((f) => ({
             findingId: f.id,
             isValid: true,
             confidence: 'medium' as const,
@@ -181,7 +187,7 @@ program
         log.info('Phase 7: Generating report...');
         const { findings: interpretedFindings, summary } = await generateReport(
           targetUrl,
-          allRawFindings,
+          dedupedFindings,
           validations,
           recon,
         );
