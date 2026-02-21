@@ -29,7 +29,7 @@ async function testOpenRedirect(
   for (const originalUrl of urls) {
     const parsedUrl = new URL(originalUrl);
     const redirectParams = Array.from(parsedUrl.searchParams.keys()).filter((k) =>
-      /^(url|redirect|next|return|goto|dest|continue|rurl|target)$/i.test(k),
+      /^(url|redirect|next|return|goto|dest|callback|redir|forward|ref|out|continue|target|path|link|returnUrl|redirectUrl|returnTo|return_to|redirect_uri|redirect_url|rurl)$/i.test(k),
     );
 
     for (const param of redirectParams) {

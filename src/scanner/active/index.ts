@@ -23,6 +23,7 @@ export interface ScanTargets {
   urlsWithParams: string[];
   apiEndpoints: string[];
   redirectUrls: string[];
+  fileParams: string[]; // URLs with file-like parameters (path, file, doc, image, etc.)
 }
 
 export interface ActiveCheck {
@@ -45,6 +46,24 @@ export const CHECK_REGISTRY: ActiveCheck[] = [
   traversalCheck,
 ];
 
+/** Regex for redirect-related parameter names */
+const REDIRECT_PARAM_RE = /[?&](url|redirect|next|return|goto|dest|callback|redir|forward|ref|out|continue|target|path|link|returnUrl|redirectUrl|returnTo|return_to|redirect_uri|redirect_url)=/i;
+
+/** Regex for file-like parameter names */
+const FILE_PARAM_NAMES = /^(file|path|page|template|include|doc|folder|dir|name|src|resource|load|image|img|document|attachment)$/i;
+
+/** Check if a parameter value looks file-like (contains dots, slashes, or common extensions) */
+function isFileLikeValue(value: string): boolean {
+  if (!value) return false;
+  // Contains path separators
+  if (value.includes('/') || value.includes('\\')) return true;
+  // Contains common file extensions
+  if (/\.\w{1,5}$/.test(value)) return true;
+  // Contains directory traversal patterns
+  if (value.includes('..')) return true;
+  return false;
+}
+
 /** Build scan targets from crawled pages, filtering by scope */
 export function buildTargets(pages: CrawledPage[], targetUrl: string, scope?: ScanScope): ScanTargets {
   const inScope = (url: string) => isInScope(url, targetUrl, scope);
@@ -57,8 +76,25 @@ export function buildTargets(pages: CrawledPage[], targetUrl: string, scope?: Sc
   const apiEndpoints = scopedPages.map((p) => p.url).filter((u) => /\/api\//i.test(u));
   const redirectUrls = scopedPages
     .flatMap((p) => p.links)
-    .filter((l) => /[?&](url|redirect|next|return|goto|dest)=/i.test(l))
+    .filter((l) => REDIRECT_PARAM_RE.test(l))
     .filter(inScope);
+
+  // Detect URLs with file-like parameters
+  const fileParams: string[] = [];
+  const allUrls = scopedPages.flatMap((p) => [p.url, ...p.links]).filter(inScope);
+  for (const url of allUrls) {
+    try {
+      const parsed = new URL(url);
+      for (const [key, value] of parsed.searchParams) {
+        if (FILE_PARAM_NAMES.test(key) || isFileLikeValue(value)) {
+          fileParams.push(url);
+          break;
+        }
+      }
+    } catch {
+      // Skip invalid URLs
+    }
+  }
 
   return {
     pages: scopedPages.map((p) => p.url),
@@ -66,6 +102,7 @@ export function buildTargets(pages: CrawledPage[], targetUrl: string, scope?: Sc
     urlsWithParams,
     apiEndpoints,
     redirectUrls,
+    fileParams: [...new Set(fileParams)],
   };
 }
 

@@ -43,6 +43,7 @@ describe('XSS Integration Tests', () => {
       urlsWithParams: [`${baseUrl}/search?q=test`],
       apiEndpoints: [],
       redirectUrls: [],
+      fileParams: [],
     };
 
     const findings = await xssCheck.run(context, targets, defaultConfig);
@@ -73,6 +74,7 @@ describe('XSS Integration Tests', () => {
       urlsWithParams: [],
       apiEndpoints: [],
       redirectUrls: [],
+      fileParams: [],
     };
 
     const findings = await xssCheck.run(context, targets, defaultConfig);
@@ -91,6 +93,7 @@ describe('XSS Integration Tests', () => {
       urlsWithParams: [],
       apiEndpoints: [],
       redirectUrls: [],
+      fileParams: [],
     };
 
     const findings = await xssCheck.run(context, targets, defaultConfig);
@@ -109,6 +112,7 @@ describe('XSS Integration Tests', () => {
       urlsWithParams: [], // Safe page doesn't have params
       apiEndpoints: [],
       redirectUrls: [],
+      fileParams: [],
     };
 
     const findings = await xssCheck.run(context, targets, defaultConfig);
@@ -123,6 +127,7 @@ describe('XSS Integration Tests', () => {
       urlsWithParams: [`${baseUrl}/search?q=test`],
       apiEndpoints: [],
       redirectUrls: [],
+      fileParams: [],
     };
 
     const findings = await xssCheck.run(context, targets, defaultConfig);

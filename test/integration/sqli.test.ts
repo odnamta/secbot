@@ -43,6 +43,7 @@ describe('SQLi Integration Tests', () => {
       urlsWithParams: [`${baseUrl}/api/v1/data?query=test`],
       apiEndpoints: [`${baseUrl}/api/v1/data?query=test`],
       redirectUrls: [],
+      fileParams: [],
     };
 
     const findings = await sqliCheck.run(context, targets, defaultConfig);
@@ -65,6 +66,7 @@ describe('SQLi Integration Tests', () => {
       urlsWithParams: [`${baseUrl}/api/v1/data?query=test`],
       apiEndpoints: [`${baseUrl}/api/v1/data?query=test`],
       redirectUrls: [],
+      fileParams: [],
     };
 
     const findings = await sqliCheck.run(context, targets, defaultConfig);
@@ -84,6 +86,7 @@ describe('SQLi Integration Tests', () => {
       urlsWithParams: [],
       apiEndpoints: [],
       redirectUrls: [],
+      fileParams: [],
     };
 
     const findings = await sqliCheck.run(context, targets, defaultConfig);
@@ -102,6 +105,7 @@ describe('SQLi Integration Tests', () => {
       urlsWithParams: [`${baseUrl}/api/v1/data?query=test`],
       apiEndpoints: [],
       redirectUrls: [],
+      fileParams: [],
     };
 
     const findings = await sqliCheck.run(context, targets, defaultConfig);
@@ -118,6 +122,7 @@ describe('SQLi Integration Tests', () => {
       urlsWithParams: [`${baseUrl}/api/v1/data?query=test`],
       apiEndpoints: [],
       redirectUrls: [],
+      fileParams: [],
     };
 
     const findings = await sqliCheck.run(context, targets, defaultConfig);
