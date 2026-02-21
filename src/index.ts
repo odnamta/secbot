@@ -23,6 +23,7 @@ import { parseScopePatterns } from './utils/scope.js';
 import { RequestLogger } from './utils/request-logger.js';
 import { log, setLogLevel } from './utils/logger.js';
 import { deduplicateFindings } from './utils/dedup.js';
+import { discoverRoutes } from './scanner/discovery/index.js';
 import type { ScanConfig, ScanProfile, ScanResult } from './scanner/types.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
@@ -55,6 +56,7 @@ program
   .option('--timeout <ms>', 'Per-page timeout in milliseconds', undefined)
   .option('--ignore-robots', 'Ignore robots.txt restrictions', false)
   .option('--scope <patterns>', 'Scope patterns: "*.example.com,-admin.example.com"')
+  .option('--urls <file>', 'File with URLs to scan (one per line)')
   .option('--log-requests', 'Log all HTTP requests for accountability', false)
   .option('--no-ai', 'Skip AI interpretation (use rule-based fallback)')
   .option('--verbose', 'Enable verbose logging', false)
@@ -132,9 +134,17 @@ program
       : undefined;
 
     try {
+      // ─── Phase 0: Route Discovery ──────────────────────────────
+      log.info('Phase 0: Discovering routes...');
+      const discoveredRoutes = await discoverRoutes(targetUrl, options.urls as string | undefined);
+      if (discoveredRoutes.length > 0) {
+        log.info(`Discovered ${discoveredRoutes.length} additional routes`);
+      }
+      const seedUrls = discoveredRoutes.map((r) => r.url);
+
       // ─── Phase 1: Crawl ────────────────────────────────────────
       log.info('Phase 1: Crawling target...');
-      const { pages, responses, browser, context } = await crawl(config);
+      const { pages, responses, browser, context } = await crawl(config, seedUrls);
 
       if (pages.length === 0) {
         console.log(chalk.yellow('No pages were successfully crawled. Check the URL and try again.'));

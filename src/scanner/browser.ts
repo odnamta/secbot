@@ -23,7 +23,10 @@ const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKi
 /** Module-level reference for SIGINT cleanup */
 let activeBrowser: Browser | null = null;
 
-export async function crawl(config: ScanConfig): Promise<CrawlResult> {
+export async function crawl(
+  config: ScanConfig,
+  additionalUrls: string[] = [],
+): Promise<CrawlResult> {
   const browser = await chromium.launch({ headless: true });
   activeBrowser = browser;
   const contextOptions: Parameters<Browser['newContext']>[0] = {
@@ -46,7 +49,7 @@ export async function crawl(config: ScanConfig): Promise<CrawlResult> {
   const context = await browser.newContext(contextOptions);
   const responses: InterceptedResponse[] = [];
   const visited = new Set<string>();
-  const toVisit: string[] = [config.targetUrl];
+  const toVisit: string[] = [config.targetUrl, ...additionalUrls];
   const pages: CrawledPage[] = [];
 
   // Check robots.txt if configured
