@@ -59,6 +59,7 @@ program
   .option('--scope <patterns>', 'Scope patterns: "*.example.com,-admin.example.com"')
   .option('--urls <file>', 'File with URLs to scan (one per line)')
   .option('--log-requests', 'Log all HTTP requests for accountability', false)
+  .option('--callback-url <url>', 'Callback URL for blind SSRF detection (e.g., your Burp Collaborator URL)')
   .option('--no-ai', 'Skip AI interpretation (use rule-based fallback)')
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (url: string, options: Record<string, unknown>) => {
@@ -121,9 +122,14 @@ program
       scope,
       logRequests: options.logRequests === true,
       useAI,
+      callbackUrl: options.callbackUrl as string | undefined,
       ...(options.maxPages ? { maxPages: parseInt(options.maxPages as string, 10) } : {}),
       ...(options.timeout ? { timeout: parseInt(options.timeout as string, 10) } : {}),
     });
+
+    if (config.callbackUrl) {
+      log.info(`Callback URL configured: ${config.callbackUrl}`);
+    }
 
     const scanId = new Date().toISOString().replace(/[:.]/g, '-');
     const outputDir = resolve(config.outputPath ?? './secbot-reports');
@@ -268,6 +274,7 @@ program
           scanDuration,
           checksRun,
           ...(tokenUsage.totalTokens > 0 ? { tokenUsage } : {}),
+          ...(config.callbackUrl ? { callbackUrl: config.callbackUrl } : {}),
         };
 
         // ─── Phase 8: Output Reports ─────────────────────────────
@@ -296,6 +303,12 @@ program
         requestLogger?.flush();
 
         process.exitCode = exitCode;
+
+        // Post-scan callback URL reminder
+        if (config.callbackUrl) {
+          log.info('Callback URLs injected for blind SSRF detection. Check your callback server for hits.');
+          log.info(`Callback URL prefix: ${config.callbackUrl}`);
+        }
 
         log.info('Scan complete!');
       } finally {

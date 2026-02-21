@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig, Severity } from '../types.js';
-import { SSRF_PAYLOADS, SSRF_PARAM_PATTERNS, SSRF_INDICATORS } from '../../config/payloads/ssrf.js';
+import { SSRF_PAYLOADS, SSRF_PARAM_PATTERNS, SSRF_INDICATORS, getSSRFPayloads } from '../../config/payloads/ssrf.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck } from './index.js';
@@ -43,7 +43,23 @@ async function testSsrf(
   requestLogger?: RequestLogger,
 ): Promise<RawFinding[]> {
   const findings: RawFinding[] = [];
-  const payloadsToTest = config.profile === 'deep' ? SSRF_PAYLOADS : SSRF_PAYLOADS.slice(0, 4);
+
+  // Get base payloads (limited for non-deep profiles)
+  const basePayloads = config.profile === 'deep' ? SSRF_PAYLOADS : SSRF_PAYLOADS.slice(0, 4);
+
+  // Get callback payloads if callback URL is configured
+  const callbackPayloads = config.callbackUrl
+    ? getSSRFPayloads(config.callbackUrl).filter((p) => !SSRF_PAYLOADS.includes(p))
+    : [];
+
+  if (callbackPayloads.length > 0) {
+    log.info(`Including ${callbackPayloads.length} callback-based SSRF payloads for blind detection`);
+  }
+
+  // All payloads: base first, then callback payloads
+  const payloadsToTest = [...basePayloads, ...callbackPayloads];
+
+  let callbacksInjected = 0;
 
   for (const originalUrl of urls) {
     let foundForUrl = false;
@@ -72,6 +88,8 @@ async function testSsrf(
       if (foundForUrl) break;
 
       for (const payload of payloadsToTest) {
+        const isCallbackPayload = config.callbackUrl && payload.includes(config.callbackUrl.replace(/\/+$/, ''));
+
         const testUrl = new URL(originalUrl);
         testUrl.searchParams.set(param, payload);
 
@@ -86,51 +104,59 @@ async function testSsrf(
             method: 'GET',
             url: testUrl.href,
             responseStatus: status,
-            phase: 'active-ssrf',
+            phase: isCallbackPayload ? 'active-ssrf-callback' : 'active-ssrf',
           });
 
-          // Check response body for SSRF indicators
-          for (const indicator of SSRF_INDICATORS) {
-            if (indicator.test(body)) {
-              findings.push({
-                id: randomUUID(),
-                category: 'ssrf',
-                severity: getSeverity(payload),
-                title: `SSRF via "${param}" Parameter`,
-                description: `The parameter "${param}" allows the server to make requests to internal or restricted resources. The response contains evidence of successful internal access.`,
-                url: originalUrl,
-                evidence: `Payload: ${payload}\nIndicator matched: ${indicator.source}\nResponse snippet: ${body.slice(0, 300)}`,
-                request: { method: 'GET', url: testUrl.href },
-                response: { status, bodySnippet: body.slice(0, 200) },
-                timestamp: new Date().toISOString(),
-              });
-              foundForUrl = true;
-              break;
+          if (isCallbackPayload) {
+            // For callback payloads, we just inject and count — verification
+            // happens on the user's callback server (Burp Collaborator, interactsh, etc.)
+            callbacksInjected++;
+            log.debug(`Injected callback SSRF payload: ${payload} into param "${param}" at ${originalUrl}`);
+            // Don't break — keep injecting callback payloads even if we found something with base payloads
+          } else {
+            // Check response body for SSRF indicators
+            for (const indicator of SSRF_INDICATORS) {
+              if (indicator.test(body)) {
+                findings.push({
+                  id: randomUUID(),
+                  category: 'ssrf',
+                  severity: getSeverity(payload),
+                  title: `SSRF via "${param}" Parameter`,
+                  description: `The parameter "${param}" allows the server to make requests to internal or restricted resources. The response contains evidence of successful internal access.`,
+                  url: originalUrl,
+                  evidence: `Payload: ${payload}\nIndicator matched: ${indicator.source}\nResponse snippet: ${body.slice(0, 300)}`,
+                  request: { method: 'GET', url: testUrl.href },
+                  response: { status, bodySnippet: body.slice(0, 200) },
+                  timestamp: new Date().toISOString(),
+                });
+                foundForUrl = true;
+                break;
+              }
             }
-          }
 
-          // Also check: if status differs from baseline, the server may have fetched something
-          if (!foundForUrl && baselineStatus !== null && status !== baselineStatus) {
-            // Status difference alone is weaker evidence, but still noteworthy
-            // Only flag if it's a potentially interesting status change
-            if (status === 200 && baselineStatus !== 200) {
-              findings.push({
-                id: randomUUID(),
-                category: 'ssrf',
-                severity: getSeverity(payload),
-                title: `Potential SSRF via "${param}" Parameter`,
-                description: `The parameter "${param}" caused a different response status when given an internal URL, suggesting the server attempted to fetch it.`,
-                url: originalUrl,
-                evidence: `Payload: ${payload}\nBaseline status: ${baselineStatus}\nPayload status: ${status}`,
-                request: { method: 'GET', url: testUrl.href },
-                response: { status, bodySnippet: body.slice(0, 200) },
-                timestamp: new Date().toISOString(),
-              });
-              foundForUrl = true;
+            // Also check: if status differs from baseline, the server may have fetched something
+            if (!foundForUrl && baselineStatus !== null && status !== baselineStatus) {
+              // Status difference alone is weaker evidence, but still noteworthy
+              // Only flag if it's a potentially interesting status change
+              if (status === 200 && baselineStatus !== 200) {
+                findings.push({
+                  id: randomUUID(),
+                  category: 'ssrf',
+                  severity: getSeverity(payload),
+                  title: `Potential SSRF via "${param}" Parameter`,
+                  description: `The parameter "${param}" caused a different response status when given an internal URL, suggesting the server attempted to fetch it.`,
+                  url: originalUrl,
+                  evidence: `Payload: ${payload}\nBaseline status: ${baselineStatus}\nPayload status: ${status}`,
+                  request: { method: 'GET', url: testUrl.href },
+                  response: { status, bodySnippet: body.slice(0, 200) },
+                  timestamp: new Date().toISOString(),
+                });
+                foundForUrl = true;
+              }
             }
-          }
 
-          if (foundForUrl) break;
+            if (foundForUrl) break;
+          }
         } catch (err) {
           log.debug(`SSRF test: ${(err as Error).message}`);
         } finally {
@@ -140,6 +166,10 @@ async function testSsrf(
         await delay(config.requestDelay);
       }
     }
+  }
+
+  if (callbacksInjected > 0) {
+    log.info(`Injected ${callbacksInjected} callback URLs for blind SSRF detection. Check your callback server for hits.`);
   }
 
   return findings;
