@@ -4,6 +4,7 @@ import type {
   ScanSummary,
   Severity,
 } from '../scanner/types.js';
+import { severityOrder } from '../utils/shared.js';
 
 /** Rule-based fallback when no AI is available */
 export function fallbackInterpretation(rawFindings: RawFinding[]): {
@@ -69,10 +70,6 @@ export function fallbackInterpretation(rawFindings: RawFinding[]): {
         .map((f) => f.title),
     },
   };
-}
-
-export function severityOrder(s: Severity): number {
-  return { critical: 5, high: 4, medium: 3, low: 2, info: 1 }[s];
 }
 
 export function mapToOwasp(category: string): string {

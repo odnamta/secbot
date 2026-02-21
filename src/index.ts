@@ -7,7 +7,6 @@ import { program } from 'commander';
 import chalk from 'chalk';
 import { resolve, join } from 'node:path';
 import { readFileSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
 import { crawl, closeBrowser } from './scanner/browser.js';
 import { runPassiveChecks } from './scanner/passive.js';
 import { runActiveChecks } from './scanner/active/index.js';
@@ -27,6 +26,17 @@ import { deduplicateFindings } from './utils/dedup.js';
 import type { ScanConfig, ScanProfile, ScanResult } from './scanner/types.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
+
+let cleanupDone = false;
+async function cleanup() {
+  if (cleanupDone) return;
+  cleanupDone = true;
+  log.warn('Interrupted — cleaning up...');
+  try { await closeBrowser(); } catch { /* best effort */ }
+  process.exit(130);
+}
+process.on('SIGINT', cleanup);
+process.on('SIGTERM', cleanup);
 
 program
   .name('secbot')
@@ -233,6 +243,11 @@ program
         // Flush request log
         requestLogger?.flush();
 
+        const hasHighOrCritical = interpretedFindings.some(
+          (f) => f.severity === 'high' || f.severity === 'critical'
+        );
+        process.exitCode = hasHighOrCritical ? 1 : 0;
+
         log.info('Scan complete!');
       } finally {
         // Always close browser
@@ -243,7 +258,7 @@ program
       if (options.verbose) {
         console.error(err);
       }
-      process.exit(1);
+      process.exit(2);
     }
   });
 

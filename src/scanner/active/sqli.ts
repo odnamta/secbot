@@ -59,8 +59,8 @@ async function testSqliOnForms(
             responseBody = await response.text();
             responseResolve?.();
           }
-        } catch {
-          // Ignore
+        } catch (err) {
+          log.debug(`SQLi response capture: ${(err as Error).message}`);
         }
       });
 
@@ -70,8 +70,8 @@ async function testSqliOnForms(
         for (const input of textInputs) {
           try {
             await page.fill(`[name="${input.name}"]`, payload);
-          } catch {
-            // Continue
+          } catch (err) {
+            log.debug(`SQLi fill input: ${(err as Error).message}`);
           }
         }
 
@@ -92,7 +92,8 @@ async function testSqliOnForms(
           }
           await submissionResponse;
           if (responseTimeout) clearTimeout(responseTimeout);
-        } catch {
+        } catch (err) {
+          log.debug(`SQLi form submit: ${(err as Error).message}`);
           if (responseTimeout) clearTimeout(responseTimeout);
         }
 
@@ -127,8 +128,8 @@ async function testSqliOnForms(
             break;
           }
         }
-      } catch {
-        // Continue
+      } catch (err) {
+        log.debug(`SQLi form test: ${(err as Error).message}`);
       } finally {
         await page.close();
       }
@@ -159,8 +160,8 @@ async function testSqliOnForms(
             data: formBody,
           });
           baselineTimes.push(Date.now() - start);
-        } catch {
-          // skip
+        } catch (err) {
+          log.debug(`SQLi form baseline: ${(err as Error).message}`);
         } finally {
           await page.close();
         }
@@ -213,8 +214,8 @@ async function testSqliOnForms(
               });
               break;
             }
-          } catch {
-            // Continue
+          } catch (err) {
+            log.debug(`SQLi blind form test: ${(err as Error).message}`);
           } finally {
             await page.close();
           }
@@ -242,7 +243,8 @@ async function testSqliOnUrls(
     let parsedUrl: URL;
     try {
       parsedUrl = new URL(originalUrl);
-    } catch {
+    } catch (err) {
+      log.debug(`SQLi URL parse: ${(err as Error).message}`);
       continue;
     }
     const params = Array.from(parsedUrl.searchParams.keys());
@@ -289,8 +291,8 @@ async function testSqliOnUrls(
               break;
             }
           }
-        } catch {
-          // Continue
+        } catch (err) {
+          log.debug(`SQLi URL error test: ${(err as Error).message}`);
         } finally {
           await page.close();
         }
@@ -308,8 +310,8 @@ async function testSqliOnUrls(
             const start = Date.now();
             await page.request.fetch(originalUrl);
             baselineTimes.push(Date.now() - start);
-          } catch {
-            // skip
+          } catch (err) {
+            log.debug(`SQLi URL baseline: ${(err as Error).message}`);
           } finally {
             await page.close();
           }
@@ -353,8 +355,8 @@ async function testSqliOnUrls(
               });
               foundForParam = true;
             }
-          } catch {
-            // Continue
+          } catch (err) {
+            log.debug(`SQLi blind URL test: ${(err as Error).message}`);
           } finally {
             await page.close();
           }

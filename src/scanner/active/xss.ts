@@ -140,8 +140,8 @@ async function testXssOnForms(
               responseBody = await response.text();
               responseResolve?.();
             }
-          } catch {
-            // Ignore
+          } catch (err) {
+            log.debug(`XSS response capture: ${(err as Error).message}`);
           }
         });
 
@@ -159,8 +159,8 @@ async function testXssOnForms(
             } else {
               await page.fill(`[name="${input.name}"]`, payload);
             }
-          } catch {
-            // Input may not be fillable
+          } catch (err) {
+            log.debug(`XSS fill input: ${(err as Error).message}`);
           }
         }
 
@@ -190,7 +190,8 @@ async function testXssOnForms(
           }
           await submissionResponse;
           if (responseTimeout) clearTimeout(responseTimeout);
-        } catch {
+        } catch (err) {
+          log.debug(`XSS form submit: ${(err as Error).message}`);
           if (responseTimeout) clearTimeout(responseTimeout);
         }
 
@@ -226,8 +227,8 @@ async function testXssOnForms(
           });
           break;
         }
-      } catch {
-        // Continue to next payload
+      } catch (err) {
+        log.debug(`XSS form test: ${(err as Error).message}`);
       } finally {
         await page.close();
       }
@@ -252,7 +253,8 @@ async function testXssOnUrls(
     let parsedUrl: URL;
     try {
       parsedUrl = new URL(originalUrl);
-    } catch {
+    } catch (err) {
+      log.debug(`XSS URL parse: ${(err as Error).message}`);
       continue;
     }
     const params = Array.from(parsedUrl.searchParams.keys());
@@ -293,8 +295,8 @@ async function testXssOnUrls(
             });
             break;
           }
-        } catch {
-          // Continue
+        } catch (err) {
+          log.debug(`XSS URL test: ${(err as Error).message}`);
         } finally {
           await page.close();
         }

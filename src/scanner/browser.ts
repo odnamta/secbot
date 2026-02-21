@@ -20,8 +20,12 @@ export interface CrawlResult {
 /** Realistic Chrome UA to avoid WAF blocks. SecBot identifier only sent in non-stealth mode. */
 const DEFAULT_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
+/** Module-level reference for SIGINT cleanup */
+let activeBrowser: Browser | null = null;
+
 export async function crawl(config: ScanConfig): Promise<CrawlResult> {
   const browser = await chromium.launch({ headless: true });
+  activeBrowser = browser;
   const contextOptions: Parameters<Browser['newContext']>[0] = {
     userAgent: config.userAgent ?? DEFAULT_USER_AGENT,
     ignoreHTTPSErrors: true,
@@ -115,18 +119,21 @@ export async function crawl(config: ScanConfig): Promise<CrawlResult> {
 }
 
 /** Close all pages, contexts, and the browser when scanning is complete */
-export async function closeBrowser(browser: Browser): Promise<void> {
+export async function closeBrowser(browser?: Browser): Promise<void> {
+  const target = browser ?? activeBrowser;
+  if (!target) return;
   try {
-    for (const ctx of browser.contexts()) {
+    for (const ctx of target.contexts()) {
       for (const page of ctx.pages()) {
-        try { await page.close(); } catch { /* already closed */ }
+        try { await page.close(); } catch (err) { log.debug(`Page close: ${(err as Error).message}`); }
       }
-      try { await ctx.close(); } catch { /* already closed */ }
+      try { await ctx.close(); } catch (err) { log.debug(`Context close: ${(err as Error).message}`); }
     }
-    await browser.close();
+    await target.close();
   } catch (err) {
     log.debug(`Browser cleanup warning: ${(err as Error).message}`);
   }
+  activeBrowser = null;
 }
 
 async function crawlPage(
@@ -162,8 +169,8 @@ async function crawlPage(
             if (body.length > 10000) {
               body = body.slice(0, 10000) + '... [truncated]';
             }
-          } catch {
-            // Some responses can't be read
+          } catch (err) {
+            log.debug(`Response body read: ${(err as Error).message}`);
           }
         }
 
@@ -173,8 +180,8 @@ async function crawlPage(
           headers,
           body,
         });
-      } catch {
-        // Ignore response reading errors
+      } catch (err) {
+        log.debug(`Response capture: ${(err as Error).message}`);
       }
     })();
     pendingResponses.push(capture);

@@ -51,7 +51,7 @@ export function buildTargets(pages: CrawledPage[], targetUrl: string, scope?: Sc
 
   const scopedPages = pages.filter((p) => inScope(p.url));
   const allForms = scopedPages.flatMap((p) => p.forms).filter((f) => {
-    try { return inScope(new URL(f.action, f.pageUrl).href); } catch { return true; }
+    try { return inScope(new URL(f.action, f.pageUrl).href); } catch (err) { log.debug(`Scope check: ${(err as Error).message}`); return true; }
   });
   const urlsWithParams = scopedPages.map((p) => p.url).filter((u) => u.includes('?'));
   const apiEndpoints = scopedPages.map((p) => p.url).filter((u) => /\/api\//i.test(u));

@@ -52,8 +52,8 @@ async function testDirectoryTraversal(
           await delay(config.requestDelay);
         }
       }
-    } catch {
-      // URL parsing failed, skip query param testing
+    } catch (err) {
+      log.debug(`Traversal URL parse: ${(err as Error).message}`);
     }
   }
 
@@ -96,8 +96,8 @@ async function testTraversalUrl(
         };
       }
     }
-  } catch {
-    // Continue
+  } catch (err) {
+    log.debug(`Traversal test: ${(err as Error).message}`);
   } finally {
     await page.close();
   }
