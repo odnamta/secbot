@@ -80,6 +80,7 @@ program
   .option('--export-har', 'Export captured traffic as HAR 1.2 file (requires --log-requests)', false)
   .option('--login-url <url>', 'URL of login page for credential-based authentication')
   .option('--credentials <user:pass>', 'Username:password pair for login (use with --login-url)')
+  .option('--credentials-file <path>', 'Path to file containing credentials (user:pass on first line)')
   .option('--callback-server <port>', 'Auto-start built-in OOB callback server on specified port')
   .option('--oob-wait <seconds>', 'How long to wait for delayed OOB callbacks (default: 30)')
   .option('--no-ai', 'Skip AI interpretation (use rule-based fallback)')
@@ -180,26 +181,55 @@ program
     const exportHar = options.exportHar === true;
     const logRequests = options.logRequests === true || fileConfig?.logRequests === true || exportBurp || exportHar;
 
-    // Parse --login-url + --credentials into AuthOptions
+    // Parse --login-url + credentials into AuthOptions
+    // Priority: --credentials > --credentials-file > SECBOT_CREDENTIALS env var
     let authOpts: AuthOptions | undefined;
     const loginUrl = options.loginUrl as string | undefined;
-    const credentials = options.credentials as string | undefined;
-    if (loginUrl && credentials) {
-      const colonIdx = credentials.indexOf(':');
+    const cliCredentials = options.credentials as string | undefined;
+    const credentialsFile = options.credentialsFile as string | undefined;
+
+    let resolvedCredentials: string | undefined;
+
+    if (cliCredentials) {
+      // Highest priority: --credentials CLI flag
+      log.warn('WARNING: Credentials passed via CLI are visible in process list and shell history.');
+      log.warn('Consider using --credentials-file or SECBOT_CREDENTIALS env var instead.');
+      resolvedCredentials = cliCredentials;
+    } else if (credentialsFile) {
+      // Second priority: --credentials-file
+      try {
+        const fileContent = readFileSync(resolve(credentialsFile), 'utf-8');
+        const firstLine = fileContent.split('\n')[0]?.trim();
+        if (!firstLine) {
+          console.error(chalk.red('--credentials-file is empty or has no content on first line'));
+          process.exit(1);
+        }
+        resolvedCredentials = firstLine;
+      } catch (err) {
+        console.error(chalk.red(`Failed to read credentials file: ${(err as Error).message}`));
+        process.exit(1);
+      }
+    } else if (process.env.SECBOT_CREDENTIALS) {
+      // Lowest priority: SECBOT_CREDENTIALS environment variable
+      resolvedCredentials = process.env.SECBOT_CREDENTIALS.trim();
+    }
+
+    if (loginUrl && resolvedCredentials) {
+      const colonIdx = resolvedCredentials.indexOf(':');
       if (colonIdx === -1) {
-        console.error(chalk.red('--credentials must be in user:pass format'));
+        console.error(chalk.red('Credentials must be in user:pass format'));
         process.exit(1);
       }
       authOpts = {
         loginUrl,
-        username: credentials.slice(0, colonIdx),
-        password: credentials.slice(colonIdx + 1),
+        username: resolvedCredentials.slice(0, colonIdx),
+        password: resolvedCredentials.slice(colonIdx + 1),
       };
-    } else if (loginUrl && !credentials) {
-      console.error(chalk.red('--login-url requires --credentials'));
+    } else if (loginUrl && !resolvedCredentials) {
+      console.error(chalk.red('--login-url requires credentials (--credentials, --credentials-file, or SECBOT_CREDENTIALS env var)'));
       process.exit(1);
-    } else if (!loginUrl && credentials) {
-      console.error(chalk.red('--credentials requires --login-url'));
+    } else if (!loginUrl && resolvedCredentials) {
+      console.error(chalk.red('Credentials require --login-url'));
       process.exit(1);
     }
 
@@ -263,6 +293,7 @@ program
     }
 
     // ─── Credential-based Authentication ─────────────────────────
+    let authTmpDir: string | undefined;
     if (config.auth) {
       log.info('Authenticating with provided credentials...');
       const { chromium } = await import('playwright');
@@ -277,11 +308,11 @@ program
         }
         if (authResult.storageState) {
           // Write storage state to a temp file so crawl() can consume it
-          const { mkdtempSync, writeFileSync } = await import('node:fs');
+          const { mkdtempSync, writeFileSync: writeFileSyncFs } = await import('node:fs');
           const { join: joinPath } = await import('node:path');
-          const tmpDir = mkdtempSync(joinPath((await import('node:os')).tmpdir(), 'secbot-auth-'));
-          const storageStatePath = joinPath(tmpDir, 'storage-state.json');
-          writeFileSync(storageStatePath, authResult.storageState, 'utf-8');
+          authTmpDir = mkdtempSync(joinPath((await import('node:os')).tmpdir(), 'secbot-auth-'));
+          const storageStatePath = joinPath(authTmpDir, 'storage-state.json');
+          writeFileSyncFs(storageStatePath, authResult.storageState, { encoding: 'utf-8', mode: 0o600 });
           config.authStorageState = storageStatePath;
           log.info('Authentication successful — session captured');
         }
@@ -545,11 +576,28 @@ program
       } finally {
         // Always close browser
         await closeBrowser(browser);
+        // Clean up auth temp files (contains session tokens — must not persist)
+        if (authTmpDir) {
+          try {
+            const { rmSync } = await import('node:fs');
+            rmSync(authTmpDir, { recursive: true, force: true });
+            log.debug('Cleaned up auth temp files');
+          } catch {
+            log.warn(`Failed to clean up auth temp dir: ${authTmpDir}`);
+          }
+        }
       }
     } catch (err) {
       // Clean up callback server on error
       if (callbackServer?.isRunning()) {
         try { await callbackServer.stop(); } catch { /* best effort */ }
+      }
+      // Clean up auth temp files on error path too
+      if (authTmpDir) {
+        try {
+          const { rmSync } = await import('node:fs');
+          rmSync(authTmpDir, { recursive: true, force: true });
+        } catch { /* best effort */ }
       }
       log.error(`Scan failed: ${(err as Error).message}`);
       if (options.verbose) {

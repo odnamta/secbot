@@ -20,10 +20,15 @@ import { delay, measureResponseTime } from '../../utils/shared.js';
 import { mutatePayload, pickStrategies, sqlCommentObfuscate } from '../../utils/payload-mutator.js';
 
 /** Threshold in ms — if response is this much slower than baseline, it's suspicious */
-const BLIND_SQLI_THRESHOLD_MS = 3000;
+const BLIND_SQLI_THRESHOLD_MS = 3500;
 
 /** Minimum body length difference ratio to flag boolean-based blind SQLi */
-const BOOLEAN_BLIND_THRESHOLD = 0.35;
+const BOOLEAN_BLIND_THRESHOLD = 0.50;
+
+/** Maximum variance allowed within same-condition requests (TRUE-TRUE or FALSE-FALSE).
+ *  If same-condition responses vary more than this, the page is inherently dynamic
+ *  and boolean-blind detection is unreliable — skip this parameter. */
+const BOOLEAN_CONSISTENCY_THRESHOLD = 0.30;
 
 /** Select error-based SQLi payloads, appending polyglots when WAF detected or deep profile */
 function selectSqliPayloads(config: ScanConfig, maxNonDeep: number): string[] {
@@ -48,6 +53,92 @@ function getSqliWafVariants(payload: string, config: ScanConfig): string[] {
     variants.push(obfuscated);
   }
   return variants;
+}
+
+/**
+ * Fetch a URL/form and return the response body length.
+ * Returns 0 on failure.
+ */
+async function fetchBodyLength(
+  context: BrowserContext,
+  url: string,
+  options?: { method?: string; headers?: Record<string, string>; data?: string },
+): Promise<number> {
+  const page = await context.newPage();
+  try {
+    const resp = options?.method && options.method !== 'GET'
+      ? await page.request.fetch(url, {
+          method: options.method,
+          headers: options.headers,
+          data: options.data,
+        })
+      : await page.request.fetch(url);
+    return (await resp.text()).length;
+  } catch {
+    return 0;
+  } finally {
+    await page.close();
+  }
+}
+
+/**
+ * Multi-round boolean-blind confirmation.
+ * Sends each condition twice to verify consistency, then compares TRUE vs FALSE.
+ * Returns null if the page is too dynamic (same-condition variance > threshold),
+ * or the difference ratio if confirmed.
+ */
+async function confirmBooleanBlind(
+  context: BrowserContext,
+  trueFetcher: () => Promise<number>,
+  falseFetcher: () => Promise<number>,
+  requestDelay: number,
+): Promise<{ diff: number; trueLen: number; falseLen: number; trueLen2: number; falseLen2: number } | null> {
+  // Round 1: TRUE condition
+  const trueLen1 = await trueFetcher();
+  await delay(requestDelay);
+
+  // Round 2: TRUE condition (verify consistency)
+  const trueLen2 = await trueFetcher();
+  await delay(requestDelay);
+
+  // Check TRUE-TRUE consistency
+  if (trueLen1 > 0 && trueLen2 > 0) {
+    const trueMax = Math.max(trueLen1, trueLen2);
+    const trueVariance = Math.abs(trueLen1 - trueLen2) / trueMax;
+    if (trueVariance > BOOLEAN_CONSISTENCY_THRESHOLD) {
+      log.debug(`Boolean-blind: TRUE-TRUE variance ${(trueVariance * 100).toFixed(1)}% exceeds ${BOOLEAN_CONSISTENCY_THRESHOLD * 100}% — page is dynamic, skipping`);
+      return null;
+    }
+  }
+
+  // Round 1: FALSE condition
+  const falseLen1 = await falseFetcher();
+  await delay(requestDelay);
+
+  // Round 2: FALSE condition (verify consistency)
+  const falseLen2 = await falseFetcher();
+  await delay(requestDelay);
+
+  // Check FALSE-FALSE consistency
+  if (falseLen1 > 0 && falseLen2 > 0) {
+    const falseMax = Math.max(falseLen1, falseLen2);
+    const falseVariance = Math.abs(falseLen1 - falseLen2) / falseMax;
+    if (falseVariance > BOOLEAN_CONSISTENCY_THRESHOLD) {
+      log.debug(`Boolean-blind: FALSE-FALSE variance ${(falseVariance * 100).toFixed(1)}% exceeds ${BOOLEAN_CONSISTENCY_THRESHOLD * 100}% — page is dynamic, skipping`);
+      return null;
+    }
+  }
+
+  // Use averages for the final comparison
+  const trueAvg = (trueLen1 + trueLen2) / 2;
+  const falseAvg = (falseLen1 + falseLen2) / 2;
+
+  if (trueAvg === 0 || falseAvg === 0) return null;
+
+  const maxLen = Math.max(trueAvg, falseAvg);
+  const diff = Math.abs(trueAvg - falseAvg) / maxLen;
+
+  return { diff, trueLen: trueLen1, falseLen: falseLen1, trueLen2, falseLen2 };
 }
 
 export const sqliCheck: ActiveCheck = {
@@ -251,9 +342,13 @@ async function testSqliOnForms(
       }
     }
 
-    // --- Boolean-based blind SQLi for forms ---
+    // --- Boolean-based blind SQLi for forms (multi-round confirmation) ---
     if (config.profile !== 'quick' && !hasFormFinding()) {
       const fetchMethod = form.method.toUpperCase() === 'GET' ? 'GET' : 'POST';
+      const fetchOpts = {
+        method: fetchMethod,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      };
 
       for (const { truePayload, falsePayload } of SQLI_BOOLEAN_PAYLOADS) {
         const trueBody = textInputs
@@ -263,60 +358,38 @@ async function testSqliOnForms(
           .map((i) => `${encodeURIComponent(i.name)}=${encodeURIComponent(falsePayload)}`)
           .join('&');
 
-        let trueLen = 0;
-        let falseLen = 0;
+        const result = await confirmBooleanBlind(
+          context,
+          () => fetchBodyLength(context, form.action, { ...fetchOpts, data: trueBody }),
+          () => fetchBodyLength(context, form.action, { ...fetchOpts, data: falseBody }),
+          config.requestDelay,
+        );
 
-        const truePage = await context.newPage();
-        try {
-          const resp = await truePage.request.fetch(form.action, {
-            method: fetchMethod,
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            data: trueBody,
+        requestLogger?.log({
+          timestamp: new Date().toISOString(),
+          method: form.method,
+          url: form.action,
+          body: trueBody,
+          phase: 'active-sqli-boolean',
+        });
+
+        if (result && result.diff > BOOLEAN_BLIND_THRESHOLD) {
+          findings.push({
+            id: randomUUID(),
+            category: 'sqli',
+            severity: 'high',
+            title: `Potential Boolean-Based Blind SQL Injection in Form "${textInputs[0].name}"`,
+            description: `Boolean-based blind SQL injection suspected. Multi-round confirmation: TRUE responses consistent, FALSE responses consistent, and the difference between TRUE vs FALSE exceeds threshold. Submitted via form input "${textInputs[0].name}".`,
+            url: form.pageUrl,
+            evidence: `True payload: ${truePayload} (lengths: ${result.trueLen}, ${result.trueLen2})\nFalse payload: ${falsePayload} (lengths: ${result.falseLen}, ${result.falseLen2})\nDifference: ${(result.diff * 100).toFixed(1)}% (threshold: ${BOOLEAN_BLIND_THRESHOLD * 100}%)`,
+            request: {
+              method: form.method,
+              url: form.action,
+              body: trueBody,
+            },
+            timestamp: new Date().toISOString(),
           });
-          trueLen = (await resp.text()).length;
-        } catch (err) {
-          log.debug(`SQLi boolean true form: ${(err as Error).message}`);
-        } finally {
-          await truePage.close();
-        }
-
-        await delay(config.requestDelay);
-
-        const falsePage = await context.newPage();
-        try {
-          const resp = await falsePage.request.fetch(form.action, {
-            method: fetchMethod,
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            data: falseBody,
-          });
-          falseLen = (await resp.text()).length;
-        } catch (err) {
-          log.debug(`SQLi boolean false form: ${(err as Error).message}`);
-        } finally {
-          await falsePage.close();
-        }
-
-        if (trueLen > 0 && falseLen > 0) {
-          const maxLen = Math.max(trueLen, falseLen);
-          const diff = Math.abs(trueLen - falseLen) / maxLen;
-          if (diff > BOOLEAN_BLIND_THRESHOLD) {
-            findings.push({
-              id: randomUUID(),
-              category: 'sqli',
-              severity: 'high',
-              title: `Potential Boolean-Based Blind SQL Injection in Form "${textInputs[0].name}"`,
-              description: `Boolean-based blind SQL injection suspected. The response body length differs significantly between a true condition and a false condition submitted via form input "${textInputs[0].name}".`,
-              url: form.pageUrl,
-              evidence: `True payload: ${truePayload} (length: ${trueLen})\nFalse payload: ${falsePayload} (length: ${falseLen})\nDifference: ${(diff * 100).toFixed(1)}% (threshold: ${BOOLEAN_BLIND_THRESHOLD * 100}%)`,
-              request: {
-                method: form.method,
-                url: form.action,
-                body: trueBody,
-              },
-              timestamp: new Date().toISOString(),
-            });
-            break;
-          }
+          break;
         }
 
         await delay(config.requestDelay);
@@ -557,7 +630,7 @@ async function testSqliOnUrls(
         }
       }
 
-      // --- Boolean-based blind detection ---
+      // --- Boolean-based blind detection (multi-round confirmation) ---
       if (!foundForParam && config.profile !== 'quick') {
         for (const { truePayload, falsePayload } of SQLI_BOOLEAN_PAYLOADS) {
           if (foundForParam) break;
@@ -567,30 +640,12 @@ async function testSqliOnUrls(
           const falseUrl = new URL(originalUrl);
           falseUrl.searchParams.set(param, falsePayload);
 
-          let trueLen = 0;
-          let falseLen = 0;
-
-          const truePage = await context.newPage();
-          try {
-            const resp = await truePage.request.fetch(trueUrl.href);
-            trueLen = (await resp.text()).length;
-          } catch (err) {
-            log.debug(`SQLi boolean true URL: ${(err as Error).message}`);
-          } finally {
-            await truePage.close();
-          }
-
-          await delay(config.requestDelay);
-
-          const falsePage = await context.newPage();
-          try {
-            const resp = await falsePage.request.fetch(falseUrl.href);
-            falseLen = (await resp.text()).length;
-          } catch (err) {
-            log.debug(`SQLi boolean false URL: ${(err as Error).message}`);
-          } finally {
-            await falsePage.close();
-          }
+          const result = await confirmBooleanBlind(
+            context,
+            () => fetchBodyLength(context, trueUrl.href),
+            () => fetchBodyLength(context, falseUrl.href),
+            config.requestDelay,
+          );
 
           requestLogger?.log({
             timestamp: new Date().toISOString(),
@@ -599,23 +654,19 @@ async function testSqliOnUrls(
             phase: 'active-sqli-boolean',
           });
 
-          if (trueLen > 0 && falseLen > 0) {
-            const maxLen = Math.max(trueLen, falseLen);
-            const diff = Math.abs(trueLen - falseLen) / maxLen;
-            if (diff > BOOLEAN_BLIND_THRESHOLD) {
-              findings.push({
-                id: randomUUID(),
-                category: 'sqli',
-                severity: 'high',
-                title: `Potential Boolean-Based Blind SQL Injection in URL Parameter "${param}"`,
-                description: `Boolean-based blind SQL injection suspected. The response body length differs significantly between a true condition (${truePayload}) and a false condition (${falsePayload}) in parameter "${param}".`,
-                url: originalUrl,
-                evidence: `True payload: ${truePayload} (length: ${trueLen})\nFalse payload: ${falsePayload} (length: ${falseLen})\nDifference: ${(diff * 100).toFixed(1)}% (threshold: ${BOOLEAN_BLIND_THRESHOLD * 100}%)`,
-                request: { method: 'GET', url: trueUrl.href },
-                timestamp: new Date().toISOString(),
-              });
-              foundForParam = true;
-            }
+          if (result && result.diff > BOOLEAN_BLIND_THRESHOLD) {
+            findings.push({
+              id: randomUUID(),
+              category: 'sqli',
+              severity: 'high',
+              title: `Potential Boolean-Based Blind SQL Injection in URL Parameter "${param}"`,
+              description: `Boolean-based blind SQL injection suspected. Multi-round confirmation: TRUE responses consistent, FALSE responses consistent, and the difference between TRUE (${truePayload}) vs FALSE (${falsePayload}) exceeds threshold in parameter "${param}".`,
+              url: originalUrl,
+              evidence: `True payload: ${truePayload} (lengths: ${result.trueLen}, ${result.trueLen2})\nFalse payload: ${falsePayload} (lengths: ${result.falseLen}, ${result.falseLen2})\nDifference: ${(result.diff * 100).toFixed(1)}% (threshold: ${BOOLEAN_BLIND_THRESHOLD * 100}%)`,
+              request: { method: 'GET', url: trueUrl.href },
+              timestamp: new Date().toISOString(),
+            });
+            foundForParam = true;
           }
 
           await delay(config.requestDelay);

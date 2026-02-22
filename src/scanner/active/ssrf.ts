@@ -160,24 +160,30 @@ async function testSsrf(
               }
             }
 
-            // Also check: if status differs from baseline, the server may have fetched something
+            // Also check: if status differs from baseline AND body contains SSRF indicators,
+            // the server may have fetched the internal resource. Require dual signal to
+            // avoid false positives from parameters that merely influence page routing.
             if (!foundForUrl && baselineStatus !== null && status !== baselineStatus) {
-              // Status difference alone is weaker evidence, but still noteworthy
-              // Only flag if it's a potentially interesting status change
               if (status === 200 && baselineStatus !== 200) {
-                findings.push({
-                  id: randomUUID(),
-                  category: 'ssrf',
-                  severity: getSeverity(payload),
-                  title: `Potential SSRF via "${param}" Parameter`,
-                  description: `The parameter "${param}" caused a different response status when given an internal URL, suggesting the server attempted to fetch it.`,
-                  url: originalUrl,
-                  evidence: `Payload: ${payload}\nBaseline status: ${baselineStatus}\nPayload status: ${status}`,
-                  request: { method: 'GET', url: testUrl.href },
-                  response: { status, bodySnippet: body.slice(0, 200) },
-                  timestamp: new Date().toISOString(),
-                });
-                foundForUrl = true;
+                // Dual signal: status change is necessary but not sufficient —
+                // body must also contain an SSRF indicator pattern
+                const bodyHasIndicator = SSRF_INDICATORS.some((ind) => ind.test(body));
+                if (bodyHasIndicator) {
+                  const matchedIndicator = SSRF_INDICATORS.find((ind) => ind.test(body));
+                  findings.push({
+                    id: randomUUID(),
+                    category: 'ssrf',
+                    severity: getSeverity(payload),
+                    title: `Potential SSRF via "${param}" Parameter`,
+                    description: `The parameter "${param}" caused a different response status when given an internal URL, and the response body contains evidence of internal resource access.`,
+                    url: originalUrl,
+                    evidence: `Payload: ${payload}\nBaseline status: ${baselineStatus}\nPayload status: ${status}\nIndicator matched: ${matchedIndicator?.source ?? 'unknown'}`,
+                    request: { method: 'GET', url: testUrl.href },
+                    response: { status, bodySnippet: body.slice(0, 200) },
+                    timestamp: new Date().toISOString(),
+                  });
+                  foundForUrl = true;
+                }
               }
             }
 

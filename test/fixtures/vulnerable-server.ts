@@ -156,8 +156,17 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
   app.get('/template', (req, res) => {
     let name = req.query.name as string || 'World';
     // Intentionally vulnerable template evaluation
+    // Handle numeric multiplication: {{71829*71829}} → 5159404241
     name = name.replace(/\{\{(\d+)\*(\d+)\}\}/g, (_match, a, b) => {
-      return String(Number(a) * Number(b));
+      return String(BigInt(a) * BigInt(b));
+    });
+    // Handle string multiplication: {{8*'71829'}} → '71829' repeated 8 times
+    name = name.replace(/\{\{(\d+)\*'(\d+)'\}\}/g, (_match, count, str) => {
+      return str.repeat(Number(count));
+    });
+    // Handle addition: {{71829+71829}} → 143658
+    name = name.replace(/\{\{(\d+)\+(\d+)\}\}/g, (_match, a, b) => {
+      return String(BigInt(a) + BigInt(b));
     });
     res.type('html').send(`<!DOCTYPE html>
 <html><body>

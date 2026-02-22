@@ -1,5 +1,40 @@
 import type { ReconResult, CrawledPage, RawFinding, ValidatedFinding } from '../scanner/types.js';
 
+// ─── Prompt Injection Sanitization ──────────────────────────────────
+
+/**
+ * Sanitize user-controlled text before embedding it in AI prompts.
+ * Defends against prompt injection from malicious target websites that
+ * embed adversarial instructions in HTML, headers, or response bodies.
+ */
+export function sanitizeForPrompt(text: string): string {
+  if (!text) return '';
+  return text
+    // Strip common prompt injection patterns
+    .replace(/(?:output|respond|return|ignore|forget|disregard)\s+(?:only|with|the|all|previous|above|instructions)/gi, '[FILTERED]')
+    // Strip JSON-like blocks that could confuse the AI
+    .replace(/\{[\s\S]{0,50}(?:findingId|isValid|validations|severity|confidence)[\s\S]{0,200}\}/g, '[FILTERED_JSON]')
+    // Truncate to reasonable length
+    .slice(0, 500);
+}
+
+/**
+ * Sanitize a JSON-serializable object by sanitizing all string values recursively.
+ * Used for recon data (techStack, waf, framework) that gets JSON.stringify'd into prompts.
+ */
+function sanitizeObjectForPrompt(obj: unknown): unknown {
+  if (typeof obj === 'string') return sanitizeForPrompt(obj);
+  if (Array.isArray(obj)) return obj.map(sanitizeObjectForPrompt);
+  if (obj !== null && typeof obj === 'object') {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+      result[key] = sanitizeObjectForPrompt(value);
+    }
+    return result;
+  }
+  return obj;
+}
+
 // ─── Planner Check Types ────────────────────────────────────────────
 
 export type PlannerCheckType =
@@ -116,18 +151,24 @@ export function buildPlannerUserPrompt(
   const numericIdUrls = recon.endpoints.apiRoutes.filter((r) => /\/\d+/.test(r));
   const isHttps = url.startsWith('https://');
 
+  // Sanitize recon data that comes from target website responses
+  const safeTechStack = sanitizeObjectForPrompt(recon.techStack);
+  const safeWaf = sanitizeObjectForPrompt(recon.waf);
+  const safeFramework = sanitizeObjectForPrompt(recon.framework);
+  const safeApiRoutes = recon.endpoints.apiRoutes.slice(0, 5).map((r) => sanitizeForPrompt(r));
+
   return `Analyze this target and recommend security checks.
 
 Target: ${url}
 Profile: ${profile}
 
-Tech Stack: ${JSON.stringify(recon.techStack, null, 2)}
-WAF: ${JSON.stringify(recon.waf, null, 2)}
-Framework: ${JSON.stringify(recon.framework, null, 2)}
+Tech Stack: ${JSON.stringify(safeTechStack, null, 2)}
+WAF: ${JSON.stringify(safeWaf, null, 2)}
+Framework: ${JSON.stringify(safeFramework, null, 2)}
 
 Endpoints:
 - Pages: ${recon.endpoints.pages.length}
-- API routes: ${recon.endpoints.apiRoutes.length} ${recon.endpoints.apiRoutes.length > 0 ? `(${recon.endpoints.apiRoutes.slice(0, 5).join(', ')})` : ''}
+- API routes: ${recon.endpoints.apiRoutes.length} ${recon.endpoints.apiRoutes.length > 0 ? `(${safeApiRoutes.join(', ')})` : ''}
 - Forms: ${allForms.length}
 - GraphQL: ${recon.endpoints.graphql.length}
 - URLs with params: ${urlsWithParams.length}
@@ -205,18 +246,18 @@ export function buildValidatorUserPrompt(
     id: f.id,
     category: f.category,
     severity: f.severity,
-    title: f.title,
-    description: f.description.slice(0, 300),
+    title: sanitizeForPrompt(f.title),
+    description: sanitizeForPrompt(f.description.slice(0, 300)),
     url: f.url,
-    evidence: f.evidence.slice(0, 200),
+    evidence: sanitizeForPrompt(f.evidence.slice(0, 200)),
   }));
 
   return `Validate these security findings for ${url}.
 
 Tech context:
-- Framework: ${recon.framework.name ?? 'unknown'}
-- WAF: ${recon.waf.detected ? recon.waf.name : 'none'}
-- CDN: ${recon.techStack.cdn ?? 'none'}
+- Framework: ${sanitizeForPrompt(recon.framework.name ?? 'unknown')}
+- WAF: ${recon.waf.detected ? sanitizeForPrompt(recon.waf.name ?? 'unknown') : 'none'}
+- CDN: ${sanitizeForPrompt(recon.techStack.cdn ?? 'none')}
 
 Findings to validate (${findings.length}):
 ${JSON.stringify(compactFindings, null, 2)}
@@ -289,10 +330,10 @@ export function buildReporterUserPrompt(
       id: f.id,
       category: f.category,
       severity: validation?.adjustedSeverity ?? f.severity,
-      title: f.title,
-      description: f.description.slice(0, 300),
+      title: sanitizeForPrompt(f.title),
+      description: sanitizeForPrompt(f.description.slice(0, 300)),
       url: f.url,
-      evidence: f.evidence.slice(0, 200),
+      evidence: sanitizeForPrompt(f.evidence.slice(0, 200)),
     };
   });
 
@@ -302,8 +343,8 @@ Total raw findings: ${rawFindings.length}
 Validated as real: ${validFindings.length}
 
 Tech context:
-- Framework: ${recon.framework.name ?? 'unknown'}
-- WAF: ${recon.waf.detected ? recon.waf.name : 'none'}
+- Framework: ${sanitizeForPrompt(recon.framework.name ?? 'unknown')}
+- WAF: ${recon.waf.detected ? sanitizeForPrompt(recon.waf.name ?? 'unknown') : 'none'}
 
 Findings:
 ${JSON.stringify(compactFindings, null, 2)}
@@ -334,7 +375,7 @@ export function buildReducedReporterUserPrompt(
       id: f.id,
       category: f.category,
       severity: validation?.adjustedSeverity ?? f.severity,
-      title: f.title,
+      title: sanitizeForPrompt(f.title),
       url: f.url,
     };
   });
@@ -345,7 +386,7 @@ Total raw findings: ${rawFindings.length}
 Validated as real: ${validFindings.length}
 
 Tech context:
-- Framework: ${recon.framework.name ?? 'unknown'}
+- Framework: ${sanitizeForPrompt(recon.framework.name ?? 'unknown')}
 
 Findings:
 ${JSON.stringify(compactFindings, null, 2)}
