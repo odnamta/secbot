@@ -97,9 +97,8 @@ export const NOSQL_PAYLOADS = [
 
 /** NoSQL error signatures */
 export const NOSQL_ERROR_PATTERNS = [
-  /MongoError/i,
-  /mongo/i,
-  /BSON/i,
-  /ObjectId/i,
-  /mongoose/i,
+  /MongoServerError|MongoError|BSONTypeError/i,
+  /cast to ObjectId failed|BSONTypeError/i,
+  /mongoose.*validation.*failed/i,
+  /E11000 duplicate key error/i,
 ];

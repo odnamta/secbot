@@ -50,14 +50,6 @@ export class MiddlewarePipeline {
 
 // ─── Built-in Middleware Factories ──────────────────────────────────
 
-/** Adds an Authorization header with a Bearer token. */
-export function createAuthHeaderMiddleware(token: string): RequestMiddleware {
-  return (req: MiddlewareRequest): MiddlewareRequest => ({
-    ...req,
-    headers: { ...req.headers, authorization: `Bearer ${token}` },
-  });
-}
-
 /** Merges custom headers into every request. */
 export function createCustomHeaderMiddleware(
   headers: Record<string, string>,

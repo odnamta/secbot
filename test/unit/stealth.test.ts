@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   getRandomUserAgent,
   jitteredDelay,
-  randomizeRequestOrder,
   USER_AGENT_COUNT,
 } from '../../src/utils/stealth.js';
 import { buildConfig } from '../../src/config/defaults.js';
@@ -66,48 +65,6 @@ describe('jitteredDelay', () => {
     // Not all durations should be identical
     const unique = new Set(times);
     expect(unique.size).toBeGreaterThan(1);
-  });
-});
-
-// ─── randomizeRequestOrder ──────────────────────────────────────
-
-describe('randomizeRequestOrder', () => {
-  it('returns an array with the same elements', () => {
-    const input = [1, 2, 3, 4, 5];
-    const result = randomizeRequestOrder(input);
-    expect(result).toHaveLength(input.length);
-    expect(result.sort()).toEqual(input.sort());
-  });
-
-  it('does not mutate the original array', () => {
-    const input = [1, 2, 3, 4, 5];
-    const copy = [...input];
-    randomizeRequestOrder(input);
-    expect(input).toEqual(copy);
-  });
-
-  it('handles empty array', () => {
-    expect(randomizeRequestOrder([])).toEqual([]);
-  });
-
-  it('handles single-element array', () => {
-    expect(randomizeRequestOrder([42])).toEqual([42]);
-  });
-
-  it('produces different orders (statistical test with large array)', () => {
-    const input = Array.from({ length: 50 }, (_, i) => i);
-    let differentOrderCount = 0;
-    const runs = 20;
-
-    for (let r = 0; r < runs; r++) {
-      const shuffled = randomizeRequestOrder(input);
-      const isSameOrder = shuffled.every((val, idx) => val === input[idx]);
-      if (!isSameOrder) differentOrderCount++;
-    }
-
-    // The probability of a 50-element shuffle matching the original is ~1/50!
-    // So all 20 runs should produce a different order.
-    expect(differentOrderCount).toBe(runs);
   });
 });
 

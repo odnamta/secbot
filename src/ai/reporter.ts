@@ -25,6 +25,7 @@ export async function generateReport(
   rawFindings: RawFinding[],
   validations: ValidatedFinding[],
   recon: ReconResult,
+  passedChecks?: string[],
 ): Promise<ReportResult> {
   // Filter to only validated findings
   const validIds = new Set(validations.filter((v) => v.isValid).map((v) => v.findingId));
@@ -32,7 +33,7 @@ export async function generateReport(
 
   if (validFindings.length === 0) {
     log.info('No validated findings — generating empty report');
-    return fallbackInterpretation([]);
+    return fallbackInterpretation([], passedChecks);
   }
 
   log.info(`Generating AI report for ${validFindings.length} validated findings...`);
@@ -46,6 +47,9 @@ export async function generateReport(
   if (response) {
     const parsed = parseJsonResponse<ReportResult>(response);
     if (parsed?.findings && parsed?.summary) {
+      if (passedChecks) {
+        parsed.summary.passedChecks = passedChecks;
+      }
       log.info(
         `AI report: ${rawFindings.length} raw → ${validFindings.length} validated → ${parsed.findings.length} actionable`,
       );
@@ -63,6 +67,9 @@ export async function generateReport(
     if (retryResponse) {
       const retryParsed = parseJsonResponse<ReportResult>(retryResponse);
       if (retryParsed?.findings && retryParsed?.summary) {
+        if (passedChecks) {
+          retryParsed.summary.passedChecks = passedChecks;
+        }
         log.info(
           `AI report (retry): ${rawFindings.length} raw → ${validFindings.length} validated → ${retryParsed.findings.length} actionable`,
         );
@@ -75,5 +82,5 @@ export async function generateReport(
     log.info('AI unavailable — using rule-based report generation');
   }
 
-  return fallbackInterpretation(validFindings);
+  return fallbackInterpretation(validFindings, passedChecks);
 }

@@ -34,6 +34,7 @@ import { discoverRoutes } from './scanner/discovery/index.js';
 import { validateCliOptions } from './utils/cli-validation.js';
 import { CallbackServer } from './scanner/oob/callback-server.js';
 import { waitForDelayedCallbacks, getDefaultWaitMs } from './scanner/oob/delayed-detection.js';
+import { convertHitsToFindings } from './scanner/oob/hit-converter.js';
 import { startInteractiveMode } from './interactive/repl.js';
 import { authenticate } from './scanner/auth/authenticator.js';
 import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, AuthOptions } from './scanner/types.js';
@@ -63,7 +64,7 @@ program
   .option('-p, --profile <profile>', 'Scan profile: quick, standard, deep', 'standard')
   .option('-a, --auth <path>', 'Path to Playwright storage state JSON for authenticated scanning')
   .option('--idor-alt-auth <path>', 'Second user auth state for IDOR testing (requires --auth)')
-  .option('-f, --format <formats>', 'Output formats: terminal,json,html,bounty,sarif,junit (comma-separated)', 'terminal')
+  .option('-f, --format <formats>', 'Output formats: terminal,json,html,bounty,sarif,junit (comma-separated)')
   .option('-o, --output <path>', 'Output directory for reports', './secbot-reports')
   .option('--max-pages <n>', 'Maximum pages to crawl', undefined)
   .option('--timeout <ms>', 'Per-page timeout in milliseconds', undefined)
@@ -123,6 +124,7 @@ program
       maxPages: options.maxPages as string | undefined,
       timeout: options.timeout as string | undefined,
       rateLimit: options.rateLimit as string | undefined,
+      excludeChecks: options.excludeChecks as string | undefined,
     });
     if (validationErrors.length > 0) {
       for (const err of validationErrors) {
@@ -158,10 +160,7 @@ program
     }
 
     // Build config — merge: CLI args > config file > defaults
-    const formatStr = options.format as string;
-    // Commander sets default 'terminal' — detect if user explicitly passed --format
-    const cliFormats = formatStr;
-    const effectiveFormat = cliFormats ?? fileConfig?.format ?? 'terminal';
+    const effectiveFormat = (options.format as string | undefined) ?? fileConfig?.format ?? 'terminal';
     const formats = effectiveFormat.split(',').map((f: string) => f.trim()) as ScanConfig['outputFormat'];
 
     const scopeStr = (options.scope as string | undefined) ?? fileConfig?.scope;
@@ -408,6 +407,23 @@ program
           }
         }
 
+        // ─── OOB Delayed Detection (before validation) ─────────
+        if (callbackServer) {
+          const oobWait = config.oobWaitMs ?? getDefaultWaitMs();
+          const delayedHits = await waitForDelayedCallbacks(callbackServer, oobWait);
+          const allHits = callbackServer.getHits();
+
+          if (allHits.length > 0) {
+            log.info(`OOB callback server received ${allHits.length} total hit(s)`);
+            const oobFindings = convertHitsToFindings(allHits);
+            // Merge OOB findings into the pipeline
+            findingsForValidation = [...findingsForValidation, ...oobFindings];
+            log.info(`Added ${oobFindings.length} OOB finding(s) to validation pipeline`);
+          } else {
+            log.info('OOB callback server received no hits during scan');
+          }
+        }
+
         // ─── Phase 6: AI Validation ──────────────────────────────
         let validations;
         if (config.useAI && findingsForValidation.length > 0) {
@@ -423,20 +439,6 @@ program
             reasoning: 'AI validation skipped',
           }));
         }
-
-        // ─── Phase 7: AI Report Generation ───────────────────────
-        log.info('Phase 7: Generating report...');
-        const { findings: interpretedFindings, summary } = await generateReport(
-          targetUrl,
-          findingsForValidation,
-          validations,
-          recon,
-        );
-
-        const completedAt = new Date().toISOString();
-
-        // Compute new output fields
-        const scanDuration = new Date(completedAt).getTime() - new Date(startedAt).getTime();
 
         // Determine which checks ran
         const passiveCheckNames: CheckCategory[] = ['security-headers', 'cookie-flags', 'info-leakage', 'mixed-content', 'sensitive-url-data', 'cross-origin-policy'];
@@ -458,8 +460,20 @@ program
         const categoriesWithFindings = new Set(allRawFindings.map((f) => f.category));
         const passedChecks = checksRun.filter((name) => !categoriesWithFindings.has(name as CheckCategory));
 
-        // Include passedChecks in the summary
-        summary.passedChecks = passedChecks;
+        // ─── Phase 7: AI Report Generation ───────────────────────
+        log.info('Phase 7: Generating report...');
+        const { findings: interpretedFindings, summary } = await generateReport(
+          targetUrl,
+          findingsForValidation,
+          validations,
+          recon,
+          passedChecks,
+        );
+
+        const completedAt = new Date().toISOString();
+
+        // Compute new output fields
+        const scanDuration = new Date(completedAt).getTime() - new Date(startedAt).getTime();
 
         const hasHighOrCritical = interpretedFindings.some(
           (f) => f.severity === 'high' || f.severity === 'critical'
@@ -548,27 +562,13 @@ program
 
         process.exitCode = exitCode;
 
-        // Post-scan callback URL reminder
+        // Post-scan callback URL reminder (external callback, not our server)
         if (config.callbackUrl && !callbackServer) {
           log.info('Callback URLs injected for blind detection. Check your callback server for hits.');
-          log.info(`Callback URL prefix: ${config.callbackUrl}`);
         }
 
-        // ─── OOB Delayed Detection ─────────────────────────────
+        // ─── Stop OOB Server ──────────────────────────────────
         if (callbackServer) {
-          const oobWait = config.oobWaitMs ?? getDefaultWaitMs();
-          const delayedHits = await waitForDelayedCallbacks(callbackServer, oobWait);
-          const allHits = callbackServer.getHits();
-
-          if (allHits.length > 0) {
-            log.info(`OOB callback server received ${allHits.length} total hit(s):`);
-            for (const hit of allHits) {
-              log.info(`  ${hit.method} ${hit.path} from ${hit.sourceIp} at ${hit.timestamp} (payload: ${hit.payloadId})`);
-            }
-          } else {
-            log.info('OOB callback server received no hits during scan');
-          }
-
           await callbackServer.stop();
         }
 

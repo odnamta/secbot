@@ -43,18 +43,5 @@ export async function jitteredDelay(baseMs: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, Math.max(0, actual)));
 }
 
-/**
- * Fisher-Yates shuffle — returns a new array in randomized order.
- * Does not mutate the input array.
- */
-export function randomizeRequestOrder<T>(items: T[]): T[] {
-  const shuffled = [...items];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
-}
-
 /** Expose the UA pool size for testing. */
 export const USER_AGENT_COUNT = USER_AGENTS.length;

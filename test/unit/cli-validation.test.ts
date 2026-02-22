@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateCliOptions, VALID_PROFILES } from '../../src/utils/cli-validation.js';
+import { validateCliOptions, VALID_PROFILES, VALID_CHECK_NAMES } from '../../src/utils/cli-validation.js';
 
 // Stub file existence checker for testing
 const fileExists = (path: string) => path === '/exists/auth.json' || path === '/exists/urls.txt';
@@ -191,6 +191,38 @@ describe('validateCliOptions', () => {
     it('allows undefined (not provided)', () => {
       const errors = validateCliOptions({}, fileExists);
       expect(errors.filter((e) => e.field === '--rate-limit')).toEqual([]);
+    });
+  });
+
+  // ─── exclude-checks validation ─────────────────────────────────
+
+  describe('--exclude-checks', () => {
+    it('accepts valid check names', () => {
+      const errors = validateCliOptions({ excludeChecks: 'xss,sqli,cors' }, fileExists);
+      expect(errors).toEqual([]);
+    });
+
+    it('rejects unknown check names', () => {
+      const errors = validateCliOptions({ excludeChecks: 'xss,unknown,bad' }, fileExists);
+      expect(errors).toHaveLength(1);
+      expect(errors[0].field).toBe('--exclude-checks');
+      expect(errors[0].message).toContain('unknown');
+      expect(errors[0].message).toContain('bad');
+    });
+
+    it('accepts single valid check', () => {
+      const errors = validateCliOptions({ excludeChecks: 'traversal' }, fileExists);
+      expect(errors).toEqual([]);
+    });
+
+    it('accepts all valid check names', () => {
+      const errors = validateCliOptions({ excludeChecks: VALID_CHECK_NAMES.join(',') }, fileExists);
+      expect(errors).toEqual([]);
+    });
+
+    it('allows undefined (not provided)', () => {
+      const errors = validateCliOptions({}, fileExists);
+      expect(errors.filter((e) => e.field === '--exclude-checks')).toEqual([]);
     });
   });
 

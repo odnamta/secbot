@@ -2,6 +2,10 @@ import { existsSync } from 'node:fs';
 
 export const VALID_PROFILES = ['quick', 'standard', 'deep', 'stealth'] as const;
 
+export const VALID_CHECK_NAMES = [
+  'xss', 'sqli', 'cors', 'redirect', 'traversal', 'ssrf', 'ssti', 'cmdi', 'idor', 'tls', 'sri',
+] as const;
+
 export interface CliValidationError {
   field: string;
   message: string;
@@ -14,6 +18,7 @@ export interface CliOptions {
   maxPages?: string;
   timeout?: string;
   rateLimit?: string;
+  excludeChecks?: string;
 }
 
 /**
@@ -79,6 +84,18 @@ export function validateCliOptions(
       errors.push({
         field: '--rate-limit',
         message: `Invalid value "${options.rateLimit}" for --rate-limit. Must be a positive integer.`,
+      });
+    }
+  }
+
+  // Validate --exclude-checks names
+  if (options.excludeChecks !== undefined) {
+    const names = options.excludeChecks.split(',').map((s) => s.trim()).filter(Boolean);
+    const unknown = names.filter((n) => !VALID_CHECK_NAMES.includes(n as typeof VALID_CHECK_NAMES[number]));
+    if (unknown.length > 0) {
+      errors.push({
+        field: '--exclude-checks',
+        message: `Unknown check name(s): ${unknown.join(', ')}. Valid names: ${VALID_CHECK_NAMES.join(', ')}`,
       });
     }
   }

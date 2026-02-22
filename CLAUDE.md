@@ -6,10 +6,12 @@
 Developer-friendly tool that scans web apps for OWASP Top 10 vulnerabilities with a single command. Claude AI drives the entire pipeline — planning attacks, validating findings, and writing reports.
 
 ## Status
-- Version: v0.7.0
+- Version: v0.8.0
 - 11 active check types + 6 passive check categories
-- 907 tests (unit + integration + false-positive regression)
+- 912 tests (unit + integration + false-positive regression)
 - AI prompt injection sanitization enabled
+- OOB findings fully wired into report pipeline + exit code
+- CI/CD ready: SARIF, JUnit, baseline diff, --exclude-checks validation
 
 ## Tech Stack
 - **Language:** TypeScript 5 (strict mode)

@@ -219,10 +219,10 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
   });
 
   return new Promise((resolve) => {
-    const server = app.listen(0, () => {
+    const server = app.listen(0, '127.0.0.1', () => {
       const addr = server.address();
       const port = typeof addr === 'object' && addr !== null ? addr.port : 0;
-      const url = `http://localhost:${port}`;
+      const url = `http://127.0.0.1:${port}`;
       resolve({ server, url });
     });
   });

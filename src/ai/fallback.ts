@@ -7,7 +7,7 @@ import type {
 import { severityOrder } from '../utils/shared.js';
 
 /** Rule-based fallback when no AI is available */
-export function fallbackInterpretation(rawFindings: RawFinding[]): {
+export function fallbackInterpretation(rawFindings: RawFinding[], passedChecks?: string[]): {
   findings: InterpretedFinding[];
   summary: ScanSummary;
 } {
@@ -19,7 +19,7 @@ export function fallbackInterpretation(rawFindings: RawFinding[]): {
         totalInterpretedFindings: 0,
         bySeverity: { critical: 0, high: 0, medium: 0, low: 0, info: 0 },
         topIssues: ['No vulnerabilities found'],
-        passedChecks: [],
+        passedChecks: passedChecks ?? [],
       },
     };
   }
@@ -69,7 +69,7 @@ export function fallbackInterpretation(rawFindings: RawFinding[]): {
         .sort((a, b) => severityOrder(b.severity) - severityOrder(a.severity))
         .slice(0, 3)
         .map((f) => f.title),
-      passedChecks: [],
+      passedChecks: passedChecks ?? [],
     },
   };
 }

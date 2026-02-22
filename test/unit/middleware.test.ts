@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   MiddlewarePipeline,
-  createAuthHeaderMiddleware,
   createCustomHeaderMiddleware,
   createResponseLoggerMiddleware,
   createWafBlockDetector,
@@ -131,33 +130,6 @@ describe('MiddlewarePipeline', () => {
     expect(captured!.status).toBe(404);
     expect(captured!.body).toBe('Not found');
     expect(captured!.url).toBe('https://example.com/api/test');
-  });
-});
-
-describe('createAuthHeaderMiddleware', () => {
-  it('adds Authorization Bearer header', () => {
-    const mw = createAuthHeaderMiddleware('my-secret-token');
-    const result = mw(makeRequest());
-
-    expect(result.headers.authorization).toBe('Bearer my-secret-token');
-  });
-
-  it('preserves existing headers', () => {
-    const mw = createAuthHeaderMiddleware('token123');
-    const req = makeRequest({ headers: { 'x-custom': 'value', 'content-type': 'text/plain' } });
-    const result = mw(req);
-
-    expect(result.headers['x-custom']).toBe('value');
-    expect(result.headers['content-type']).toBe('text/plain');
-    expect(result.headers.authorization).toBe('Bearer token123');
-  });
-
-  it('overrides existing Authorization header', () => {
-    const mw = createAuthHeaderMiddleware('new-token');
-    const req = makeRequest({ headers: { authorization: 'Bearer old-token' } });
-    const result = mw(req);
-
-    expect(result.headers.authorization).toBe('Bearer new-token');
   });
 });
 
@@ -322,12 +294,11 @@ describe('createWafBlockDetector', () => {
 });
 
 describe('middleware pipeline integration', () => {
-  it('combines auth + custom headers + response logger', () => {
+  it('combines custom headers + response logger', () => {
     const pipeline = new MiddlewarePipeline();
     const logged: MiddlewareResponse[] = [];
 
-    pipeline.addRequestMiddleware(createAuthHeaderMiddleware('token'));
-    pipeline.addRequestMiddleware(createCustomHeaderMiddleware({ 'x-scan-id': '123' }));
+    pipeline.addRequestMiddleware(createCustomHeaderMiddleware({ authorization: 'Bearer token', 'x-scan-id': '123' }));
     pipeline.addResponseMiddleware((resp) => { logged.push(resp); });
 
     const req = pipeline.processRequest(makeRequest());
