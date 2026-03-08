@@ -94,7 +94,7 @@ export async function loadAndRegisterPlugins(pluginDir?: string): Promise<void> 
 }
 
 /** Regex for redirect-related parameter names */
-const REDIRECT_PARAM_RE = /[?&](url|redirect|next|return|goto|dest|callback|redir|forward|ref|out|continue|target|path|link|returnUrl|redirectUrl|returnTo|return_to|redirect_uri|redirect_url)=/i;
+const REDIRECT_PARAM_RE = /[?&](url|redirect|next|return|goto|dest|callback|redir|forward|ref|out|continue|target|path|link|returnUrl|redirectUrl|returnTo|return_to|redirect_uri|redirect_url|to|rurl)=/i;
 
 /** Regex for file-like parameter names */
 const FILE_PARAM_NAMES = /^(file|path|page|template|include|doc|folder|dir|name|src|resource|load|image|img|document|attachment)$/i;

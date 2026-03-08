@@ -24,6 +24,10 @@ interface Probe {
   /** Return true if the response body confirms real exposure (not just 200 OK). */
   matches: (body: string) => boolean;
   description: string;
+  /** HTTP method override (default: GET). */
+  method?: 'GET' | 'POST';
+  /** Request body for POST probes (sent as application/json). */
+  requestBody?: string;
 }
 
 /** Static file probes — checked against the target origin root. */
@@ -151,6 +155,125 @@ const FILE_PROBES: Probe[] = [
     description:
       'The Apache server-status page is publicly accessible. It reveals active connections, request details, server uptime, and configuration — valuable for reconnaissance.',
   },
+  {
+    path: '/ftp/',
+    label: 'Exposed FTP directory listing',
+    severity: 'high',
+    matches: (body) =>
+      matchesDirectoryListing(body),
+    description:
+      'An FTP directory is publicly accessible and exposes file listings. Attackers can download sensitive files such as backups, credentials, or internal documents.',
+  },
+  {
+    path: '/api/',
+    label: 'Exposed API root',
+    severity: 'medium',
+    matches: (body) =>
+      matchesApiDocumentation(body),
+    description:
+      'The API root endpoint is publicly accessible and exposes documentation or endpoint listings. This reveals internal API structure that aids targeted attacks.',
+  },
+  {
+    path: '/swagger.json',
+    label: 'Exposed Swagger/OpenAPI spec',
+    severity: 'medium',
+    matches: (body) =>
+      matchesSwaggerSpec(body),
+    description:
+      'A Swagger/OpenAPI specification file is publicly accessible. It reveals every API endpoint, parameter, and data model — a comprehensive attack surface map.',
+  },
+  {
+    path: '/swagger-ui.html',
+    label: 'Exposed Swagger UI',
+    severity: 'medium',
+    matches: (body) =>
+      body.includes('swagger-ui') || body.includes('Swagger UI'),
+    description:
+      'The Swagger UI page is publicly accessible. It provides an interactive interface to explore and test all API endpoints.',
+  },
+  {
+    path: '/api-docs',
+    label: 'Exposed API documentation',
+    severity: 'medium',
+    matches: (body) =>
+      matchesSwaggerSpec(body) || matchesApiDocumentation(body),
+    description:
+      'An API documentation endpoint is publicly accessible. It reveals API structure, endpoints, and parameters useful for targeted attacks.',
+  },
+  {
+    path: '/graphql',
+    label: 'GraphQL introspection enabled',
+    severity: 'medium',
+    method: 'POST',
+    requestBody: '{"query":"{__schema{types{name}}}"}',
+    matches: (body) =>
+      matchesGraphQLIntrospection(body),
+    description:
+      'The GraphQL endpoint has introspection enabled. Attackers can query the full schema to discover all types, queries, mutations, and fields — exposing the entire API surface.',
+  },
+  {
+    path: '/.DS_Store',
+    label: 'Exposed .DS_Store file',
+    severity: 'high',
+    matches: (body) =>
+      matchesDSStore(body),
+    description:
+      'A macOS .DS_Store metadata file is publicly accessible. It reveals directory contents and filenames, allowing attackers to discover hidden files and directories.',
+  },
+  {
+    path: '/debug',
+    label: 'Exposed debug endpoint',
+    severity: 'medium',
+    matches: (body) =>
+      matchesDebugEndpoint(body),
+    description:
+      'A debug endpoint is publicly accessible. It may expose internal application state, environment variables, stack traces, or runtime configuration.',
+  },
+  {
+    path: '/debug/vars',
+    label: 'Exposed debug variables',
+    severity: 'medium',
+    matches: (body) =>
+      matchesDebugEndpoint(body),
+    description:
+      'The debug/vars endpoint is publicly accessible. It exposes internal runtime variables including memory statistics, goroutine counts, and application metrics.',
+  },
+  {
+    path: '/actuator',
+    label: 'Exposed Spring Boot actuator',
+    severity: 'medium',
+    matches: (body) =>
+      matchesActuatorEndpoint(body),
+    description:
+      'A Spring Boot actuator endpoint is publicly accessible. Actuator endpoints expose application health, configuration, environment variables, and metrics.',
+  },
+  {
+    path: '/actuator/health',
+    label: 'Exposed Spring Boot health endpoint',
+    severity: 'medium',
+    matches: (body) =>
+      matchesActuatorEndpoint(body),
+    description:
+      'The Spring Boot actuator health endpoint is publicly accessible. It confirms the application framework and may reveal database and service connectivity details.',
+  },
+  {
+    path: '/wp-login.php',
+    label: 'WordPress login page detected',
+    severity: 'low',
+    matches: (body) =>
+      body.includes('wp-login') || body.includes('wp-admin'),
+    description:
+      'A WordPress login page is publicly accessible. This confirms the CMS in use and provides a target for brute-force or credential-stuffing attacks.',
+  },
+  {
+    path: '/phpinfo.php',
+    label: 'Exposed phpinfo() page',
+    severity: 'high',
+    matches: (body) =>
+      body.includes('phpinfo()') || body.includes('PHP Version'),
+    description:
+      'A phpinfo() page is publicly accessible. It exposes the full PHP configuration including server paths, loaded modules, environment variables, and potentially credentials.',
+  },
 ];
 
 /**
@@ -216,6 +339,122 @@ export function matchesSqlDump(body: string): boolean {
 }
 
 /**
+ * Check if a response looks like a directory listing (Index of, Parent Directory, file links).
+ * Exported for testing.
+ */
+export function matchesDirectoryListing(body: string): boolean {
+  if (/Index of\s/i.test(body)) return true;
+  if (body.includes('Parent Directory')) return true;
+  // Many directory listings have multiple <a href= links to files
+  const linkCount = (body.match(/<a\s+href=/gi) ?? []).length;
+  return linkCount >= 3 && /<table|<pre|<ul/i.test(body);
+}
+
+/**
+ * Check if a response looks like API documentation or endpoint listing.
+ * Exported for testing.
+ */
+export function matchesApiDocumentation(body: string): boolean {
+  // JSON responses with endpoint/route keys
+  try {
+    const parsed = JSON.parse(body);
+    if (typeof parsed === 'object' && parsed !== null) {
+      const keys = Object.keys(parsed).map((k) => k.toLowerCase());
+      if (keys.some((k) => ['endpoints', 'routes', 'swagger', 'paths'].includes(k))) return true;
+    }
+  } catch {
+    // Not JSON — check HTML
+  }
+  // HTML containing API documentation clues
+  if (/api/i.test(body) && /documentation|endpoints?|routes?/i.test(body)) return true;
+  return false;
+}
+
+/**
+ * Check if a response looks like a Swagger/OpenAPI spec.
+ * Exported for testing.
+ */
+export function matchesSwaggerSpec(body: string): boolean {
+  try {
+    const parsed = JSON.parse(body);
+    if (typeof parsed === 'object' && parsed !== null) {
+      return 'openapi' in parsed || 'swagger' in parsed;
+    }
+  } catch {
+    // Not valid JSON
+  }
+  return false;
+}
+
+/**
+ * Check if a GraphQL introspection response contains schema data.
+ * Exported for testing.
+ */
+export function matchesGraphQLIntrospection(body: string): boolean {
+  try {
+    const parsed = JSON.parse(body);
+    if (typeof parsed === 'object' && parsed !== null) {
+      // Standard response: { data: { __schema: { types: [...] } } }
+      return parsed?.data?.__schema != null;
+    }
+  } catch {
+    // Not valid JSON
+  }
+  return false;
+}
+
+/**
+ * Check if a response looks like a macOS .DS_Store file (binary magic bytes).
+ * The DS_Store format starts with 0x00000001 followed by "Bud1".
+ * Exported for testing.
+ */
+export function matchesDSStore(body: string): boolean {
+  // Check for the Bud1 magic marker (bytes 4-7 of the file)
+  return body.includes('Bud1');
+}
+
+/**
+ * Check if a response looks like a debug endpoint (expvar, debug info, stack traces).
+ * Exported for testing.
+ */
+export function matchesDebugEndpoint(body: string): boolean {
+  // Go expvar style: JSON with memstats, cmdline, etc.
+  try {
+    const parsed = JSON.parse(body);
+    if (typeof parsed === 'object' && parsed !== null) {
+      const keys = Object.keys(parsed).map((k) => k.toLowerCase());
+      if (keys.some((k) => ['memstats', 'cmdline', 'goroutines'].includes(k))) return true;
+      // "debug" key alone is a strong signal
+      if (keys.includes('debug') && keys.length > 1) return true;
+    }
+  } catch {
+    // Not JSON
+  }
+  // HTML/text debug pages with stack traces or env vars
+  if (/stack\s*trace|debug\s*info|environment\s*variables/i.test(body)) return true;
+  return false;
+}
+
+/**
+ * Check if a response looks like a Spring Boot actuator endpoint.
+ * Exported for testing.
+ */
+export function matchesActuatorEndpoint(body: string): boolean {
+  try {
+    const parsed = JSON.parse(body);
+    if (typeof parsed === 'object' && parsed !== null) {
+      // /actuator/health returns { "status": "UP" }
+      if ('status' in parsed) return true;
+      // /actuator root returns { "_links": { ... } }
+      if ('_links' in parsed) return true;
+    }
+  } catch {
+    // Not valid JSON
+  }
+  return false;
+}
+
+/**
  * Information Disclosure check.
  *
  * Scans for exposed sensitive files and paths that should never be publicly accessible:
@@ -237,23 +476,30 @@ export const infoDisclosureCheck: ActiveCheck = {
     // ── 1. Static file probes ──
     for (const probe of FILE_PROBES) {
       const probeUrl = `${origin}${probe.path}`;
+      const probeMethod = probe.method ?? 'GET';
+      const probeBody = probe.requestBody ?? null;
       try {
         const page = await context.newPage();
         try {
-          const result = await page.evaluate(async (url: string) => {
+          const result = await page.evaluate(async ({ url, method, body }: { url: string; method: string; body: string | null }) => {
             try {
-              const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
+              const init: RequestInit = { method, redirect: 'follow' };
+              if (body) {
+                init.headers = { 'Content-Type': 'application/json' };
+                init.body = body;
+              }
+              const resp = await fetch(url, init);
               if (!resp.ok) return null;
               const text = await resp.text();
               return { status: resp.status, body: text.slice(0, 5000) };
             } catch {
               return null;
             }
-          }, probeUrl);
+          }, { url: probeUrl, method: probeMethod, body: probeBody });
 
           requestLogger?.log({
             timestamp: new Date().toISOString(),
-            method: 'GET',
+            method: probeMethod,
             url: probeUrl,
             responseStatus: result?.status ?? 0,
             phase: 'active-info-disclosure',

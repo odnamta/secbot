@@ -30,10 +30,14 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
   <link rel="stylesheet" href="https://cdn.example.com/style.css">
   <ul>
     <li><a href="/search?q=test">Search (XSS)</a></li>
+    <li><a href="/spa-search?q=test">SPA Search (DOM XSS)</a></li>
+    <li><a href="/spa-search-safe?q=test">SPA Search Safe</a></li>
     <li><a href="/login">Login Form</a></li>
     <li><a href="/api/v1/users/1">User API (IDOR)</a></li>
     <li><a href="/api/v1/data?query=test">Data API (SQLi)</a></li>
     <li><a href="/redirect?url=https://example.com">Open Redirect</a></li>
+    <li><a href="/redirect-to?to=https://github.com/juice-shop/juice-shop">Open Redirect (to param)</a></li>
+    <li><a href="/safe-redirect?to=https://example.com">Safe Redirect</a></li>
     <li><a href="/files?path=etc/passwd">Directory Traversal</a></li>
     <li><a href="/fetch?url=http://example.com">SSRF</a></li>
     <li><a href="/template?name=World">SSTI</a></li>
@@ -60,6 +64,49 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
 <body>
   <h1>Search Results for: ${q}</h1>
   <p>No results found for ${q}</p>
+</body>
+</html>`);
+  });
+
+  // SPA-like search — simulates Angular/React SPA that fetches data and renders via innerHTML
+  // The server returns a page with JS that fetches search results and renders them unsafely
+  app.get('/spa-search', (req, res) => {
+    const q = req.query.q as string || '';
+    res.type('html').send(`<!DOCTYPE html>
+<html>
+<head><title>SPA Search</title></head>
+<body>
+  <h1>SPA Search</h1>
+  <div id="results">Loading...</div>
+  <script>
+    // Simulate SPA behavior: read query param and render via innerHTML (unsafe)
+    const params = new URLSearchParams(window.location.search);
+    const query = params.get('q') || '';
+    // Simulate API response rendering — directly sets innerHTML (DOM XSS)
+    document.getElementById('results').innerHTML = '<p>Search results for: ' + query + '</p><p>No results found.</p>';
+  </script>
+</body>
+</html>`);
+  });
+
+  // Safe SPA search — properly encodes output
+  app.get('/spa-search-safe', (req, res) => {
+    res.type('html').send(`<!DOCTYPE html>
+<html>
+<head><title>SPA Search Safe</title></head>
+<body>
+  <h1>SPA Search</h1>
+  <div id="results">Loading...</div>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const query = params.get('q') || '';
+    // Safe: uses textContent instead of innerHTML
+    const div = document.getElementById('results');
+    const p = document.createElement('p');
+    p.textContent = 'Search results for: ' + query;
+    div.innerHTML = '';
+    div.appendChild(p);
+  </script>
 </body>
 </html>`);
   });
@@ -121,6 +168,33 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
   app.get('/redirect', (req, res) => {
     const url = req.query.url as string || '/';
     res.redirect(302, url);
+  });
+
+  // Open redirect via "to" parameter (simulates Juice Shop /redirect?to=...)
+  app.get('/redirect-to', (req, res) => {
+    const to = req.query.to as string || '/';
+    res.redirect(302, to);
+  });
+
+  // Safe redirect — only allows whitelisted domains
+  app.get('/safe-redirect', (req, res) => {
+    const to = req.query.to as string || '/';
+    const ALLOWED_HOSTS = ['example.com', 'www.example.com'];
+    try {
+      const parsed = new URL(to, 'http://localhost');
+      if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || ALLOWED_HOSTS.includes(parsed.hostname)) {
+        res.redirect(302, to);
+      } else {
+        res.status(400).send('Redirect to external domain not allowed');
+      }
+    } catch {
+      // Relative URLs are OK
+      if (to.startsWith('/')) {
+        res.redirect(302, to);
+      } else {
+        res.status(400).send('Invalid redirect URL');
+      }
+    }
   });
 
   // Directory traversal

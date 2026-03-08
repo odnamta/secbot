@@ -327,4 +327,67 @@ describe('XSS Integration Tests', () => {
     expect(postBodyFinding).toBeDefined();
     expect(jsonApiFinding).toBeDefined();
   }, 90000);
+
+  // ─── SPA Search Parameter XSS Tests ────────────────────────────
+
+  it('detects DOM XSS in SPA search parameter on /spa-search?q=', async () => {
+    const targets: ScanTargets = {
+      pages: [`${baseUrl}/spa-search?q=test`],
+      forms: [],
+      urlsWithParams: [`${baseUrl}/spa-search?q=test`],
+      apiEndpoints: [],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await xssCheck.run(context, targets, defaultConfig);
+
+    // Should find SPA DOM XSS via search parameter
+    const spaXssFinding = findings.find(
+      f => f.category === 'xss' && f.title.includes('Search Parameter') && f.title.includes('"q"'),
+    );
+    expect(spaXssFinding).toBeDefined();
+    expect(spaXssFinding!.severity).toBe('high');
+    expect(spaXssFinding!.evidence).toContain('Parameter: q');
+  }, 60000);
+
+  it('does NOT flag safe SPA search as XSS on /spa-search-safe?q=', async () => {
+    const targets: ScanTargets = {
+      pages: [`${baseUrl}/spa-search-safe?q=test`],
+      forms: [],
+      urlsWithParams: [`${baseUrl}/spa-search-safe?q=test`],
+      apiEndpoints: [],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await xssCheck.run(context, targets, defaultConfig);
+
+    // Should NOT find SPA DOM XSS — the safe version uses textContent
+    const spaXssFinding = findings.find(
+      f => f.category === 'xss' && f.title.includes('Search Parameter'),
+    );
+    expect(spaXssFinding).toBeUndefined();
+  }, 60000);
+
+  it('SPA search XSS includes framework and parameter details in evidence', async () => {
+    const targets: ScanTargets = {
+      pages: [`${baseUrl}/spa-search?q=test`],
+      forms: [],
+      urlsWithParams: [`${baseUrl}/spa-search?q=test`],
+      apiEndpoints: [],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await xssCheck.run(context, targets, defaultConfig);
+
+    const spaXssFinding = findings.find(
+      f => f.category === 'xss' && f.title.includes('Search Parameter'),
+    );
+    expect(spaXssFinding).toBeDefined();
+    expect(spaXssFinding!.evidence).toContain('Payload:');
+    expect(spaXssFinding!.evidence).toContain('Parameter: q');
+    expect(spaXssFinding!.evidence).toContain('Framework:');
+  }, 60000);
 });

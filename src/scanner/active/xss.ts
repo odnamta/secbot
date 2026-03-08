@@ -10,6 +10,7 @@ import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck, ScanTargets } from './index.js';
 import { delay } from '../../utils/shared.js';
 import { mutatePayload, pickStrategies, caseRandomize } from '../../utils/payload-mutator.js';
+import { detectFramework, waitForHydration } from '../discovery/framework-detector.js';
 
 /**
  * Dangerous HTML contexts — safe to match against both markers and full payloads.
@@ -100,6 +101,32 @@ const DOM_XSS_INIT_SCRIPT = `
 /** Destructive action indicators — skip forms that look like they delete or cancel things */
 const DESTRUCTIVE_ACTION_RE = /\b(delete|remove|cancel|destroy|drop|reset|purge|wipe|terminate)\b/i;
 
+/** Search-like query parameter names — common across SPAs and traditional web apps */
+export const SEARCH_PARAM_RE = /^(q|query|search|s|keyword|term|text|find|filter|k|key|name|input)$/i;
+
+/**
+ * XSS payloads optimized for SPA rendering contexts (Angular [innerHTML], React
+ * dangerouslySetInnerHTML, Vue v-html). These payloads avoid <script> tags which
+ * don't execute when injected via innerHTML and instead use event handlers that
+ * fire immediately on render.
+ */
+function getSpaSearchPayloads(): XSSPayload[] {
+  return [
+    // iframe — works with Angular [innerHTML] bypass
+    { payload: '<iframe src="javascript:alert(\'secbot-spa-xss-0\')"></iframe>', marker: 'secbot-spa-xss-0', type: 'reflected' },
+    // img onerror — fires immediately
+    { payload: '<img src=x onerror="alert(\'secbot-spa-xss-1\')">', marker: 'secbot-spa-xss-1', type: 'event-handler' },
+    // svg onload — fires on render
+    { payload: '<svg onload="alert(\'secbot-spa-xss-2\')">', marker: 'secbot-spa-xss-2', type: 'event-handler' },
+    // basic script (may not execute via innerHTML but still detected if reflected)
+    { payload: '<script>alert("secbot-spa-xss-3")</script>', marker: 'secbot-spa-xss-3', type: 'reflected' },
+    // embed + object tags
+    { payload: '<embed src="javascript:alert(\'secbot-spa-xss-4\')">', marker: 'secbot-spa-xss-4', type: 'reflected' },
+    // details/summary auto-open
+    { payload: '<details open ontoggle="alert(\'secbot-spa-xss-5\')"><summary>x</summary></details>', marker: 'secbot-spa-xss-5', type: 'event-handler' },
+  ];
+}
+
 export const xssCheck: ActiveCheck = {
   name: 'xss',
   category: 'xss',
@@ -134,6 +161,14 @@ export const xssCheck: ActiveCheck = {
     if (targets.pages.length > 0) {
       log.info(`Testing ${targets.pages.length} pages for DOM XSS...`);
       findings.push(...(await testDomXss(context, targets.pages, config, requestLogger)));
+    }
+
+    // SPA search parameter XSS: detect XSS in SPA-rendered search results
+    // Works for Angular [innerHTML], React dangerouslySetInnerHTML, Vue v-html
+    const searchUrls = collectSearchUrls(targets);
+    if (searchUrls.length > 0) {
+      log.info(`Testing ${searchUrls.length} search URLs for SPA DOM XSS...`);
+      findings.push(...(await testSearchParamXss(context, searchUrls, config, requestLogger)));
     }
 
     // Stored XSS detection: re-visit pages to check for previously injected markers
@@ -831,6 +866,276 @@ async function testDomXss(
         }
       } catch (err) {
         log.debug(`DOM XSS test: ${(err as Error).message}`);
+      } finally {
+        await page.close();
+      }
+
+      await delay(config.requestDelay);
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * Collect URLs that have search-like query parameters.
+ * These are candidates for SPA search XSS testing, where the query is reflected
+ * in the client-rendered DOM (e.g., Angular [innerHTML], React dangerouslySetInnerHTML).
+ *
+ * Exported for testing.
+ */
+export function collectSearchUrls(targets: ScanTargets): Array<{ url: string; param: string }> {
+  const results: Array<{ url: string; param: string }> = [];
+  const seen = new Set<string>();
+
+  for (const url of targets.urlsWithParams) {
+    try {
+      const parsed = new URL(url);
+      for (const [key] of parsed.searchParams) {
+        if (SEARCH_PARAM_RE.test(key)) {
+          const dedupeKey = `${parsed.origin}${parsed.pathname}:${key}`;
+          if (!seen.has(dedupeKey)) {
+            seen.add(dedupeKey);
+            results.push({ url, param: key });
+          }
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  // Also scan pages for search-like paths (e.g., /search, /#!/search)
+  for (const pageUrl of targets.pages) {
+    try {
+      const parsed = new URL(pageUrl);
+      const isSearchPage = /\/(search|find|query|results|browse)\b/i.test(parsed.pathname);
+      if (isSearchPage) {
+        // If this page doesn't already have a search param, add it with 'q'
+        const dedupeKey = `${parsed.origin}${parsed.pathname}:q`;
+        if (!seen.has(dedupeKey)) {
+          seen.add(dedupeKey);
+          const withParam = new URL(pageUrl);
+          withParam.searchParams.set('q', 'test');
+          results.push({ url: withParam.href, param: 'q' });
+        }
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return results;
+}
+
+/**
+ * SPA Search Parameter XSS: Test for DOM XSS in SPA-rendered search results.
+ *
+ * Unlike testXssOnUrls which only checks the server response HTML, this function:
+ * 1. Detects the SPA framework (Angular, React, Vue, etc.)
+ * 2. Navigates to the search URL with XSS payload as the search parameter
+ * 3. Waits for the SPA to render the results (framework-aware hydration)
+ * 4. Checks the client-rendered DOM for unencoded XSS payloads
+ *
+ * This catches XSS in Angular [innerHTML], React dangerouslySetInnerHTML, Vue v-html,
+ * and similar client-side rendering patterns where the server response is JSON but the
+ * client renders the payload unsafely.
+ *
+ * Exported for testing.
+ */
+export async function testSearchParamXss(
+  context: BrowserContext,
+  searchUrls: Array<{ url: string; param: string }>,
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+  const spaPayloads = getSpaSearchPayloads();
+
+  // Limit URLs in non-deep mode
+  const urlsToTest = config.profile === 'deep' ? searchUrls : searchUrls.slice(0, 5);
+
+  for (const { url, param } of urlsToTest) {
+    let foundForParam = false;
+
+    for (const xssPayload of spaPayloads) {
+      if (foundForParam) break;
+
+      const page = await context.newPage();
+      try {
+        // Install DOM XSS sink monitors before navigation
+        await page.addInitScript(DOM_XSS_INIT_SCRIPT);
+
+        // Build the test URL with XSS payload in the search parameter
+        const testUrl = new URL(url);
+        testUrl.searchParams.set(param, xssPayload.payload);
+
+        // Capture the initial HTTP response body for comparison later.
+        // We use this to distinguish server-side reflection (caught by testXssOnUrls)
+        // from client-side rendering (the unique value of this SPA check).
+        let serverResponseBody = '';
+        const responseCapture = (response: { url: () => string; headers: () => Record<string, string>; text: () => Promise<string> }) => {
+          try {
+            const ct = response.headers()['content-type'] ?? '';
+            if (ct.includes('text/html') && response.url() === testUrl.href) {
+              response.text().then(text => { serverResponseBody = text; }).catch(() => {});
+            }
+          } catch { /* ignore */ }
+        };
+        page.on('response', responseCapture);
+
+        // Navigate and wait for initial load
+        await page.goto(testUrl.href, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
+
+        // Detect the SPA framework and wait for hydration
+        const framework = await detectFramework(page);
+        await waitForHydration(page, framework);
+
+        // Additional wait for API responses to render — SPAs often fetch data and render async
+        // Wait for network to be idle (no pending requests for 500ms)
+        try {
+          await page.waitForLoadState('networkidle', { timeout: 5000 });
+        } catch {
+          // Timeout is OK — some SPAs have long-polling or websockets
+        }
+
+        // Extra settling time for client-side rendering
+        await delay(500);
+
+        requestLogger?.log({
+          timestamp: new Date().toISOString(),
+          method: 'GET',
+          url: testUrl.href,
+          phase: 'active-xss-spa-search',
+        });
+
+        // ── Check 1: Client-rendered DOM content analysis ──
+        // Get the fully rendered DOM (after Angular/React/Vue rendering)
+        const renderedContent = await page.content();
+
+        // Check if the payload appears unencoded in the rendered DOM
+        const dangerousContext = checkDangerousReflection(renderedContent, xssPayload.payload, xssPayload.marker);
+
+        if (dangerousContext) {
+          // Only flag this as a SPA finding if the payload was NOT already in the
+          // server response HTML. If the server reflects the payload directly,
+          // testXssOnUrls already catches it — we don't want duplicates.
+          const payloadInServerResponse = serverResponseBody.includes(xssPayload.payload);
+
+          if (!payloadInServerResponse) {
+            const isSpaRendered = framework !== null;
+
+            findings.push({
+              id: randomUUID(),
+              category: 'xss',
+              severity: 'high',
+              title: `DOM XSS in Search Parameter "${param}"${isSpaRendered ? ` (${framework.name} SPA)` : ''}`,
+              description: `The search parameter "${param}" is reflected in the ${isSpaRendered ? 'client-rendered' : ''} DOM without proper encoding. ${dangerousContext}.${isSpaRendered ? ` The ${framework.name} application renders user input unsafely (e.g., via [innerHTML] binding or similar).` : ''} The payload was injected client-side (not in the server response), indicating a DOM-based XSS.`,
+              url,
+              evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nParameter: ${param}\nTest URL: ${testUrl.href}\nFramework: ${framework?.name ?? 'none detected'}\n${dangerousContext}`,
+              request: { method: 'GET', url: testUrl.href },
+              timestamp: new Date().toISOString(),
+            });
+            foundForParam = true;
+            continue;
+          }
+        }
+
+        // ── Check 2: Sink monitoring ──
+        // Check if any DOM sink (innerHTML, document.write, eval, etc.)
+        // received a value containing the FULL PAYLOAD (not just marker).
+        // The marker alone is not sufficient because it's a plain alphanumeric
+        // string that appears even when HTML tags are properly encoded.
+        const sinkHits = await page.evaluate((payload: string) => {
+          const hits = (window as unknown as Record<string, unknown>).__secbot_dom_xss as Array<{ sink: string; value: string }> || [];
+          return hits.filter((h) => h.value.includes(payload));
+        }, xssPayload.payload);
+
+        if (sinkHits.length > 0) {
+          const sinkNames = sinkHits.map((h: { sink: string }) => h.sink).join(', ');
+          findings.push({
+            id: randomUUID(),
+            category: 'xss',
+            severity: 'high',
+            title: `DOM XSS in Search Parameter "${param}" via ${sinkNames}`,
+            description: `The search parameter "${param}" reaches dangerous DOM sink(s): ${sinkNames}. The payload flows from the search API response into the client-side DOM without proper sanitization.${framework ? ` Framework: ${framework.name}.` : ''}`,
+            url,
+            evidence: `Payload: ${xssPayload.payload}\nSinks: ${sinkNames}\nParameter: ${param}\nTest URL: ${testUrl.href}\nFramework: ${framework?.name ?? 'none detected'}`,
+            request: { method: 'GET', url: testUrl.href },
+            timestamp: new Date().toISOString(),
+          });
+          foundForParam = true;
+          continue;
+        }
+
+        // ── Check 3: Evaluate DOM for marker presence in element content ──
+        // This catches cases where the marker appears in text content or attributes
+        // even if the full payload is sanitized but the marker string leaks through
+        const markerInDom = await page.evaluate((marker: string) => {
+          // Check text content of all elements
+          const walker = document.createTreeWalker(
+            document.body,
+            NodeFilter.SHOW_ELEMENT,
+            null,
+          );
+          const results: Array<{ tag: string; attribute?: string; content: string }> = [];
+          let node: Node | null;
+          while ((node = walker.nextNode())) {
+            const el = node as Element;
+            // Check innerHTML for unencoded payload markers
+            if (el.innerHTML?.includes(marker)) {
+              // Verify it's not just in a text node (safely encoded)
+              // Look for the marker inside HTML tags or attributes
+              const inner = el.innerHTML;
+              const idx = inner.indexOf(marker);
+              if (idx !== -1) {
+                // Check surrounding context: is it inside a tag?
+                const before = inner.slice(Math.max(0, idx - 50), idx);
+                const after = inner.slice(idx, idx + marker.length + 50);
+                // If we find < before and > after without encoding, it's in a tag context
+                if (before.includes('<') && !before.includes('&lt;')) {
+                  results.push({
+                    tag: el.tagName.toLowerCase(),
+                    content: inner.slice(Math.max(0, idx - 100), idx + marker.length + 100),
+                  });
+                }
+              }
+            }
+            // Check dangerous attributes
+            for (const attr of ['src', 'href', 'action', 'data']) {
+              const val = el.getAttribute(attr);
+              if (val?.includes(marker)) {
+                results.push({
+                  tag: el.tagName.toLowerCase(),
+                  attribute: attr,
+                  content: val,
+                });
+              }
+            }
+          }
+          return results;
+        }, xssPayload.marker);
+
+        if (markerInDom.length > 0) {
+          const contexts = markerInDom.map((m) =>
+            m.attribute ? `${m.tag}[${m.attribute}]` : `${m.tag}.innerHTML`,
+          ).join(', ');
+
+          findings.push({
+            id: randomUUID(),
+            category: 'xss',
+            severity: 'high',
+            title: `DOM XSS in Search Parameter "${param}"${framework ? ` (${framework.name} SPA)` : ''}`,
+            description: `The search parameter "${param}" is rendered unsafely in the DOM context(s): ${contexts}. The XSS payload marker appears within HTML tags in the rendered DOM, indicating the application does not properly sanitize user input before rendering.${framework ? ` Framework: ${framework.name}.` : ''}`,
+            url,
+            evidence: `Payload: ${xssPayload.payload}\nParameter: ${param}\nDOM contexts: ${contexts}\nTest URL: ${testUrl.href}\nFramework: ${framework?.name ?? 'none detected'}\nDOM snippet: ${markerInDom[0].content.slice(0, 200)}`,
+            request: { method: 'GET', url: testUrl.href },
+            timestamp: new Date().toISOString(),
+          });
+          foundForParam = true;
+        }
+      } catch (err) {
+        log.debug(`SPA search XSS test: ${(err as Error).message}`);
       } finally {
         await page.close();
       }

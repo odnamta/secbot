@@ -31,6 +31,23 @@ describe('Vulnerable Test Server', () => {
     expect(res.headers.get('location')).toBe('https://evil.com');
   });
 
+  it('has open redirect via "to" parameter (Juice Shop pattern)', async () => {
+    const res = await fetch(`${getTestUrl()}/redirect-to?to=https://evil.com`, { redirect: 'manual' });
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('https://evil.com');
+  });
+
+  it('safe-redirect blocks external domains', async () => {
+    const res = await fetch(`${getTestUrl()}/safe-redirect?to=https://evil.com`, { redirect: 'manual' });
+    expect(res.status).toBe(400);
+  });
+
+  it('safe-redirect allows whitelisted domains', async () => {
+    const res = await fetch(`${getTestUrl()}/safe-redirect?to=https://example.com`, { redirect: 'manual' });
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('https://example.com');
+  });
+
   it('reflects SQL errors', async () => {
     const res = await fetch(`${getTestUrl()}/api/v1/data?query='`);
     const body = await res.text();
