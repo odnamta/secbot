@@ -23,6 +23,9 @@ import { cmdiCheck } from './cmdi.js';
 import { idorCheck } from './idor.js';
 import { tlsCheck } from './tls.js';
 import { sriCheck } from './sri.js';
+import { infoDisclosureCheck } from './info-disclosure.js';
+import { jsCveCheck } from './js-cve.js';
+import { crlfCheck } from './crlf.js';
 import { log } from '../../utils/logger.js';
 
 export interface ScanTargets {
@@ -58,6 +61,9 @@ export const CHECK_REGISTRY: ActiveCheck[] = [
   idorCheck,
   tlsCheck,
   sriCheck,
+  infoDisclosureCheck,
+  jsCveCheck,
+  crlfCheck,
 ];
 
 /**

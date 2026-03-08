@@ -85,6 +85,7 @@ program
   .option('--callback-server <port>', 'Auto-start built-in OOB callback server on specified port')
   .option('--oob-wait <seconds>', 'How long to wait for delayed OOB callbacks (default: 30)')
   .option('--no-ai', 'Skip AI interpretation (use rule-based fallback)')
+  .option('-y, --yes', 'Auto-confirm consent for non-interactive environments (CI/CD)', false)
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (url: string | undefined, options: Record<string, unknown>) => {
     if (options.verbose) {
@@ -155,6 +156,9 @@ program
           console.log('Scan cancelled.');
           process.exit(0);
         }
+      } else if (!options.yes) {
+        console.error(chalk.red('Non-interactive environment detected. Pass --yes (-y) to confirm you have authorization to scan this target.'));
+        process.exit(1);
       }
       console.log();
     }
@@ -370,7 +374,7 @@ program
 
         // ─── Phase 4: Passive Scanning ───────────────────────────
         log.info('Phase 4: Running passive security checks...');
-        const passiveFindings = runPassiveChecks(pages, responses);
+        const passiveFindings = runPassiveChecks(pages, responses, recon);
 
         // ─── Phase 5: Active Scanning ────────────────────────────
         log.info('Phase 5: Running active security checks...');

@@ -220,7 +220,7 @@ export async function startInteractiveMode(
 
           // Passive checks
           console.log(chalk.blue('  Step 3/4: Passive checks...'));
-          const passiveFindings = runPassiveChecks(state.pages, state.responses);
+          const passiveFindings = runPassiveChecks(state.pages, state.responses, state.recon);
           state.rawFindings.push(...passiveFindings);
 
           // Active checks

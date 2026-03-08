@@ -141,6 +141,9 @@ async function confirmBooleanBlind(
   return { diff, trueLen: trueLen1, falseLen: falseLen1, trueLen2, falseLen2 };
 }
 
+/** Destructive action path segments — skip these to avoid data loss */
+const DESTRUCTIVE_PATH_RE = /\b(delete|remove|destroy|drop|truncate|reset|purge|wipe)\b/i;
+
 export const sqliCheck: ActiveCheck = {
   name: 'sqli',
   category: 'sqli',
@@ -152,9 +155,22 @@ export const sqliCheck: ActiveCheck = {
       findings.push(...(await testSqliOnForms(context, targets.forms, config, requestLogger)));
     }
 
+    // POST form SQLi — test forms with POST method via direct HTTP requests
+    const postForms = targets.forms.filter((f) => f.method.toUpperCase() === 'POST');
+    if (postForms.length > 0) {
+      log.info(`Testing ${postForms.length} POST forms for SQL injection (direct POST)...`);
+      findings.push(...(await testPostFormSqli(context, postForms, config, requestLogger)));
+    }
+
     if (targets.urlsWithParams.length > 0) {
       log.info(`Testing ${targets.urlsWithParams.length} URLs for SQL injection...`);
       findings.push(...(await testSqliOnUrls(context, targets.urlsWithParams, config, requestLogger)));
+    }
+
+    // JSON API SQLi — test API endpoints with JSON body payloads
+    if (targets.apiEndpoints.length > 0) {
+      log.info(`Testing ${targets.apiEndpoints.length} API endpoints for JSON body SQL injection...`);
+      findings.push(...(await testJsonApiSqli(context, targets.apiEndpoints, config, requestLogger)));
     }
 
     // Blind SQLi: inject OOB payloads for out-of-band detection
@@ -799,6 +815,350 @@ async function testSqliOnUrls(
           }
 
           await delay(config.requestDelay);
+        }
+      }
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * Test POST form fields for SQL injection via direct HTTP POST requests.
+ * For each form input, injects SQLi payloads while filling other fields with benign data.
+ * Covers error-based and time-based blind detection.
+ */
+async function testPostFormSqli(
+  context: BrowserContext,
+  forms: FormInfo[],
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+  const payloads = selectSqliPayloads(config, 4);
+
+  for (const form of forms) {
+    // Skip destructive-looking endpoints
+    if (DESTRUCTIVE_PATH_RE.test(form.action)) {
+      log.debug(`Skipping destructive POST form: ${form.action}`);
+      continue;
+    }
+
+    const textInputs = form.inputs.filter(
+      (i) => ['text', 'search', 'email', 'url', 'tel', 'number', 'hidden', ''].includes(i.type) && i.name,
+    );
+    if (textInputs.length === 0) continue;
+
+    let foundForForm = false;
+
+    // --- Error-based detection via direct POST ---
+    for (const input of textInputs) {
+      if (foundForForm) break;
+
+      for (const payload of payloads) {
+        if (foundForForm) break;
+
+        // Build form body: inject payload into target input, benign data for others
+        const bodyParams = textInputs.map((i) => {
+          const val = i.name === input.name ? payload : (i.value || 'test');
+          return `${encodeURIComponent(i.name)}=${encodeURIComponent(val)}`;
+        }).join('&');
+
+        const page = await context.newPage();
+        try {
+          const resp = await page.request.fetch(form.action, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            data: bodyParams,
+          });
+          const body = await resp.text();
+
+          requestLogger?.log({
+            timestamp: new Date().toISOString(),
+            method: 'POST',
+            url: form.action,
+            body: bodyParams,
+            responseStatus: resp.status(),
+            phase: 'active-sqli-post-form',
+          });
+
+          for (const pattern of SQL_ERROR_PATTERNS) {
+            const match = body.match(pattern);
+            if (match) {
+              findings.push({
+                id: randomUUID(),
+                category: 'sqli',
+                severity: 'critical',
+                title: `SQL Injection in POST Form Field "${input.name}"`,
+                description: `SQL error message detected when injecting payload into POST form field "${input.name}" at ${form.action}. This indicates the input is directly interpolated into SQL queries.`,
+                url: form.pageUrl,
+                evidence: `Payload: ${payload}\nField: ${input.name}\nSQL error: ${match[0]}`,
+                request: {
+                  method: 'POST',
+                  url: form.action,
+                  body: bodyParams,
+                },
+                response: { status: resp.status(), bodySnippet: body.slice(0, 300) },
+                timestamp: new Date().toISOString(),
+              });
+              foundForForm = true;
+              break;
+            }
+          }
+        } catch (err) {
+          log.debug(`SQLi POST form test: ${(err as Error).message}`);
+        } finally {
+          await page.close();
+        }
+
+        await delay(config.requestDelay);
+      }
+    }
+
+    // --- Time-based blind detection for POST forms ---
+    if (!foundForForm && config.profile !== 'quick') {
+      const timePayloads = config.profile === 'deep' ? SQLI_TIME_PAYLOADS : SQLI_TIME_PAYLOADS.slice(0, 1);
+
+      for (const input of textInputs) {
+        if (foundForForm) break;
+
+        // Baseline with benign data
+        const baselineBody = textInputs
+          .map((i) => `${encodeURIComponent(i.name)}=${encodeURIComponent(i.value || 'test')}`)
+          .join('&');
+
+        const baselineMedian = await measureResponseTime(context, form.action, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          data: baselineBody,
+        });
+
+        if (baselineMedian <= 0) continue;
+
+        for (const payload of timePayloads) {
+          if (foundForForm) break;
+
+          const payloadBody = textInputs.map((i) => {
+            const val = i.name === input.name ? payload : (i.value || 'test');
+            return `${encodeURIComponent(i.name)}=${encodeURIComponent(val)}`;
+          }).join('&');
+
+          const payloadMedian = await measureResponseTime(context, form.action, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            data: payloadBody,
+          });
+
+          requestLogger?.log({
+            timestamp: new Date().toISOString(),
+            method: 'POST',
+            url: form.action,
+            body: payloadBody,
+            phase: 'active-sqli-post-form-blind',
+          });
+
+          if (payloadMedian > 0) {
+            const diff = payloadMedian - baselineMedian;
+            if (diff > BLIND_SQLI_THRESHOLD_MS) {
+              findings.push({
+                id: randomUUID(),
+                category: 'sqli',
+                severity: 'high',
+                title: `Potential Blind SQL Injection in POST Form Field "${input.name}"`,
+                description: `Time-based blind SQL injection suspected in POST form field "${input.name}" at ${form.action}. The median response was ${Math.round(diff)}ms slower when a time-delay payload was submitted.`,
+                url: form.pageUrl,
+                evidence: `Payload: ${payload}\nField: ${input.name}\nBaseline median: ${Math.round(baselineMedian)}ms\nWith payload median: ${payloadMedian}ms\nDifference: ${Math.round(diff)}ms (threshold: ${BLIND_SQLI_THRESHOLD_MS}ms)`,
+                request: {
+                  method: 'POST',
+                  url: form.action,
+                  body: payloadBody,
+                },
+                timestamp: new Date().toISOString(),
+              });
+              foundForForm = true;
+            }
+          }
+
+          await delay(config.requestDelay);
+        }
+      }
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * Test JSON API endpoints for SQL injection via POST/PUT/PATCH with JSON body.
+ * Probes each endpoint by sending JSON bodies with SQLi payloads in string values.
+ * Covers error-based and time-based blind detection.
+ */
+async function testJsonApiSqli(
+  context: BrowserContext,
+  apiEndpoints: string[],
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+  const payloads = selectSqliPayloads(config, 3);
+  const timePayloads = config.profile === 'deep' ? SQLI_TIME_PAYLOADS : SQLI_TIME_PAYLOADS.slice(0, 1);
+
+  // Common JSON field names to probe — these are typical injection points
+  const probeFields = ['query', 'search', 'q', 'filter', 'name', 'username', 'email', 'id', 'value', 'input', 'data', 'text', 'keyword', 'term', 'param'];
+
+  for (const endpoint of apiEndpoints) {
+    // Skip destructive-looking endpoints
+    if (DESTRUCTIVE_PATH_RE.test(endpoint)) {
+      log.debug(`Skipping destructive API endpoint: ${endpoint}`);
+      continue;
+    }
+
+    let foundForEndpoint = false;
+
+    // Try POST, PUT, PATCH methods
+    const methods = ['POST', 'PUT', 'PATCH'];
+
+    for (const method of methods) {
+      if (foundForEndpoint) break;
+
+      // First, try a probe request to see if the endpoint accepts JSON
+      const probePage = await context.newPage();
+      let acceptsJson = false;
+      try {
+        const probeBody = JSON.stringify({ query: 'test' });
+        const resp = await probePage.request.fetch(endpoint, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          data: probeBody,
+        });
+        // Consider it a JSON-accepting endpoint if it doesn't return 404/405
+        acceptsJson = resp.status() < 400 || resp.status() === 500;
+      } catch {
+        // If the request fails entirely, skip this method
+      } finally {
+        await probePage.close();
+      }
+
+      if (!acceptsJson) continue;
+
+      // --- Error-based detection ---
+      for (const fieldName of probeFields) {
+        if (foundForEndpoint) break;
+
+        for (const payload of payloads) {
+          if (foundForEndpoint) break;
+
+          const jsonBody = JSON.stringify({ [fieldName]: payload });
+
+          const page = await context.newPage();
+          try {
+            const resp = await page.request.fetch(endpoint, {
+              method,
+              headers: { 'Content-Type': 'application/json' },
+              data: jsonBody,
+            });
+            const body = await resp.text();
+
+            requestLogger?.log({
+              timestamp: new Date().toISOString(),
+              method,
+              url: endpoint,
+              body: jsonBody,
+              responseStatus: resp.status(),
+              phase: 'active-sqli-json-api',
+            });
+
+            for (const pattern of SQL_ERROR_PATTERNS) {
+              const match = body.match(pattern);
+              if (match) {
+                findings.push({
+                  id: randomUUID(),
+                  category: 'sqli',
+                  severity: 'critical',
+                  title: `SQL Injection in JSON API Field "${fieldName}" (${method})`,
+                  description: `SQL error message detected when injecting payload into JSON body field "${fieldName}" via ${method} ${endpoint}. This indicates the field value is directly interpolated into SQL queries.`,
+                  url: endpoint,
+                  evidence: `Payload: ${payload}\nField: ${fieldName}\nMethod: ${method}\nSQL error: ${match[0]}`,
+                  request: {
+                    method,
+                    url: endpoint,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: jsonBody,
+                  },
+                  response: { status: resp.status(), bodySnippet: body.slice(0, 300) },
+                  timestamp: new Date().toISOString(),
+                });
+                foundForEndpoint = true;
+                break;
+              }
+            }
+          } catch (err) {
+            log.debug(`SQLi JSON API test: ${(err as Error).message}`);
+          } finally {
+            await page.close();
+          }
+
+          await delay(config.requestDelay);
+        }
+      }
+
+      // --- Time-based blind detection for JSON API ---
+      if (!foundForEndpoint && config.profile !== 'quick') {
+        for (const fieldName of probeFields.slice(0, 5)) {
+          if (foundForEndpoint) break;
+
+          const baselineBody = JSON.stringify({ [fieldName]: 'test' });
+          const baselineMedian = await measureResponseTime(context, endpoint, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            data: baselineBody,
+          });
+
+          if (baselineMedian <= 0) continue;
+
+          for (const payload of timePayloads) {
+            if (foundForEndpoint) break;
+
+            const jsonBody = JSON.stringify({ [fieldName]: payload });
+            const payloadMedian = await measureResponseTime(context, endpoint, {
+              method,
+              headers: { 'Content-Type': 'application/json' },
+              data: jsonBody,
+            });
+
+            requestLogger?.log({
+              timestamp: new Date().toISOString(),
+              method,
+              url: endpoint,
+              body: jsonBody,
+              phase: 'active-sqli-json-api-blind',
+            });
+
+            if (payloadMedian > 0) {
+              const diff = payloadMedian - baselineMedian;
+              if (diff > BLIND_SQLI_THRESHOLD_MS) {
+                findings.push({
+                  id: randomUUID(),
+                  category: 'sqli',
+                  severity: 'high',
+                  title: `Potential Blind SQL Injection in JSON API Field "${fieldName}" (${method})`,
+                  description: `Time-based blind SQL injection suspected in JSON body field "${fieldName}" via ${method} ${endpoint}. The median response was ${Math.round(diff)}ms slower when a time-delay payload was submitted.`,
+                  url: endpoint,
+                  evidence: `Payload: ${payload}\nField: ${fieldName}\nMethod: ${method}\nBaseline median: ${Math.round(baselineMedian)}ms\nWith payload median: ${payloadMedian}ms\nDifference: ${Math.round(diff)}ms (threshold: ${BLIND_SQLI_THRESHOLD_MS}ms)`,
+                  request: {
+                    method,
+                    url: endpoint,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: jsonBody,
+                  },
+                  timestamp: new Date().toISOString(),
+                });
+                foundForEndpoint = true;
+              }
+            }
+
+            await delay(config.requestDelay);
+          }
         }
       }
     }

@@ -17,7 +17,10 @@ export type CheckCategory =
   | 'idor'
   | 'command-injection'
   | 'tls'
-  | 'sri';
+  | 'sri'
+  | 'info-disclosure'
+  | 'js-cve'
+  | 'crlf-injection';
 
 export type ScanProfile = 'quick' | 'standard' | 'deep' | 'stealth';
 

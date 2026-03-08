@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { runPassiveChecks } from '../../src/scanner/passive.js';
-import type { CrawledPage, InterceptedResponse, CookieInfo } from '../../src/scanner/types.js';
+import type { CrawledPage, InterceptedResponse, CookieInfo, ReconResult } from '../../src/scanner/types.js';
 
 function makeCookie(overrides: Partial<CookieInfo> = {}): CookieInfo {
   return {
@@ -350,5 +350,110 @@ describe('passive checks: Permissions-Policy wildcard detection', () => {
     expect(missingPP).toBeDefined();
     expect(missingPP!.severity).toBe('info');
     expect(wildcardPP).toBeUndefined();
+  });
+});
+
+// ─── Framework-aware CSP filtering ───────────────────────────────────────────
+
+function makeRecon(frameworkName?: string): ReconResult {
+  return {
+    techStack: { languages: [], detected: [] },
+    waf: { detected: false, confidence: 'low', evidence: [] },
+    framework: {
+      name: frameworkName,
+      confidence: 'high',
+      evidence: frameworkName ? [`${frameworkName} detected`] : [],
+    },
+    endpoints: { pages: [], apiRoutes: [], forms: [], staticAssets: [], graphql: [] },
+  };
+}
+
+describe('passive checks: framework-aware CSP unsafe-inline filtering', () => {
+  const cspUnsafeInlinePage = makePage({
+    headers: {
+      ...allSecureHeaders,
+      'content-security-policy': "default-src 'self' 'unsafe-inline'",
+    },
+  });
+
+  it('unsafe-inline is medium severity when no recon data is provided', () => {
+    const findings = runPassiveChecks([cspUnsafeInlinePage], []);
+    const unsafeInline = findings.find((f) => f.title === 'CSP Allows Unsafe Inline Scripts');
+
+    expect(unsafeInline).toBeDefined();
+    expect(unsafeInline!.severity).toBe('medium');
+    expect(unsafeInline!.description).not.toContain('framework requires');
+  });
+
+  it('unsafe-inline is medium severity when framework is unknown', () => {
+    const findings = runPassiveChecks([cspUnsafeInlinePage], [], makeRecon(undefined));
+    const unsafeInline = findings.find((f) => f.title === 'CSP Allows Unsafe Inline Scripts');
+
+    expect(unsafeInline).toBeDefined();
+    expect(unsafeInline!.severity).toBe('medium');
+    expect(unsafeInline!.description).not.toContain('framework requires');
+  });
+
+  it('unsafe-inline is downgraded to low severity for Next.js', () => {
+    const findings = runPassiveChecks([cspUnsafeInlinePage], [], makeRecon('Next.js'));
+    const unsafeInline = findings.find((f) => f.title === 'CSP Allows Unsafe Inline Scripts');
+
+    expect(unsafeInline).toBeDefined();
+    expect(unsafeInline!.severity).toBe('low');
+    expect(unsafeInline!.description).toContain(
+      "Note: This framework requires 'unsafe-inline' for its runtime. Consider using nonces or hashes instead if your framework version supports it.",
+    );
+  });
+
+  it('unsafe-inline is downgraded to low severity for Nuxt', () => {
+    const findings = runPassiveChecks([cspUnsafeInlinePage], [], makeRecon('Nuxt'));
+    const unsafeInline = findings.find((f) => f.title === 'CSP Allows Unsafe Inline Scripts');
+
+    expect(unsafeInline).toBeDefined();
+    expect(unsafeInline!.severity).toBe('low');
+    expect(unsafeInline!.description).toContain(
+      "Note: This framework requires 'unsafe-inline' for its runtime.",
+    );
+  });
+
+  it('unsafe-inline stays medium severity for non-SPA frameworks (e.g. Laravel)', () => {
+    const findings = runPassiveChecks([cspUnsafeInlinePage], [], makeRecon('Laravel'));
+    const unsafeInline = findings.find((f) => f.title === 'CSP Allows Unsafe Inline Scripts');
+
+    expect(unsafeInline).toBeDefined();
+    expect(unsafeInline!.severity).toBe('medium');
+    expect(unsafeInline!.description).not.toContain('framework requires');
+  });
+
+  it('unsafe-inline stays medium severity for WordPress', () => {
+    const findings = runPassiveChecks([cspUnsafeInlinePage], [], makeRecon('WordPress'));
+    const unsafeInline = findings.find((f) => f.title === 'CSP Allows Unsafe Inline Scripts');
+
+    expect(unsafeInline).toBeDefined();
+    expect(unsafeInline!.severity).toBe('medium');
+  });
+
+  it('finding is NOT suppressed for Next.js — still present at low severity', () => {
+    const findings = runPassiveChecks([cspUnsafeInlinePage], [], makeRecon('Next.js'));
+    const unsafeInline = findings.filter((f) => f.title === 'CSP Allows Unsafe Inline Scripts');
+
+    // Must still be reported, not suppressed
+    expect(unsafeInline).toHaveLength(1);
+    expect(unsafeInline[0].severity).toBe('low');
+  });
+
+  it('unsafe-eval is NOT affected by framework detection (stays medium)', () => {
+    const page = makePage({
+      headers: {
+        ...allSecureHeaders,
+        'content-security-policy': "default-src 'self' 'unsafe-eval'",
+      },
+    });
+
+    const findings = runPassiveChecks([page], [], makeRecon('Next.js'));
+    const unsafeEval = findings.find((f) => f.title === 'CSP Allows Unsafe Eval');
+
+    expect(unsafeEval).toBeDefined();
+    expect(unsafeEval!.severity).toBe('medium');
   });
 });

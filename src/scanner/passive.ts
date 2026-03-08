@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import type { CrawledPage, InterceptedResponse, RawFinding } from './types.js';
+import type { CrawledPage, InterceptedResponse, RawFinding, ReconResult } from './types.js';
 import { log } from '../utils/logger.js';
 import { normalizeUrl } from '../utils/shared.js';
+
+// Frameworks that require 'unsafe-inline' in CSP for their runtime to function
+const FRAMEWORKS_REQUIRING_UNSAFE_INLINE = ['Next.js', 'Nuxt'];
 
 // Cookies that don't need HttpOnly — they're intentionally JS-readable
 const SKIP_HTTPONLY_PATTERNS = [
@@ -18,14 +21,17 @@ export function shouldCheckHttpOnly(cookieName: string): boolean {
 export function runPassiveChecks(
   pages: CrawledPage[],
   responses: InterceptedResponse[],
+  recon?: ReconResult,
 ): RawFinding[] {
   const findings: RawFinding[] = [];
 
   // Track reported missing headers across all pages for dedup
   const reportedHeaders = new Map<string, RawFinding>();
 
+  const detectedFramework = recon?.framework?.name;
+
   for (const page of pages) {
-    findings.push(...checkSecurityHeaders(page, reportedHeaders));
+    findings.push(...checkSecurityHeaders(page, reportedHeaders, detectedFramework));
     findings.push(...checkCookieFlags(page));
     findings.push(...checkInfoLeakage(page, responses));
     findings.push(...checkMixedContent(page, responses));
@@ -39,6 +45,7 @@ export function runPassiveChecks(
 function checkSecurityHeaders(
   page: CrawledPage,
   reportedHeaders: Map<string, RawFinding>,
+  detectedFramework?: string,
 ): RawFinding[] {
   const findings: RawFinding[] = [];
   const headers = page.headers;
@@ -129,13 +136,21 @@ function checkSecurityHeaders(
   const csp = headers['content-security-policy'];
   if (csp) {
     if (csp.includes("'unsafe-inline'")) {
+      const frameworkRequiresUnsafeInline = detectedFramework
+        ? FRAMEWORKS_REQUIRING_UNSAFE_INLINE.includes(detectedFramework)
+        : false;
+
+      const description = frameworkRequiresUnsafeInline
+        ? "The Content-Security-Policy includes 'unsafe-inline', which weakens XSS protection. " +
+          "Note: This framework requires 'unsafe-inline' for its runtime. Consider using nonces or hashes instead if your framework version supports it."
+        : "The Content-Security-Policy includes 'unsafe-inline', which weakens XSS protection.";
+
       findings.push({
         id: randomUUID(),
         category: 'security-headers',
-        severity: 'medium',
+        severity: frameworkRequiresUnsafeInline ? 'low' : 'medium',
         title: 'CSP Allows Unsafe Inline Scripts',
-        description:
-          "The Content-Security-Policy includes 'unsafe-inline', which weakens XSS protection.",
+        description,
         url: page.url,
         evidence: `CSP: ${csp}`,
         response: { status: page.status, headers: page.headers },

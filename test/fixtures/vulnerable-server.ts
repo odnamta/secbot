@@ -39,6 +39,12 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
     <li><a href="/template?name=World">SSTI</a></li>
     <li><a href="/exec?cmd=whoami">Command Injection</a></li>
     <li><a href="/cors-api">CORS Misconfiguration</a></li>
+    <li><a href="/feedback">Feedback Form (POST XSS)</a></li>
+    <li><a href="/api/v1/comments">Comments API (JSON XSS)</a></li>
+    <li><a href="/login-vuln">Login (POST SQLi)</a></li>
+    <li><a href="/api/v1/search">Search API (JSON SQLi)</a></li>
+    <li><a href="/api/crlf-redirect?url=https://example.com">CRLF Redirect</a></li>
+    <li><a href="/api/crlf-header?name=test">CRLF Header</a></li>
     <li><a href="/safe">Safe Page</a></li>
   </ul>
 </body>
@@ -197,6 +203,133 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
     res.json({ secret: 'sensitive-data', apiKey: 'sk-12345' });
   });
 
+  // POST form that reflects body params (XSS via POST body)
+  app.get('/feedback', (_req, res) => {
+    res.type('html').send(`<!DOCTYPE html>
+<html>
+<head><title>Feedback</title></head>
+<body>
+  <h1>Submit Feedback</h1>
+  <form method="POST" action="/feedback">
+    <label for="name">Name:</label>
+    <input type="text" id="name" name="name" />
+    <label for="message">Message:</label>
+    <input type="text" id="message" name="message" />
+    <button type="submit">Submit</button>
+  </form>
+</body>
+</html>`);
+  });
+
+  app.post('/feedback', (req, res) => {
+    const name = req.body?.name || '';
+    const message = req.body?.message || '';
+    res.type('html').send(`<!DOCTYPE html>
+<html><body>
+<h1>Thank you, ${name}!</h1>
+<p>Your feedback: ${message}</p>
+</body></html>`);
+  });
+
+  // JSON API that echoes input without encoding (stored XSS via API)
+  app.post('/api/v1/comments', (req, res) => {
+    const { author, text } = req.body || {};
+    // Intentionally echoes back unencoded in a JSON response
+    res.json({
+      id: 42,
+      author: author || 'anonymous',
+      text: text || '',
+      createdAt: new Date().toISOString(),
+    });
+  });
+
+  // JSON API that renders echoed data in HTML (the real danger: stored XSS)
+  app.get('/api/v1/comments/render', (req, res) => {
+    const text = req.query.text as string || '';
+    res.type('html').send(`<!DOCTYPE html>
+<html><body>
+<div class="comment">${text}</div>
+</body></html>`);
+  });
+
+  // JSON API endpoint that accepts PUT and echoes JSON values
+  app.put('/api/v1/profile', (req, res) => {
+    const { displayName, bio } = req.body || {};
+    res.json({
+      success: true,
+      profile: {
+        displayName: displayName || '',
+        bio: bio || '',
+      },
+    });
+  });
+
+  // Safe JSON API — properly encodes output
+  app.post('/api/v1/safe-comments', (req, res) => {
+    const { author, text } = req.body || {};
+    const encode = (s: string) => s.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    res.json({
+      id: 43,
+      author: encode(author || 'anonymous'),
+      text: encode(text || ''),
+      createdAt: new Date().toISOString(),
+    });
+  });
+
+  // ─── SQLi via POST form (vulnerable login) ───
+  // The /login-vuln GET page renders a form that POSTs to /api/v1/login
+  app.get('/login-vuln', (_req, res) => {
+    res.type('html').send(`<!DOCTYPE html>
+<html>
+<head><title>Login (Vulnerable)</title></head>
+<body>
+  <h1>Login</h1>
+  <form method="POST" action="/api/v1/login">
+    <label for="username">Username:</label>
+    <input type="text" id="username" name="username" />
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" />
+    <button type="submit">Login</button>
+  </form>
+</body>
+</html>`);
+  });
+
+  // POST form endpoint vulnerable to SQLi — concatenates username into SQL
+  app.post('/api/v1/login', (req, res) => {
+    const username = req.body?.username || '';
+    if (username.includes("'")) {
+      res.type('html').status(500).send(`<!DOCTYPE html>
+<html><body>
+<h1>Internal Server Error</h1>
+<p>SQL Error: You have an error in your SQL syntax near '${username}' at line 1</p>
+</body></html>`);
+    } else {
+      res.type('html').send(`<!DOCTYPE html>
+<html><body><p>Login attempt for user: ${username}</p></body></html>`);
+    }
+  });
+
+  // ─── SQLi via JSON API body (vulnerable search) ───
+  app.post('/api/v1/search', (req, res) => {
+    const query = req.body?.query || '';
+    if (typeof query === 'string' && query.includes("'")) {
+      res.status(500).json({
+        error: true,
+        message: `SQL Error: You have an error in your SQL syntax near '${query}' at line 1`,
+      });
+    } else {
+      res.json({ results: [], query });
+    }
+  });
+
+  // JSON API endpoint that is NOT vulnerable to SQLi (safe search)
+  app.post('/api/v1/safe-search', (req, res) => {
+    const query = req.body?.query || '';
+    // Uses parameterized queries (simulated) — always returns safe response
+    res.json({ results: [], query: 'sanitized' });
+  });
+
   // Safe page — properly secured
   app.get('/safe', (_req, res) => {
     res.set('Content-Security-Policy', "default-src 'self'");
@@ -216,6 +349,43 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
 <h1>Safe Page</h1>
 <p>Hello, ${encoded}</p>
 </body></html>`);
+  });
+
+  // ─── CRLF Injection Endpoints ───────────────────────────────────────
+  // Vulnerable: writes raw HTTP response to bypass Node.js header sanitization.
+  // This simulates a server that does not sanitize CRLF in header values.
+  app.get('/api/crlf-redirect', (req, res) => {
+    const url = req.query.url as string || '/';
+    // Bypass Node.js header protection by writing raw HTTP via socket
+    const socket = res.socket;
+    if (!socket || socket.destroyed) { res.status(500).end(); return; }
+    const rawResponse = `HTTP/1.1 302 Found\r\nLocation: ${url}\r\nConnection: close\r\n\r\n`;
+    socket.write(rawResponse);
+    socket.end();
+  });
+
+  // Vulnerable: writes raw HTTP response with custom header using unsanitized param
+  app.get('/api/crlf-header', (req, res) => {
+    const name = req.query.name as string || 'default';
+    const body = `<!DOCTYPE html>\n<html><body>\n<h1>Header Echo</h1>\n<p>Name: ${name}</p>\n</body></html>`;
+    const socket = res.socket;
+    if (!socket || socket.destroyed) { res.status(500).end(); return; }
+    const rawResponse = `HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nX-Custom-Name: ${name}\r\nConnection: close\r\n\r\n${body}`;
+    socket.write(rawResponse);
+    socket.end();
+  });
+
+  // Safe CRLF endpoint — sanitizes CRLF characters before using in headers
+  app.get('/api/crlf-safe', (req, res) => {
+    const url = req.query.url as string || '/';
+    // Sanitize: strip all \r and \n characters
+    const sanitized = url.replace(/[\r\n]/g, '');
+    // Even with raw socket, sanitized value is safe
+    const socket = res.socket;
+    if (!socket || socket.destroyed) { res.status(500).end(); return; }
+    const rawResponse = `HTTP/1.1 302 Found\r\nLocation: ${sanitized}\r\nConnection: close\r\n\r\n`;
+    socket.write(rawResponse);
+    socket.end();
   });
 
   return new Promise((resolve) => {

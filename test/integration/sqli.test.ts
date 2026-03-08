@@ -142,4 +142,179 @@ describe('SQLi Integration Tests', () => {
     expect(finding.request!.method).toBe('GET');
     expect(finding.request!.url).toContain('/api/v1/data');
   }, 60000);
+
+  // ─── POST Form SQLi Tests ──────────────────────────────────────────
+
+  it('detects error-based SQLi in POST form field (username)', async () => {
+    const targets: ScanTargets = {
+      pages: [`${baseUrl}/login-vuln`],
+      forms: [
+        {
+          action: `${baseUrl}/api/v1/login`,
+          method: 'POST',
+          inputs: [
+            { name: 'username', type: 'text', value: '' },
+            { name: 'password', type: 'password', value: '' },
+          ],
+          pageUrl: `${baseUrl}/login-vuln`,
+        },
+      ],
+      urlsWithParams: [],
+      apiEndpoints: [],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await sqliCheck.run(context, targets, defaultConfig);
+
+    const postSqliFinding = findings.find(
+      (f) => f.category === 'sqli' && f.title.includes('POST Form Field'),
+    );
+    expect(postSqliFinding).toBeDefined();
+    expect(postSqliFinding!.severity).toBe('critical');
+    expect(postSqliFinding!.title).toContain('"username"');
+    expect(postSqliFinding!.request?.method).toBe('POST');
+    expect(postSqliFinding!.evidence).toMatch(/sql error/i);
+  }, 60000);
+
+  it('POST form SQLi finding has correct structure', async () => {
+    const targets: ScanTargets = {
+      pages: [`${baseUrl}/login-vuln`],
+      forms: [
+        {
+          action: `${baseUrl}/api/v1/login`,
+          method: 'POST',
+          inputs: [
+            { name: 'username', type: 'text', value: '' },
+            { name: 'password', type: 'password', value: '' },
+          ],
+          pageUrl: `${baseUrl}/login-vuln`,
+        },
+      ],
+      urlsWithParams: [],
+      apiEndpoints: [],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await sqliCheck.run(context, targets, defaultConfig);
+    const postFinding = findings.find((f) => f.title.includes('POST Form Field'));
+    expect(postFinding).toBeDefined();
+    expect(postFinding!.request).toBeDefined();
+    expect(postFinding!.request!.url).toContain('/api/v1/login');
+    expect(postFinding!.request!.body).toBeDefined();
+    expect(postFinding!.response).toBeDefined();
+    expect(postFinding!.response!.status).toBe(500);
+  }, 60000);
+
+  it('does NOT produce POST form SQLi findings for safe login endpoint', async () => {
+    // The original /login POST just echoes the username — no SQL error
+    const targets: ScanTargets = {
+      pages: [`${baseUrl}/login`],
+      forms: [
+        {
+          action: `${baseUrl}/login`,
+          method: 'POST',
+          inputs: [
+            { name: 'username', type: 'text', value: '' },
+            { name: 'password', type: 'password', value: '' },
+          ],
+          pageUrl: `${baseUrl}/login`,
+        },
+      ],
+      urlsWithParams: [],
+      apiEndpoints: [],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await sqliCheck.run(context, targets, defaultConfig);
+
+    const postSqliFinding = findings.find(
+      (f) => f.category === 'sqli' && f.title.includes('POST Form Field'),
+    );
+    expect(postSqliFinding).toBeUndefined();
+  }, 60000);
+
+  // ─── JSON API SQLi Tests ───────────────────────────────────────────
+
+  it('detects error-based SQLi in JSON API body (/api/v1/search)', async () => {
+    const targets: ScanTargets = {
+      pages: [],
+      forms: [],
+      urlsWithParams: [],
+      apiEndpoints: [`${baseUrl}/api/v1/search`],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await sqliCheck.run(context, targets, defaultConfig);
+
+    const jsonSqliFinding = findings.find(
+      (f) => f.category === 'sqli' && f.title.includes('JSON API Field'),
+    );
+    expect(jsonSqliFinding).toBeDefined();
+    expect(jsonSqliFinding!.severity).toBe('critical');
+    expect(jsonSqliFinding!.title).toContain('"query"');
+    expect(jsonSqliFinding!.request?.method).toBe('POST');
+    expect(jsonSqliFinding!.request?.headers?.['Content-Type']).toBe('application/json');
+    expect(jsonSqliFinding!.evidence).toMatch(/sql error/i);
+  }, 60000);
+
+  it('JSON API SQLi finding has correct structure', async () => {
+    const targets: ScanTargets = {
+      pages: [],
+      forms: [],
+      urlsWithParams: [],
+      apiEndpoints: [`${baseUrl}/api/v1/search`],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await sqliCheck.run(context, targets, defaultConfig);
+    const jsonFinding = findings.find((f) => f.title.includes('JSON API Field'));
+    expect(jsonFinding).toBeDefined();
+    expect(jsonFinding!.request).toBeDefined();
+    expect(jsonFinding!.request!.url).toContain('/api/v1/search');
+    expect(jsonFinding!.request!.body).toBeDefined();
+    // Body should be valid JSON
+    expect(() => JSON.parse(jsonFinding!.request!.body!)).not.toThrow();
+    expect(jsonFinding!.response).toBeDefined();
+    expect(jsonFinding!.response!.status).toBe(500);
+  }, 60000);
+
+  it('does NOT produce JSON API SQLi findings for safe search endpoint', async () => {
+    const targets: ScanTargets = {
+      pages: [],
+      forms: [],
+      urlsWithParams: [],
+      apiEndpoints: [`${baseUrl}/api/v1/safe-search`],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await sqliCheck.run(context, targets, defaultConfig);
+
+    const jsonSqliFinding = findings.find(
+      (f) => f.category === 'sqli' && f.title.includes('JSON API Field'),
+    );
+    expect(jsonSqliFinding).toBeUndefined();
+  }, 60000);
+
+  it('skips destructive-looking JSON API endpoints', async () => {
+    // JSON API test should skip endpoints with delete/destroy in the path
+    const targets: ScanTargets = {
+      pages: [],
+      forms: [],
+      urlsWithParams: [],
+      apiEndpoints: [`${baseUrl}/api/v1/users/destroy`],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await sqliCheck.run(context, targets, defaultConfig);
+
+    const jsonFinding = findings.find((f) => f.title.includes('JSON API Field'));
+    expect(jsonFinding).toBeUndefined();
+  }, 30000);
 });

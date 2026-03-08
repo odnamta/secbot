@@ -97,6 +97,9 @@ const DOM_XSS_INIT_SCRIPT = `
   });
 `;
 
+/** Destructive action indicators — skip forms that look like they delete or cancel things */
+const DESTRUCTIVE_ACTION_RE = /\b(delete|remove|cancel|destroy|drop|reset|purge|wipe|terminate)\b/i;
+
 export const xssCheck: ActiveCheck = {
   name: 'xss',
   category: 'xss',
@@ -109,9 +112,22 @@ export const xssCheck: ActiveCheck = {
       findings.push(...formFindings);
     }
 
+    // POST form body parameter XSS via direct HTTP requests (no browser form filling)
+    const postForms = targets.forms.filter(f => f.method === 'POST');
+    if (postForms.length > 0) {
+      log.info(`Testing ${postForms.length} POST forms for body parameter XSS...`);
+      findings.push(...(await testPostFormXss(context, postForms, config, requestLogger)));
+    }
+
     if (targets.urlsWithParams.length > 0) {
       log.info(`Testing ${targets.urlsWithParams.length} URLs for reflected XSS...`);
       findings.push(...(await testXssOnUrls(context, targets.urlsWithParams, config, requestLogger)));
+    }
+
+    // JSON API response XSS: test API endpoints that accept JSON bodies
+    if (targets.apiEndpoints.length > 0) {
+      log.info(`Testing ${targets.apiEndpoints.length} API endpoints for JSON XSS...`);
+      findings.push(...(await testJsonApiXss(context, targets.apiEndpoints, config, requestLogger)));
     }
 
     // DOM XSS detection on crawled pages
@@ -345,6 +361,275 @@ async function testXssOnForms(
         }
       } catch (err) {
         log.debug(`XSS form test: ${(err as Error).message}`);
+      } finally {
+        await page.close();
+      }
+
+      await delay(config.requestDelay);
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * POST form body XSS: submit XSS payloads directly via HTTP POST (fetch API)
+ * rather than filling browser forms. Tests each text input individually while
+ * filling other fields with benign data.
+ */
+async function testPostFormXss(
+  context: BrowserContext,
+  forms: FormInfo[],
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+  const payloads = selectPayloads(config, 5);
+
+  for (const form of forms) {
+    // Skip forms with destructive-looking actions
+    if (DESTRUCTIVE_ACTION_RE.test(form.action)) {
+      log.debug(`Skipping destructive form action: ${form.action}`);
+      continue;
+    }
+
+    const textInputs = form.inputs.filter(
+      (i) => ['text', 'search', 'email', 'url', 'tel', 'hidden', ''].includes(i.type) && i.name,
+    );
+    if (textInputs.length === 0) continue;
+
+    for (const input of textInputs) {
+      let foundForInput = false;
+      for (const xssPayload of payloads) {
+        if (foundForInput) break;
+
+        const page = await context.newPage();
+        try {
+          // Build form data: inject payload into this input, benign data for others
+          const formData: Record<string, string> = {};
+          for (const other of textInputs) {
+            formData[other.name] = other.name === input.name
+              ? xssPayload.payload
+              : (other.value || 'test');
+          }
+
+          // Resolve the action URL relative to the page URL
+          let actionUrl: string;
+          try {
+            actionUrl = new URL(form.action, form.pageUrl).href;
+          } catch {
+            actionUrl = form.action;
+          }
+
+          // Submit via fetch API with URL-encoded body
+          const urlEncodedBody = Object.entries(formData)
+            .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+            .join('&');
+
+          const response = await page.request.fetch(actionUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            data: urlEncodedBody,
+          });
+
+          requestLogger?.log({
+            timestamp: new Date().toISOString(),
+            method: 'POST',
+            url: actionUrl,
+            body: urlEncodedBody,
+            phase: 'active-xss-post-form',
+          });
+
+          const contentType = response.headers()['content-type'] ?? '';
+          if (!contentType.includes('text/html')) {
+            continue; // Only check HTML responses for reflected XSS
+          }
+
+          const content = await response.text();
+          const dangerousContext = checkDangerousReflection(content, xssPayload.payload, xssPayload.marker);
+
+          if (dangerousContext) {
+            findings.push({
+              id: randomUUID(),
+              category: 'xss',
+              severity: 'high',
+              title: `Reflected XSS in POST Body Parameter "${input.name}"`,
+              description: `The POST body parameter "${input.name}" reflects XSS payload (${xssPayload.type}) in the response without proper encoding. ${dangerousContext}. This is exploitable via a crafted form that auto-submits via JavaScript.`,
+              url: form.pageUrl,
+              evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nParameter: ${input.name}\nMethod: POST\nAction: ${actionUrl}\n${dangerousContext}`,
+              request: {
+                method: 'POST',
+                url: actionUrl,
+                body: urlEncodedBody,
+              },
+              timestamp: new Date().toISOString(),
+            });
+            foundForInput = true;
+          }
+        } catch (err) {
+          log.debug(`POST form XSS test: ${(err as Error).message}`);
+        } finally {
+          await page.close();
+        }
+
+        await delay(config.requestDelay);
+      }
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * JSON API XSS: inject XSS payloads into JSON string values sent to API endpoints.
+ * Tests for reflected XSS where the API echoes back unencoded payloads in JSON responses
+ * that could be rendered in HTML context (stored XSS via API pattern).
+ *
+ * Only flags findings where:
+ * 1. The raw payload appears in the JSON response unencoded, AND
+ * 2. The payload contains HTML-significant characters (< > " ') that would be
+ *    dangerous if the JSON value is rendered in HTML without encoding
+ */
+async function testJsonApiXss(
+  context: BrowserContext,
+  apiEndpoints: string[],
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+  const payloads = selectPayloads(config, 3);
+
+  // Limit endpoints in non-deep mode
+  const endpointsToTest = config.profile === 'deep' ? apiEndpoints : apiEndpoints.slice(0, 5);
+
+  for (const endpoint of endpointsToTest) {
+    // Skip destructive-looking endpoints
+    if (DESTRUCTIVE_ACTION_RE.test(endpoint)) {
+      log.debug(`Skipping destructive API endpoint: ${endpoint}`);
+      continue;
+    }
+
+    for (const xssPayload of payloads) {
+      // Only test payloads with HTML-significant characters
+      if (!xssPayload.payload.includes('<') && !xssPayload.payload.includes('>') && !xssPayload.payload.includes('"')) {
+        continue;
+      }
+
+      const page = await context.newPage();
+      try {
+        // Try POST with JSON body containing the payload in common field names
+        const testBody = JSON.stringify({
+          name: xssPayload.payload,
+          text: xssPayload.payload,
+          comment: xssPayload.payload,
+          message: xssPayload.payload,
+          title: xssPayload.payload,
+          description: xssPayload.payload,
+          author: xssPayload.payload,
+          displayName: xssPayload.payload,
+          bio: xssPayload.payload,
+          content: xssPayload.payload,
+          value: xssPayload.payload,
+          query: xssPayload.payload,
+        });
+
+        // Try POST first
+        let response = await page.request.fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          data: testBody,
+        }).catch(() => null);
+
+        // If POST returns 404/405, try PUT
+        if (response && (response.status() === 404 || response.status() === 405)) {
+          response = await page.request.fetch(endpoint, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            data: testBody,
+          }).catch(() => null);
+        }
+
+        if (!response) continue;
+
+        const status = response.status();
+        // Skip server errors and not-found responses
+        if (status >= 500 || status === 404 || status === 405) continue;
+
+        const contentType = response.headers()['content-type'] ?? '';
+        const responseText = await response.text();
+
+        const method = 'POST';
+        requestLogger?.log({
+          timestamp: new Date().toISOString(),
+          method,
+          url: endpoint,
+          headers: { 'Content-Type': 'application/json' },
+          body: testBody,
+          phase: 'active-xss-json-api',
+        });
+
+        // Check 1: Does the JSON response contain the raw payload?
+        if (contentType.includes('application/json') && responseText.includes(xssPayload.marker)) {
+          // The API echoes back the payload in JSON. This is potentially dangerous
+          // if the JSON values are rendered client-side without encoding.
+          // Check if the raw HTML characters are preserved (not encoded)
+          const hasRawHtml = responseText.includes(xssPayload.payload) &&
+            (xssPayload.payload.includes('<') || xssPayload.payload.includes('>'));
+
+          if (hasRawHtml) {
+            findings.push({
+              id: randomUUID(),
+              category: 'xss',
+              severity: 'medium', // Medium because exploitation requires client-side rendering
+              title: `Potential Stored XSS via JSON API`,
+              description: `The API endpoint echoes back XSS payload (${xssPayload.type}) in JSON response without encoding HTML characters. If this data is rendered client-side via innerHTML or similar, it leads to stored XSS.`,
+              url: endpoint,
+              evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nAPI Response (snippet): ${responseText.slice(0, 500)}`,
+              request: {
+                method,
+                url: endpoint,
+                headers: { 'Content-Type': 'application/json' },
+                body: testBody,
+              },
+              response: {
+                status,
+                headers: { 'content-type': contentType },
+                bodySnippet: responseText.slice(0, 500),
+              },
+              timestamp: new Date().toISOString(),
+            });
+            break; // One finding per endpoint is enough
+          }
+        }
+
+        // Check 2: Does the response render the payload in HTML context?
+        // (Some APIs return HTML for certain requests)
+        if (contentType.includes('text/html')) {
+          const dangerousContext = checkDangerousReflection(responseText, xssPayload.payload, xssPayload.marker);
+          if (dangerousContext) {
+            findings.push({
+              id: randomUUID(),
+              category: 'xss',
+              severity: 'high',
+              title: `Reflected XSS in API Endpoint`,
+              description: `The API endpoint reflects XSS payload (${xssPayload.type}) in HTML response without proper encoding. ${dangerousContext}.`,
+              url: endpoint,
+              evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\n${dangerousContext}`,
+              request: {
+                method,
+                url: endpoint,
+                headers: { 'Content-Type': 'application/json' },
+                body: testBody,
+              },
+              timestamp: new Date().toISOString(),
+            });
+            break;
+          }
+        }
+      } catch (err) {
+        log.debug(`JSON API XSS test: ${(err as Error).message}`);
       } finally {
         await page.close();
       }

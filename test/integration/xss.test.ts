@@ -137,4 +137,194 @@ describe('XSS Integration Tests', () => {
     const finding = findings[0];
     expect(finding.evidence).toContain('Type:');
   }, 60000);
+
+  // ─── POST Body Parameter XSS Tests ─────────────────────────────
+
+  it('detects reflected XSS in POST body parameter on /feedback', async () => {
+    const targets: ScanTargets = {
+      pages: [`${baseUrl}/feedback`],
+      forms: [
+        {
+          action: `${baseUrl}/feedback`,
+          method: 'POST',
+          inputs: [
+            { name: 'name', type: 'text' },
+            { name: 'message', type: 'text' },
+          ],
+          pageUrl: `${baseUrl}/feedback`,
+        },
+      ],
+      urlsWithParams: [],
+      apiEndpoints: [],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await xssCheck.run(context, targets, defaultConfig);
+
+    // Should find XSS via POST body parameter testing
+    const postBodyFinding = findings.find(
+      f => f.category === 'xss' && f.title.includes('POST Body Parameter'),
+    );
+    expect(postBodyFinding).toBeDefined();
+    expect(postBodyFinding!.severity).toBe('high');
+    expect(postBodyFinding!.title).toMatch(/POST Body Parameter "(?:name|message)"/);
+    expect(postBodyFinding!.request?.method).toBe('POST');
+  }, 60000);
+
+  it('POST body XSS test includes proper evidence and request details', async () => {
+    const targets: ScanTargets = {
+      pages: [`${baseUrl}/feedback`],
+      forms: [
+        {
+          action: `${baseUrl}/feedback`,
+          method: 'POST',
+          inputs: [
+            { name: 'name', type: 'text' },
+            { name: 'message', type: 'text' },
+          ],
+          pageUrl: `${baseUrl}/feedback`,
+        },
+      ],
+      urlsWithParams: [],
+      apiEndpoints: [],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await xssCheck.run(context, targets, defaultConfig);
+
+    const postBodyFinding = findings.find(
+      f => f.category === 'xss' && f.title.includes('POST Body Parameter'),
+    );
+    expect(postBodyFinding).toBeDefined();
+    expect(postBodyFinding!.evidence).toContain('Method: POST');
+    expect(postBodyFinding!.evidence).toContain('Payload:');
+    expect(postBodyFinding!.evidence).toContain('Parameter:');
+    expect(postBodyFinding!.request?.body).toBeDefined();
+  }, 60000);
+
+  it('skips POST body XSS test for GET-only forms', async () => {
+    // Only provide URL params (no forms at all) — verify no POST body findings
+    // The key behavior: forms.filter(f => f.method === 'POST') returns empty for GET forms
+    const targets: ScanTargets = {
+      pages: [`${baseUrl}/search?q=test`],
+      forms: [],
+      urlsWithParams: [`${baseUrl}/search?q=test`],
+      apiEndpoints: [],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await xssCheck.run(context, targets, defaultConfig);
+
+    // Should NOT have POST body findings (no POST forms)
+    const postBodyFinding = findings.find(
+      f => f.category === 'xss' && f.title.includes('POST Body Parameter'),
+    );
+    expect(postBodyFinding).toBeUndefined();
+
+    // But should still detect reflected XSS via URL params
+    const urlFinding = findings.find(
+      f => f.category === 'xss' && f.title.includes('URL Parameter'),
+    );
+    expect(urlFinding).toBeDefined();
+  }, 60000);
+
+  // ─── JSON API XSS Tests ────────────────────────────────────────
+
+  it('detects potential stored XSS via JSON API on /api/v1/comments', async () => {
+    const targets: ScanTargets = {
+      pages: [],
+      forms: [],
+      urlsWithParams: [],
+      apiEndpoints: [`${baseUrl}/api/v1/comments`],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await xssCheck.run(context, targets, defaultConfig);
+
+    const jsonXssFinding = findings.find(
+      f => f.category === 'xss' && f.title.includes('JSON API'),
+    );
+    expect(jsonXssFinding).toBeDefined();
+    expect(jsonXssFinding!.severity).toBe('medium');
+    expect(jsonXssFinding!.title).toContain('Stored XSS via JSON API');
+    expect(jsonXssFinding!.evidence).toContain('API Response');
+    expect(jsonXssFinding!.request?.headers?.['Content-Type']).toBe('application/json');
+    expect(jsonXssFinding!.response?.status).toBe(200);
+  }, 60000);
+
+  it('does NOT flag safe JSON API as XSS', async () => {
+    const targets: ScanTargets = {
+      pages: [],
+      forms: [],
+      urlsWithParams: [],
+      apiEndpoints: [`${baseUrl}/api/v1/safe-comments`],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await xssCheck.run(context, targets, defaultConfig);
+
+    // Safe API encodes HTML characters, so no XSS findings
+    const jsonXssFinding = findings.find(
+      f => f.category === 'xss' && f.title.includes('JSON API'),
+    );
+    expect(jsonXssFinding).toBeUndefined();
+  }, 60000);
+
+  it('does NOT produce JSON API XSS findings when no apiEndpoints provided', async () => {
+    const targets: ScanTargets = {
+      pages: [`${baseUrl}/safe`],
+      forms: [],
+      urlsWithParams: [],
+      apiEndpoints: [], // No API endpoints
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await xssCheck.run(context, targets, defaultConfig);
+
+    const jsonXssFinding = findings.find(
+      f => f.category === 'xss' && f.title.includes('JSON API'),
+    );
+    expect(jsonXssFinding).toBeUndefined();
+  }, 30000);
+
+  // ─── Combined POST + JSON test ─────────────────────────────────
+
+  it('detects both POST body and JSON API XSS in a combined scan', async () => {
+    const targets: ScanTargets = {
+      pages: [`${baseUrl}/feedback`],
+      forms: [
+        {
+          action: `${baseUrl}/feedback`,
+          method: 'POST',
+          inputs: [
+            { name: 'name', type: 'text' },
+            { name: 'message', type: 'text' },
+          ],
+          pageUrl: `${baseUrl}/feedback`,
+        },
+      ],
+      urlsWithParams: [],
+      apiEndpoints: [`${baseUrl}/api/v1/comments`],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await xssCheck.run(context, targets, defaultConfig);
+
+    const postBodyFinding = findings.find(
+      f => f.category === 'xss' && f.title.includes('POST Body Parameter'),
+    );
+    const jsonApiFinding = findings.find(
+      f => f.category === 'xss' && f.title.includes('JSON API'),
+    );
+
+    expect(postBodyFinding).toBeDefined();
+    expect(jsonApiFinding).toBeDefined();
+  }, 90000);
 });

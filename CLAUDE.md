@@ -7,11 +7,17 @@ Developer-friendly tool that scans web apps for OWASP Top 10 vulnerabilities wit
 
 ## Status
 - Version: v0.8.0
-- 11 active check types + 6 passive check categories
-- 912 tests (unit + integration + false-positive regression)
+- 15 active check types + 6 passive check categories
+- 1043 tests (unit + integration + false-positive regression)
 - AI prompt injection sanitization enabled
 - OOB findings fully wired into report pipeline + exit code
 - CI/CD ready: SARIF, JUnit, baseline diff, --exclude-checks validation
+- Non-TTY consent enforcement: --yes flag required in CI/CD for external targets
+- Framework-aware CSP: Next.js/Nuxt unsafe-inline downgraded from medium to low
+- JS library CVE checking: built-in vulnerability database (9 libraries, 16 CVEs)
+- XSS deepened: POST form fields + JSON API response testing
+- SQLi deepened: POST form fields + JSON body parameter testing
+- CRLF injection check: header injection via CR/LF in parameters
 
 ## Tech Stack
 - **Language:** TypeScript 5 (strict mode)
@@ -66,8 +72,9 @@ src/
       session-manager.ts      # Session refresh + expiry detection
     active/
       index.ts                # ActiveCheck interface, CHECK_REGISTRY, runner, plugin loader
-      xss.ts                  # XSS (reflected, DOM, stored, blind + polyglot + HPP bypass)
-      sqli.ts                 # SQLi (error-based, time-based blind, boolean-blind, union, NoSQL)
+      xss.ts                  # XSS (reflected GET/POST/JSON, DOM, stored, blind + polyglot + HPP bypass)
+      sqli.ts                 # SQLi (error-based GET/POST/JSON, time-based blind, boolean-blind, union, NoSQL)
+      crlf.ts                 # CRLF injection (HTTP response splitting via header injection)
       cors.ts                 # CORS misconfiguration check
       redirect.ts             # Open redirect check
       traversal.ts            # Directory traversal check
@@ -77,6 +84,8 @@ src/
       idor.ts                 # IDOR check (Jaccard + JSON key similarity)
       tls.ts                  # TLS/Crypto security check
       sri.ts                  # Subresource Integrity check
+      info-disclosure.ts      # Information disclosure (exposed .git, .env, source maps, robots.txt, backups)
+      js-cve.ts               # JS library CVE checking (built-in vuln DB for jQuery, Angular, Lodash, etc.)
     oob/
       callback-server.ts      # OOB HTTP callback server (binds 127.0.0.1)
       blind-payloads.ts       # Blind XSS/SQLi/SSRF payload generators
@@ -167,6 +176,7 @@ secbot scan <url>
   --baseline <path>           # Baseline JSON for incremental scanning
   --exclude-checks <names>    # Comma-separated check names to skip
   --no-ai                     # Skip AI, use rule-based fallback
+  -y, --yes                   # Auto-confirm consent for CI/CD (required in non-TTY for external targets)
   --verbose                   # Debug logging
 ```
 
@@ -184,7 +194,7 @@ SECBOT_TOKEN_BUDGET=          # Max AI tokens per scan
 
 **Passive (6):** `security-headers`, `cookie-flags`, `info-leakage`, `mixed-content`, `sensitive-url-data`, `cross-origin-policy`
 
-**Active (11):** `xss`, `sqli`, `open-redirect`, `cors-misconfiguration`, `directory-traversal`, `ssrf`, `ssti`, `command-injection`, `idor`, `tls`, `sri`
+**Active (15):** `xss`, `sqli`, `open-redirect`, `cors-misconfiguration`, `directory-traversal`, `ssrf`, `ssti`, `command-injection`, `idor`, `tls`, `sri`, `info-disclosure`, `js-cve`, `crlf-injection`
 
 ## Rules
 - NEVER perform destructive actions (no data modification, no DoS)
