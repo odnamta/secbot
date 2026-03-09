@@ -23,7 +23,10 @@ export type CheckCategory =
   | 'crlf-injection'
   | 'rate-limit'
   | 'jwt'
-  | 'race-condition';
+  | 'race-condition'
+  | 'host-header'
+  | 'graphql'
+  | 'vuln-chain';
 
 export type ScanProfile = 'quick' | 'standard' | 'deep' | 'stealth';
 

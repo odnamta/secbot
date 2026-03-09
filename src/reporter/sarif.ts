@@ -52,6 +52,9 @@ function categoryToRuleName(category: CheckCategory): string {
     'rate-limit': 'Missing Rate Limiting',
     'jwt': 'JWT Security Issue',
     'race-condition': 'Race Condition (TOCTOU)',
+    'host-header': 'Host Header Injection',
+    'graphql': 'GraphQL Security Issue',
+    'vuln-chain': 'Vulnerability Chain',
   };
   return map[category] ?? category;
 }

@@ -30,6 +30,7 @@ import { rateLimitCheck } from './rate-limit.js';
 import { jwtCheck } from './jwt.js';
 import { raceCheck } from './race.js';
 import { graphqlCheck } from './graphql.js';
+import { hostHeaderCheck } from './host-header.js';
 import { log } from '../../utils/logger.js';
 
 export interface ScanTargets {
@@ -72,6 +73,7 @@ export const CHECK_REGISTRY: ActiveCheck[] = [
   jwtCheck,
   raceCheck,
   graphqlCheck,
+  hostHeaderCheck,
 ];
 
 /**

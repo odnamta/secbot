@@ -6,9 +6,9 @@
 Developer-friendly tool that scans web apps for OWASP Top 10 vulnerabilities with a single command. Claude AI drives the entire pipeline — planning attacks, validating findings, and writing reports.
 
 ## Status
-- Version: v0.9.1
-- 19 active check types + 6 passive check categories
-- 1145 tests (unit + integration + false-positive regression)
+- Version: v0.10.0
+- 20 active check types + 6 passive check categories + 5 chain rules
+- 1225 tests (unit + integration + false-positive regression)
 - AI prompt injection sanitization enabled
 - OOB findings fully wired into report pipeline + exit code
 - CI/CD ready: SARIF, JUnit, baseline diff, --exclude-checks validation
@@ -26,6 +26,11 @@ Developer-friendly tool that scans web apps for OWASP Top 10 vulnerabilities wit
 - JWT security check: none-algorithm bypass, weak secret detection, missing expiry, sensitive payload data
 - Race condition (TOCTOU) check: concurrent request abuse on state-changing endpoints
 - GraphQL deep check: introspection, depth limits, batch queries, sensitive mutation discovery
+- Host header injection: direct Host, X-Forwarded-Host/Server/URL, cache poisoning detection
+- Vulnerability chain detection: 5 rules (redirect+SSRF, XSS+CSRF, info+IDOR, CORS+XSS, JWT+rate-limit)
+- Bug bounty scope parser: HackerOne/Bugcrowd format with in-scope/out-of-scope sections
+- Subdomain enumeration: DNS brute-force (70+ prefixes, concurrent batched resolution)
+- Scan history + trend tracking: per-target history file, new/resolved findings, trend summary
 - Auth convenience: --auth-cookie and --auth-supabase flags
 
 ## Tech Stack
@@ -75,6 +80,8 @@ src/
       url-file-loader.ts      # Load URLs from --urls file
       framework-detector.ts   # SPA framework detection + hydration wait
       spa-crawler.ts          # SPA-aware crawling helpers
+    recon/
+      subdomain.ts            # DNS subdomain enumeration (70+ prefixes, batched)
     auth/
       authenticator.ts        # Credential-based authentication
       login-detector.ts       # Login page heuristic detection
@@ -88,6 +95,8 @@ src/
       jwt.ts                  # JWT security (none-alg, weak secrets, missing exp, sensitive data)
       race.ts                 # Race condition / TOCTOU (concurrent request abuse)
       graphql.ts              # GraphQL deep check (introspection, depth, batch, mutations)
+      host-header.ts          # Host header injection (direct Host, X-Forwarded-*, cache poisoning)
+      chain-detector.ts       # Vulnerability chain detection (5 chain rules)
       cors.ts                 # CORS misconfiguration check
       redirect.ts             # Open redirect check
       traversal.ts            # Directory traversal check
@@ -147,6 +156,8 @@ src/
     payload-mutator.ts        # Encoding strategies for WAF bypass
     param-pollution.ts        # HTTP Parameter Pollution variants
     polyglot-payloads.ts      # Polyglot XSS/SQLi payloads
+    scan-history.ts           # Scan result history + trend tracking (per-target, last 100)
+    scope-parser.ts           # Bug bounty scope file parser (HackerOne/Bugcrowd format)
   interactive/
     repl.ts                   # Interactive REPL mode
 test/
@@ -192,6 +203,8 @@ secbot scan <url>
   -y, --yes                   # Auto-confirm consent for CI/CD (required in non-TTY for external targets)
   --auth-cookie <cookies>      # Pre-set cookies (name1=value1;name2=value2)
   --auth-supabase <email:pass> # Authenticate via Supabase password grant
+  --scope-file <path>         # Bug bounty scope file (HackerOne/Bugcrowd format)
+  --subdomains                # Enable subdomain enumeration (DNS brute-force)
   --verbose                   # Debug logging
 ```
 
@@ -205,11 +218,13 @@ SECBOT_TIMEOUT=30000          # Per-page timeout (ms)
 SECBOT_TOKEN_BUDGET=          # Max AI tokens per scan
 ```
 
-## CheckCategory (17 types)
+## CheckCategory (20 types)
 
 **Passive (6):** `security-headers`, `cookie-flags`, `info-leakage`, `mixed-content`, `sensitive-url-data`, `cross-origin-policy`
 
-**Active (19):** `xss`, `sqli`, `open-redirect`, `cors-misconfiguration`, `directory-traversal`, `ssrf`, `ssti`, `command-injection`, `idor`, `tls`, `sri`, `info-disclosure`, `js-cve`, `crlf-injection`, `rate-limit`, `jwt`, `race-condition`, `graphql`
+**Active (20):** `xss`, `sqli`, `open-redirect`, `cors-misconfiguration`, `directory-traversal`, `ssrf`, `ssti`, `command-injection`, `idor`, `tls`, `sri`, `info-disclosure`, `js-cve`, `crlf-injection`, `rate-limit`, `jwt`, `race-condition`, `graphql`, `host-header`
+
+**Meta:** `vuln-chain` (auto-detected from combinations of active findings)
 
 ## Rules
 - NEVER perform destructive actions (no data modification, no DoS)

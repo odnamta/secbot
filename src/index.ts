@@ -38,6 +38,10 @@ import { waitForDelayedCallbacks, getDefaultWaitMs } from './scanner/oob/delayed
 import { convertHitsToFindings } from './scanner/oob/hit-converter.js';
 import { startInteractiveMode } from './interactive/repl.js';
 import { authenticate } from './scanner/auth/authenticator.js';
+import { enumerateSubdomains } from './scanner/recon/subdomain.js';
+import { parseScopeFile, scopeToScanConfig } from './utils/scope-parser.js';
+import { detectChains } from './scanner/active/chain-detector.js';
+import { getHistoryPath, loadHistory, addToHistory, saveHistory, getTrendSummary } from './utils/scan-history.js';
 import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, AuthOptions } from './scanner/types.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
@@ -89,6 +93,8 @@ program
   .option('--auth-cookie <cookies>', 'Pre-set cookies for authenticated scanning (name1=value1;name2=value2)')
   .option('--auth-supabase <email:pass>', 'Authenticate via Supabase (email:password) — auto-detects project from target URL')
   .option('-y, --yes', 'Auto-confirm consent for non-interactive environments (CI/CD)', false)
+  .option('--scope-file <path>', 'Bug bounty scope file (one domain/pattern per line)')
+  .option('--subdomains', 'Enable subdomain enumeration (DNS brute-force)', false)
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (url: string | undefined, options: Record<string, unknown>) => {
     if (options.verbose) {
@@ -171,7 +177,31 @@ program
     const formats = effectiveFormat.split(',').map((f: string) => f.trim()) as ScanConfig['outputFormat'];
 
     const scopeStr = (options.scope as string | undefined) ?? fileConfig?.scope;
-    const scope = scopeStr ? parseScopePatterns(scopeStr) : undefined;
+    let scope = scopeStr ? parseScopePatterns(scopeStr) : undefined;
+
+    // --scope-file: parse bug bounty scope file and merge into scope
+    if (options.scopeFile) {
+      try {
+        const scopeFileContent = readFileSync(resolve(options.scopeFile as string), 'utf-8');
+        const bountyScope = parseScopeFile(scopeFileContent);
+        const scanConfig = scopeToScanConfig(bountyScope);
+        if (bountyScope.programName) {
+          log.info(`Scope file loaded: ${bountyScope.programName} (${scanConfig.includePatterns.length} in-scope, ${scanConfig.excludePatterns.length} out-of-scope)`);
+        } else {
+          log.info(`Scope file loaded: ${scanConfig.includePatterns.length} in-scope, ${scanConfig.excludePatterns.length} out-of-scope patterns`);
+        }
+        // Merge with existing --scope patterns (if any)
+        if (scope) {
+          scope.includePatterns = [...new Set([...scope.includePatterns, ...scanConfig.includePatterns])];
+          scope.excludePatterns = [...new Set([...scope.excludePatterns, ...scanConfig.excludePatterns])];
+        } else {
+          scope = scanConfig;
+        }
+      } catch (err) {
+        console.error(chalk.red(`Failed to read scope file: ${(err as Error).message}`));
+        process.exit(1);
+      }
+    }
 
     // --no-ai: commander sets options.ai to false when --no-ai is passed
     const useAI = options.ai === false ? false : (fileConfig?.noAi === true ? false : true);
@@ -477,6 +507,25 @@ program
       }
       const seedUrls = discoveredRoutes.map((r) => r.url);
 
+      // ─── Phase 0b: Subdomain Enumeration (optional) ────────────
+      if (options.subdomains) {
+        const targetHost = new URL(targetUrl).hostname;
+        // Strip leading "www." to get base domain for enumeration
+        const baseDomain = targetHost.replace(/^www\./, '');
+        log.info('Phase 0b: Enumerating subdomains...');
+        const subdomainResults = await enumerateSubdomains(baseDomain);
+        if (subdomainResults.length > 0) {
+          log.info(`Discovered ${subdomainResults.length} subdomain(s):`);
+          for (const sub of subdomainResults) {
+            const cnameInfo = sub.cname ? ` (CNAME: ${sub.cname})` : '';
+            log.info(`  ${sub.subdomain} -> ${sub.ips.join(', ')}${cnameInfo}`);
+          }
+          log.warn('Discovered subdomains are reported only — not added as scan targets (may be out of scope)');
+        } else {
+          log.info('No subdomains discovered via DNS brute-force');
+        }
+      }
+
       // ─── Phase 1: Crawl ────────────────────────────────────────
       log.info('Phase 1: Crawling target...');
       const { pages, responses, browser, context } = await crawl(config, seedUrls);
@@ -565,6 +614,26 @@ program
             log.info(`Added ${oobFindings.length} OOB finding(s) to validation pipeline`);
           } else {
             log.info('OOB callback server received no hits during scan');
+          }
+        }
+
+        // ─── Vulnerability Chain Detection ──────────────────────
+        const chains = detectChains(findingsForValidation);
+        if (chains.length > 0) {
+          log.info(`Detected ${chains.length} vulnerability chain(s):`);
+          for (const chain of chains) {
+            log.info(`  [${chain.severity.toUpperCase()}] ${chain.name}`);
+            const chainFinding: import('./scanner/types.js').RawFinding = {
+              id: `chain-${chain.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
+              category: 'vuln-chain',
+              severity: chain.severity,
+              title: `Vulnerability Chain: ${chain.name}`,
+              description: chain.description,
+              url: targetUrl,
+              evidence: `Components: ${chain.components.join(', ')}. Impact: ${chain.impact}`,
+              timestamp: new Date().toISOString(),
+            };
+            findingsForValidation = [...findingsForValidation, chainFinding];
           }
         }
 
@@ -703,6 +772,23 @@ program
         const baselineOutPath = join(outputDir, 'secbot-baseline.json');
         saveBaseline(dedupedFindings, baselineOutPath);
         log.info(`Baseline saved: ${baselineOutPath}`);
+
+        // ─── Scan History + Trend Tracking ──────────────────────
+        try {
+          const historyPath = getHistoryPath(outputDir, targetUrl);
+          const history = loadHistory(historyPath);
+          const updatedHistory = addToHistory(history, scanResult);
+          saveHistory(updatedHistory, historyPath);
+
+          const trend = getTrendSummary(updatedHistory);
+          log.info(`Scan history saved: ${historyPath}`);
+          if (updatedHistory.entries.length > 1) {
+            console.log(chalk.cyan('\n─── Trend Summary ───'));
+            console.log(chalk.gray(trend));
+          }
+        } catch (err) {
+          log.debug(`Scan history: ${(err as Error).message}`);
+        }
 
         process.exitCode = exitCode;
 
