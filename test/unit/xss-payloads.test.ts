@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { XSS_PAYLOADS, XSS_MARKERS } from '../../src/config/payloads/xss.js';
 import { collectSearchUrls, SEARCH_PARAM_RE } from '../../src/scanner/active/xss.js';
 import type { ScanTargets } from '../../src/scanner/active/index.js';
+import type { ScanConfig } from '../../src/scanner/types.js';
 
 describe('SEARCH_PARAM_RE', () => {
   it('matches common search parameter names', () => {
@@ -91,7 +92,7 @@ describe('collectSearchUrls', () => {
     const targets = makeTargets({
       urlsWithParams: [
         'http://example.com/search?q=test',
-        'http://example.com/api/search?q=test',
+        'http://example.com/products/search?q=test',
       ],
     });
 
@@ -128,12 +129,39 @@ describe('collectSearchUrls', () => {
 
   it('handles mixed URL and page inputs correctly', () => {
     const targets = makeTargets({
-      urlsWithParams: ['http://example.com/api/search?q=hello'],
+      urlsWithParams: ['http://example.com/products/search?q=hello'],
       pages: ['http://example.com/search'],
     });
 
     const results = collectSearchUrls(targets);
     expect(results).toHaveLength(2);
+  });
+
+  it('filters out REST/API endpoints for SPA DOM XSS', () => {
+    const targets = makeTargets({
+      urlsWithParams: [
+        'http://example.com/search?q=test',
+        'http://example.com/api/search?q=test',
+        'http://example.com/rest/products/search?q=test',
+      ],
+    });
+
+    const results = collectSearchUrls(targets);
+    // Only the non-API endpoint should remain
+    expect(results).toHaveLength(1);
+    expect(results[0].url).toBe('http://example.com/search?q=test');
+  });
+
+  it('generates hash-based search routes when framework is detected', () => {
+    const targets = makeTargets({
+      urlsWithParams: ['http://example.com/rest/products/search?q=test'],
+      pages: ['http://example.com/'],
+    });
+
+    const config = { detectedFramework: { name: 'angular', router: 'angular-router', evidence: [] } } as ScanConfig;
+    const results = collectSearchUrls(targets, config);
+    // Should generate /#/search?q=test from the API endpoint
+    expect(results.some(r => r.url.includes('#/search'))).toBe(true);
   });
 
   it('handles invalid URLs gracefully', () => {

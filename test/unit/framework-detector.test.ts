@@ -66,7 +66,7 @@ describe('detectFramework', () => {
     expect(result!.router).toBe('vue-router');
   });
 
-  it('detects Angular with version', async () => {
+  it('detects Angular with version (ng-version attribute)', async () => {
     const page = createMockPage({
       name: 'angular',
       version: '17.0.0',
@@ -80,6 +80,49 @@ describe('detectFramework', () => {
     expect(result!.name).toBe('angular');
     expect(result!.version).toBe('17.0.0');
     expect(result!.router).toBe('angular-router');
+  });
+
+  it('detects modern Angular via window.ng debug utilities', async () => {
+    const page = createMockPage({
+      name: 'angular',
+      router: 'angular-router',
+      evidence: ['window.ng debug utilities found'],
+    });
+
+    const result = await detectFramework(page);
+
+    expect(result).not.toBeNull();
+    expect(result!.name).toBe('angular');
+    expect(result!.router).toBe('angular-router');
+    expect(result!.evidence).toContain('window.ng debug utilities found');
+  });
+
+  it('detects modern Angular via view encapsulation attributes (_ngcontent-)', async () => {
+    const page = createMockPage({
+      name: 'angular',
+      router: 'angular-router',
+      evidence: ['Angular view encapsulation attributes (_ngcontent-/_nghost-) found'],
+    });
+
+    const result = await detectFramework(page);
+
+    expect(result).not.toBeNull();
+    expect(result!.name).toBe('angular');
+    expect(result!.evidence).toContain('Angular view encapsulation attributes (_ngcontent-/_nghost-) found');
+  });
+
+  it('detects modern Angular via app-root element', async () => {
+    const page = createMockPage({
+      name: 'angular',
+      router: 'angular-router',
+      evidence: ['app-root element found'],
+    });
+
+    const result = await detectFramework(page);
+
+    expect(result).not.toBeNull();
+    expect(result!.name).toBe('angular');
+    expect(result!.evidence).toContain('app-root element found');
   });
 
   it('detects Svelte', async () => {
@@ -251,7 +294,7 @@ describe('waitForHydration', () => {
     expect(page.waitForFunction).toHaveBeenCalledTimes(1);
     // Check that it was called with a function and timeout option
     const call = (page.waitForFunction as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(call[1]).toEqual({ timeout: 5000 });
+    expect(call[2]).toEqual({ timeout: 5000 });
   });
 
   it('waits for React hydration markers', async () => {
@@ -266,7 +309,7 @@ describe('waitForHydration', () => {
 
     expect(page.waitForFunction).toHaveBeenCalledTimes(1);
     const call = (page.waitForFunction as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(call[1]).toEqual({ timeout: 5000 });
+    expect(call[2]).toEqual({ timeout: 5000 });
   });
 
   it('waits for Vue hydration markers', async () => {

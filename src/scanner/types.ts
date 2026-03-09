@@ -20,7 +20,8 @@ export type CheckCategory =
   | 'sri'
   | 'info-disclosure'
   | 'js-cve'
-  | 'crlf-injection';
+  | 'crlf-injection'
+  | 'rate-limit';
 
 export type ScanProfile = 'quick' | 'standard' | 'deep' | 'stealth';
 
@@ -96,6 +97,8 @@ export interface ScanConfig {
   oobWaitMs?: number;
   /** Per-domain rate limits. Keys are domain patterns (e.g. "*.hackerone.com"), values are RPS. "default" for fallback. */
   rateLimits?: Record<string, number>;
+  /** SPA framework detected during crawl — threaded to active checks to avoid re-detection */
+  detectedFramework?: import('../scanner/discovery/framework-detector.js').FrameworkInfo;
 }
 
 export interface CrawledPage {
@@ -107,6 +110,8 @@ export interface CrawledPage {
   links: string[];
   scripts: string[];
   cookies: CookieInfo[];
+  /** SPA framework detected during crawl (if any) */
+  framework?: import('../scanner/discovery/framework-detector.js').FrameworkInfo;
 }
 
 export interface FormInfo {

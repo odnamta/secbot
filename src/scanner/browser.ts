@@ -351,6 +351,7 @@ async function crawlPage(
       links,
       scripts,
       cookies,
+      framework: framework ?? undefined,
     };
   } finally {
     await page.close();

@@ -235,6 +235,40 @@ describe('matchesDirectoryListing', () => {
     expect(matchesDirectoryListing(body)).toBe(true);
   });
 
+  it('detects Nginx autoindex listing', () => {
+    const body = '<html><head><title>Directory listing for /ftp/</title></head><body><ul><li><a href="file1.txt">file1.txt</a></li></ul></body></html>';
+    expect(matchesDirectoryListing(body)).toBe(true);
+  });
+
+  it('detects IIS directory browsing', () => {
+    const body = '<html><head><title>/ftp - Directory Listing</title></head><body><table></table></body></html>';
+    expect(matchesDirectoryListing(body)).toBe(true);
+  });
+
+  it('detects file extension links (download listing)', () => {
+    const body = '<div><a href="backup.sql">backup.sql</a> <a href="dump.zip">dump.zip</a> <a href="data.csv">data.csv</a></div>';
+    expect(matchesDirectoryListing(body)).toBe(true);
+  });
+
+  it('detects links with file size indicators', () => {
+    const body = '<a href="f1.txt">f1.txt</a> 12 KB\n<a href="f2.txt">f2.txt</a> 3.5 MB\n<a href="f3.txt">f3.txt</a> 100 bytes';
+    expect(matchesDirectoryListing(body)).toBe(true);
+  });
+
+  it('detects JSON array directory listing with name field', () => {
+    const body = JSON.stringify([
+      { name: 'file1.txt', size: 1024 },
+      { name: 'file2.txt', size: 2048 },
+      { name: 'dir/', size: 0 },
+    ]);
+    expect(matchesDirectoryListing(body)).toBe(true);
+  });
+
+  it('detects JSON array of filenames', () => {
+    const body = JSON.stringify(['file1.txt', 'file2.txt', 'file3.txt']);
+    expect(matchesDirectoryListing(body)).toBe(true);
+  });
+
   it('rejects normal HTML page', () => {
     expect(matchesDirectoryListing('<html><body><h1>Welcome</h1><p>Hello world</p></body></html>')).toBe(false);
   });
@@ -245,6 +279,14 @@ describe('matchesDirectoryListing', () => {
 
   it('rejects page with only 2 links and no listing container', () => {
     expect(matchesDirectoryListing('<a href="a">a</a><a href="b">b</a>')).toBe(false);
+  });
+
+  it('rejects JSON object (not array)', () => {
+    expect(matchesDirectoryListing('{"status":"ok","data":[]}')).toBe(false);
+  });
+
+  it('rejects short JSON array', () => {
+    expect(matchesDirectoryListing('["a","b"]')).toBe(false);
   });
 });
 

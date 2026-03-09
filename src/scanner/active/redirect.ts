@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig } from '../types.js';
-import { REDIRECT_PAYLOADS } from '../../config/payloads/redirect.js';
+import { REDIRECT_PAYLOADS, REDIRECT_CANARY } from '../../config/payloads/redirect.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck } from './index.js';
@@ -27,6 +27,23 @@ function extractHost(value: string): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Check if a Location header value would redirect to the canary domain.
+ * Must be an absolute URL or protocol-relative URL pointing to the canary.
+ * Relative paths (e.g. /\evil.example.com) are NOT external redirects.
+ */
+function isExternalRedirectToCanary(location: string): boolean {
+  if (!location) return false;
+  const trimmed = location.trim();
+  // Must be absolute or protocol-relative to be an external redirect
+  if (!isExternalUrl(trimmed) && !/^[a-z]+:/i.test(trimmed)) return false;
+  // Check if it resolves to the canary domain
+  const host = extractHost(trimmed);
+  if (host && host.includes(REDIRECT_CANARY)) return true;
+  // Also check raw string for cases where URL parsing fails but canary is present
+  return trimmed.includes(REDIRECT_CANARY);
 }
 
 export const redirectCheck: ActiveCheck = {
@@ -75,8 +92,8 @@ async function testOpenRedirect(
         }
       }
 
-      // --- Phase 2: Standard payload injection ---
-      for (const payload of REDIRECT_PAYLOADS.slice(0, 2)) {
+      // --- Phase 2: Standard payload injection (try all bypass techniques) ---
+      for (const payload of REDIRECT_PAYLOADS) {
         const found = await testPayloadForParam(
           context, originalUrl, param, payload, config, requestLogger,
         );
@@ -122,7 +139,7 @@ async function testPayloadForParam(
         maxRedirects: 0,
       });
       const locationHeader = fetchResponse.headers()['location'] ?? '';
-      if (locationHeader.includes('evil.example.com')) {
+      if (isExternalRedirectToCanary(locationHeader)) {
         locationRedirect = true;
         return {
           id: randomUUID(),
@@ -160,7 +177,7 @@ async function testPayloadForParam(
         // Check if the browser navigated to a different host containing our canary domain
         // We check the hostname (not the full URL) to avoid false positives from query params
         const finalHost = extractHost(finalUrl);
-        if (finalHost && finalHost.includes('evil.example.com')) {
+        if (finalHost && finalHost.includes(REDIRECT_CANARY)) {
           return {
             id: randomUUID(),
             category: 'open-redirect',
@@ -182,7 +199,7 @@ async function testPayloadForParam(
           const match = content.match(/url\s*=\s*['"]?(.*?)['"]?$/i);
           return match ? match[1] : null;
         });
-        if (metaRefreshUrl && metaRefreshUrl.includes('evil.example.com')) {
+        if (metaRefreshUrl && metaRefreshUrl.includes(REDIRECT_CANARY)) {
           return {
             id: randomUUID(),
             category: 'open-redirect',
@@ -206,7 +223,7 @@ async function testPayloadForParam(
           }
           return null;
         });
-        if (jsRedirectUrl && jsRedirectUrl.includes('evil.example.com')) {
+        if (jsRedirectUrl && jsRedirectUrl.includes(REDIRECT_CANARY)) {
           return {
             id: randomUUID(),
             category: 'open-redirect',
@@ -222,7 +239,7 @@ async function testPayloadForParam(
       } catch (err) {
         // Navigation errors (e.g., redirected to unreachable external domain) may indicate success
         const errMsg = (err as Error).message;
-        if (errMsg.includes('evil.example.com')) {
+        if (errMsg.includes(REDIRECT_CANARY)) {
           return {
             id: randomUUID(),
             category: 'open-redirect',

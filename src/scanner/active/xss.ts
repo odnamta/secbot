@@ -112,6 +112,11 @@ export const SEARCH_PARAM_RE = /^(q|query|search|s|keyword|term|text|find|filter
  */
 function getSpaSearchPayloads(): XSSPayload[] {
   return [
+    // ── Safe HTML probe — detects innerHTML usage (survives Angular/React sanitizers) ──
+    // If <b>marker</b> renders as bold text (marker appears as text content of a <b> element),
+    // it proves the app uses innerHTML/[innerHTML]/dangerouslySetInnerHTML without full escaping.
+    { payload: '<b class="secbot-probe">secbot-spa-xss-probe</b>', marker: 'secbot-spa-xss-probe', type: 'reflected' },
+    // ── Actual XSS payloads ──
     // iframe — works with Angular [innerHTML] bypass
     { payload: '<iframe src="javascript:alert(\'secbot-spa-xss-0\')"></iframe>', marker: 'secbot-spa-xss-0', type: 'reflected' },
     // img onerror — fires immediately
@@ -165,7 +170,7 @@ export const xssCheck: ActiveCheck = {
 
     // SPA search parameter XSS: detect XSS in SPA-rendered search results
     // Works for Angular [innerHTML], React dangerouslySetInnerHTML, Vue v-html
-    const searchUrls = collectSearchUrls(targets);
+    const searchUrls = collectSearchUrls(targets, config);
     if (searchUrls.length > 0) {
       log.info(`Testing ${searchUrls.length} search URLs for SPA DOM XSS...`);
       findings.push(...(await testSearchParamXss(context, searchUrls, config, requestLogger)));
@@ -884,7 +889,7 @@ async function testDomXss(
  *
  * Exported for testing.
  */
-export function collectSearchUrls(targets: ScanTargets): Array<{ url: string; param: string }> {
+export function collectSearchUrls(targets: ScanTargets, config?: ScanConfig): Array<{ url: string; param: string }> {
   const results: Array<{ url: string; param: string }> = [];
   const seen = new Set<string>();
 
@@ -905,19 +910,29 @@ export function collectSearchUrls(targets: ScanTargets): Array<{ url: string; pa
     }
   }
 
-  // Also scan pages for search-like paths (e.g., /search, /#!/search)
+  // Also scan pages for search-like paths (e.g., /search, /#!/search, /#/search)
   for (const pageUrl of targets.pages) {
     try {
       const parsed = new URL(pageUrl);
-      const isSearchPage = /\/(search|find|query|results|browse)\b/i.test(parsed.pathname);
-      if (isSearchPage) {
+      // Check both pathname and hash fragment for search routes (SPA hash-based routing)
+      const isSearchPath = /\/(search|find|query|results|browse)\b/i.test(parsed.pathname);
+      const isSearchHash = /\/(search|find|query|results|browse)\b/i.test(parsed.hash);
+      if (isSearchPath || isSearchHash) {
         // If this page doesn't already have a search param, add it with 'q'
-        const dedupeKey = `${parsed.origin}${parsed.pathname}:q`;
+        const dedupeKey = `${pageUrl}:q`;
         if (!seen.has(dedupeKey)) {
           seen.add(dedupeKey);
-          const withParam = new URL(pageUrl);
-          withParam.searchParams.set('q', 'test');
-          results.push({ url: withParam.href, param: 'q' });
+          // For hash-based routes, append ?q= to the hash fragment
+          if (isSearchHash && !isSearchPath) {
+            const hashUrl = parsed.hash.includes('?')
+              ? `${pageUrl}&q=test`
+              : `${pageUrl}?q=test`;
+            results.push({ url: hashUrl, param: 'q' });
+          } else {
+            const withParam = new URL(pageUrl);
+            withParam.searchParams.set('q', 'test');
+            results.push({ url: withParam.href, param: 'q' });
+          }
         }
       }
     } catch {
@@ -925,7 +940,43 @@ export function collectSearchUrls(targets: ScanTargets): Array<{ url: string; pa
     }
   }
 
-  return results;
+  // When a SPA framework is detected, generate hash-based search route candidates.
+  // Many SPAs (especially Angular) use hash routing: /rest/products/search?q= → /#/search?q=
+  if (config?.detectedFramework) {
+    const baseUrl = targets.pages[0] ? new URL(targets.pages[0]).origin : null;
+    if (baseUrl) {
+      // Infer hash routes from API search endpoints
+      for (const r of [...results]) {
+        try {
+          const parsed = new URL(r.url);
+          if (/\/(api|rest)\//i.test(parsed.pathname)) {
+            // Extract the search-related path segment: /rest/products/search → search
+            const match = parsed.pathname.match(/\/(search|find|query|results|browse)(?:[/?]|$)/i);
+            if (match) {
+              const hashRoute = `${baseUrl}/#/${match[1].toLowerCase()}`;
+              const dedupeKey = `${hashRoute}:${r.param}`;
+              if (!seen.has(dedupeKey)) {
+                seen.add(dedupeKey);
+                results.push({ url: `${hashRoute}?${r.param}=test`, param: r.param });
+              }
+            }
+          }
+        } catch { continue; }
+      }
+    }
+  }
+
+  // Filter out REST API endpoints for SPA DOM XSS testing — they return JSON, not rendered pages.
+  // Keep only endpoints that are likely SPA pages (no /api/ or /rest/ path).
+  const spaResults = results.filter(r => {
+    try {
+      const parsed = new URL(r.url);
+      return !/\/(api|rest)\//i.test(parsed.pathname);
+    } catch { return true; }
+  });
+
+  // If filtering removed everything, keep originals as fallback
+  return spaResults.length > 0 ? spaResults : results;
 }
 
 /**
@@ -966,9 +1017,19 @@ export async function testSearchParamXss(
         // Install DOM XSS sink monitors before navigation
         await page.addInitScript(DOM_XSS_INIT_SCRIPT);
 
-        // Build the test URL with XSS payload in the search parameter
+        // Build the test URL with XSS payload in the search parameter.
+        // For hash-based SPA routes (e.g., /#/search?q=test), inject into the hash fragment.
         const testUrl = new URL(url);
-        testUrl.searchParams.set(param, xssPayload.payload);
+        const isHashRoute = testUrl.hash.includes('?');
+        if (isHashRoute) {
+          // Parse params inside hash fragment: /#/search?q=test → /#/search?q=<payload>
+          const hashParts = testUrl.hash.split('?');
+          const hashParams = new URLSearchParams(hashParts[1] || '');
+          hashParams.set(param, xssPayload.payload);
+          testUrl.hash = `${hashParts[0]}?${hashParams.toString()}`;
+        } else {
+          testUrl.searchParams.set(param, xssPayload.payload);
+        }
 
         // Capture the initial HTTP response body for comparison later.
         // We use this to distinguish server-side reflection (caught by testXssOnUrls)
@@ -987,8 +1048,21 @@ export async function testSearchParamXss(
         // Navigate and wait for initial load
         await page.goto(testUrl.href, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
 
-        // Detect the SPA framework and wait for hydration
-        const framework = await detectFramework(page);
+        // Brief settle before detection — Angular/React may not have markers ready immediately
+        await delay(300);
+
+        // Use pre-detected framework from crawl phase (avoids re-detection on fresh pages).
+        // Fall back to live detection if not available.
+        let framework = config.detectedFramework ?? await detectFramework(page);
+
+        // If detection fails, wait for full load and retry — some SPAs bootstrap late
+        if (!framework) {
+          try {
+            await page.waitForLoadState('load', { timeout: 3000 });
+          } catch { /* timeout OK */ }
+          framework = await detectFramework(page);
+        }
+
         await waitForHydration(page, framework);
 
         // Additional wait for API responses to render — SPAs often fetch data and render async
@@ -1029,8 +1103,8 @@ export async function testSearchParamXss(
               id: randomUUID(),
               category: 'xss',
               severity: 'high',
-              title: `DOM XSS in Search Parameter "${param}"${isSpaRendered ? ` (${framework.name} SPA)` : ''}`,
-              description: `The search parameter "${param}" is reflected in the ${isSpaRendered ? 'client-rendered' : ''} DOM without proper encoding. ${dangerousContext}.${isSpaRendered ? ` The ${framework.name} application renders user input unsafely (e.g., via [innerHTML] binding or similar).` : ''} The payload was injected client-side (not in the server response), indicating a DOM-based XSS.`,
+              title: `DOM XSS in Search Parameter "${param}"${isSpaRendered ? ` (${framework!.name} SPA)` : ''}`,
+              description: `The search parameter "${param}" is reflected in the ${isSpaRendered ? 'client-rendered' : ''} DOM without proper encoding. ${dangerousContext}.${isSpaRendered ? ` The ${framework!.name} application renders user input unsafely (e.g., via [innerHTML] binding or similar).` : ''} The payload was injected client-side (not in the server response), indicating a DOM-based XSS.`,
               url,
               evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nParameter: ${param}\nTest URL: ${testUrl.href}\nFramework: ${framework?.name ?? 'none detected'}\n${dangerousContext}`,
               request: { method: 'GET', url: testUrl.href },

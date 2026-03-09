@@ -46,6 +46,10 @@ function categoryToRuleName(category: CheckCategory): string {
     'command-injection': 'Command Injection',
     'tls': 'TLS/SSL Issue',
     'sri': 'Subresource Integrity (SRI) Missing',
+    'info-disclosure': 'Information Disclosure',
+    'js-cve': 'Known JavaScript CVE',
+    'crlf-injection': 'CRLF Injection',
+    'rate-limit': 'Missing Rate Limiting',
   };
   return map[category] ?? category;
 }

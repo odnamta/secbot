@@ -339,15 +339,49 @@ export function matchesSqlDump(body: string): boolean {
 }
 
 /**
- * Check if a response looks like a directory listing (Index of, Parent Directory, file links).
+ * Check if a response looks like a directory listing.
+ * Handles Apache, Nginx, IIS, Node.js (Express/serve), and custom directory listings.
  * Exported for testing.
  */
 export function matchesDirectoryListing(body: string): boolean {
+  // Apache "Index of" page
   if (/Index of\s/i.test(body)) return true;
+  // Apache / generic "Parent Directory" link
   if (body.includes('Parent Directory')) return true;
-  // Many directory listings have multiple <a href= links to files
+  // Nginx autoindex: "Directory listing for" or sorted file table
+  if (/Directory listing for\s/i.test(body)) return true;
+  // IIS directory browsing: "Directory Listing" title
+  if (/<title>[^<]*directory\s+listing/i.test(body)) return true;
+
+  // Multiple links to files with common extensions — strong signal
+  const fileExtRe = /href=["'][^"']*\.(txt|pdf|zip|gz|tar|bak|sql|log|csv|xml|json|doc|xls|md|conf|bkp|old)["']/gi;
+  const fileExtCount = (body.match(fileExtRe) ?? []).length;
+  if (fileExtCount >= 3) return true;
+
+  // Multiple links pointing to relative paths (e.g., href="filename" or href="dir/")
   const linkCount = (body.match(/<a\s+href=/gi) ?? []).length;
-  return linkCount >= 3 && /<table|<pre|<ul/i.test(body);
+  // Heuristic: 3+ links inside table/pre/ul is likely a directory listing
+  if (linkCount >= 3 && /<table|<pre|<ul/i.test(body)) return true;
+  // Heuristic: 5+ links with file size patterns (bytes, KB, MB)
+  const sizePatterns = (body.match(/\b\d+(\.\d+)?\s*(bytes?|[KMGT]B|[kmgt]b)\b/g) ?? []).length;
+  if (linkCount >= 3 && sizePatterns >= 2) return true;
+
+  // JSON directory listing (e.g., express serve-index, custom apps)
+  try {
+    const parsed = JSON.parse(body);
+    if (Array.isArray(parsed) && parsed.length >= 3) {
+      // Array of objects with name/size/type fields = directory listing
+      const hasNameField = parsed.every((item) => typeof item === 'object' && item !== null && ('name' in item || 'filename' in item));
+      if (hasNameField) return true;
+      // Array of strings (filenames)
+      const allStrings = parsed.every((item) => typeof item === 'string');
+      if (allStrings) return true;
+    }
+  } catch {
+    // Not JSON — that's fine
+  }
+
+  return false;
 }
 
 /**

@@ -145,8 +145,9 @@ async function startSecureServer(): Promise<void> {
   // Redirect parameter that validates destination (open redirect-safe)
   app.get('/go', (req, res) => {
     const redirect = req.query.redirect as string || '/';
-    // Only allow relative paths — reject absolute URLs and protocol-relative
-    if (redirect.startsWith('/') && !redirect.startsWith('//')) {
+    // Only allow relative paths — reject absolute URLs, protocol-relative, and backslash tricks
+    // Browsers interpret \ as / in URLs, so /\evil.com becomes //evil.com
+    if (redirect.startsWith('/') && !redirect.startsWith('//') && !redirect.startsWith('/\\') && !/^\/[^/a-zA-Z0-9_.-]/.test(redirect)) {
       res.redirect(302, redirect);
     } else {
       res.redirect(302, '/');

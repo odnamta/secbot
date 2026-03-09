@@ -6,7 +6,8 @@ loadEnv({ override: false }); // fallback to .env
 import { program } from 'commander';
 import chalk from 'chalk';
 import { resolve, join } from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { crawl, closeBrowser } from './scanner/browser.js';
 import { runPassiveChecks } from './scanner/passive.js';
 import { runActiveChecks, CHECK_REGISTRY, loadAndRegisterPlugins } from './scanner/active/index.js';
@@ -85,6 +86,8 @@ program
   .option('--callback-server <port>', 'Auto-start built-in OOB callback server on specified port')
   .option('--oob-wait <seconds>', 'How long to wait for delayed OOB callbacks (default: 30)')
   .option('--no-ai', 'Skip AI interpretation (use rule-based fallback)')
+  .option('--auth-cookie <cookies>', 'Pre-set cookies for authenticated scanning (name1=value1;name2=value2)')
+  .option('--auth-supabase <email:pass>', 'Authenticate via Supabase (email:password) — auto-detects project from target URL')
   .option('-y, --yes', 'Auto-confirm consent for non-interactive environments (CI/CD)', false)
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (url: string | undefined, options: Record<string, unknown>) => {
@@ -236,6 +239,135 @@ program
       process.exit(1);
     }
 
+    // Handle --auth-cookie: build storage state from cookies
+    if (options.authCookie && !options.auth) {
+      const targetUrlObj = new URL(targetUrl);
+      const cookies = (options.authCookie as string).split(';').map(pair => {
+        const [name, ...valueParts] = pair.trim().split('=');
+        return {
+          name: name.trim(),
+          value: valueParts.join('=').trim(),
+          domain: targetUrlObj.hostname,
+          path: '/',
+          httpOnly: false,
+          secure: targetUrlObj.protocol === 'https:',
+          sameSite: 'Lax' as const,
+        };
+      }).filter(c => c.name && c.value);
+
+      const storageState = { cookies, origins: [] };
+      const tmpAuthDir = mkdtempSync(join(tmpdir(), 'secbot-auth-'));
+      const tmpPath = join(tmpAuthDir, 'cookie-state.json');
+      writeFileSync(tmpPath, JSON.stringify(storageState), { mode: 0o600 });
+      options.auth = tmpPath;
+      log.info(`Auth cookie: injected ${cookies.length} cookie(s) for ${targetUrlObj.hostname}`);
+    }
+
+    // Handle --auth-supabase: authenticate via Supabase password grant
+    if (options.authSupabase && !options.auth) {
+      const [email, ...passParts] = (options.authSupabase as string).split(':');
+      const password = passParts.join(':');
+      if (!email || !password) {
+        console.error(chalk.red('--auth-supabase requires format: email:password'));
+        process.exit(2);
+      }
+
+      log.info('Authenticating via Supabase password grant...');
+
+      // Discover Supabase URL from the target page
+      const targetUrlObj = new URL(targetUrl);
+      try {
+        const discoverResp = await fetch(targetUrl);
+        const html = await discoverResp.text();
+
+        // Look for NEXT_PUBLIC_SUPABASE_URL or similar patterns
+        const supabaseUrlMatch = html.match(/https:\/\/[a-z0-9]+\.supabase\.co/);
+        if (!supabaseUrlMatch) {
+          console.error(chalk.red('Could not auto-detect Supabase URL from target. Use --auth <storage-state.json> instead.'));
+          process.exit(2);
+        }
+
+        const supabaseUrl = supabaseUrlMatch[0];
+        const supabaseRef = new URL(supabaseUrl).hostname.split('.')[0];
+
+        // Authenticate via Supabase REST API (gotrue)
+        const authResp = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9', // Will be discovered from page
+          },
+          body: JSON.stringify({ email, password }),
+        });
+
+        // Alternative: try to find anon key from page source
+        const anonKeyMatch = html.match(/eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+/);
+        if (!anonKeyMatch && !authResp.ok) {
+          console.error(chalk.red('Could not find Supabase anon key. Use --auth <storage-state.json> instead.'));
+          process.exit(2);
+        }
+
+        const anonKey = anonKeyMatch?.[0] ?? '';
+
+        // Retry with discovered anon key if first attempt failed
+        let authData: { access_token: string; refresh_token: string; user?: { id: string } };
+        if (!authResp.ok && anonKey) {
+          const retryResp = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': anonKey,
+            },
+            body: JSON.stringify({ email, password }),
+          });
+          if (!retryResp.ok) {
+            const errBody = await retryResp.text();
+            console.error(chalk.red(`Supabase auth failed: ${errBody}`));
+            process.exit(2);
+          }
+          authData = await retryResp.json() as typeof authData;
+        } else if (authResp.ok) {
+          authData = await authResp.json() as typeof authData;
+        } else {
+          const errBody = await authResp.text();
+          console.error(chalk.red(`Supabase auth failed: ${errBody}`));
+          process.exit(2);
+        }
+
+        // Build storage state with Supabase auth cookies
+        const cookieValue = Buffer.from(JSON.stringify({
+          access_token: authData.access_token,
+          refresh_token: authData.refresh_token,
+          token_type: 'bearer',
+          expires_in: 3600,
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          user: authData.user,
+        })).toString('base64');
+
+        // Split the cookie value to match Supabase SSR chunking
+        const cookieName = `sb-${supabaseRef}-auth-token`;
+        const supabaseCookies = [{
+          name: `${cookieName}.0`,
+          value: `base64-${cookieValue}`,
+          domain: targetUrlObj.hostname,
+          path: '/',
+          httpOnly: false,
+          secure: targetUrlObj.protocol === 'https:',
+          sameSite: 'Lax' as const,
+        }];
+
+        const storageState = { cookies: supabaseCookies, origins: [] };
+        const tmpAuthDir = mkdtempSync(join(tmpdir(), 'secbot-auth-'));
+        const tmpPath = join(tmpAuthDir, 'supabase-state.json');
+        writeFileSync(tmpPath, JSON.stringify(storageState), { mode: 0o600 });
+        options.auth = tmpPath;
+        log.info(`Supabase auth: authenticated as ${email} (ref: ${supabaseRef})`);
+      } catch (err) {
+        console.error(chalk.red(`Supabase auth failed: ${(err as Error).message}`));
+        process.exit(2);
+      }
+    }
+
     const config = buildConfig(targetUrl, {
       profile: (options.profile as ScanProfile) ?? fileConfig?.profile,
       authStorageState: (options.auth as string | undefined) ?? fileConfig?.auth,
@@ -362,6 +494,14 @@ program
 
         // Pass WAF detection to config so active checks can use WAF-aware encoding
         config.wafDetection = recon.waf;
+
+        // Pass detected SPA framework to config so active checks skip re-detection.
+        // Use the first framework found across crawled pages (single-framework apps).
+        const crawledFramework = pages.find((p) => p.framework)?.framework;
+        if (crawledFramework) {
+          config.detectedFramework = crawledFramework;
+          log.info(`Threading framework to active checks: ${crawledFramework.name}${crawledFramework.version ? ` v${crawledFramework.version}` : ''}`);
+        }
 
         // ─── Phase 3: AI Attack Plan ─────────────────────────────
         let attackPlan;

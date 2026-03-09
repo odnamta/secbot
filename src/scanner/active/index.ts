@@ -26,6 +26,7 @@ import { sriCheck } from './sri.js';
 import { infoDisclosureCheck } from './info-disclosure.js';
 import { jsCveCheck } from './js-cve.js';
 import { crlfCheck } from './crlf.js';
+import { rateLimitCheck } from './rate-limit.js';
 import { log } from '../../utils/logger.js';
 
 export interface ScanTargets {
@@ -64,6 +65,7 @@ export const CHECK_REGISTRY: ActiveCheck[] = [
   infoDisclosureCheck,
   jsCveCheck,
   crlfCheck,
+  rateLimitCheck,
 ];
 
 /**

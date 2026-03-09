@@ -176,25 +176,34 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
     res.redirect(302, to);
   });
 
-  // Safe redirect — only allows whitelisted domains
+  // Safe redirect — only allows whitelisted domains (properly secured)
   app.get('/safe-redirect', (req, res) => {
     const to = req.query.to as string || '/';
     const ALLOWED_HOSTS = ['example.com', 'www.example.com'];
-    try {
-      const parsed = new URL(to, 'http://localhost');
-      if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || ALLOWED_HOSTS.includes(parsed.hostname)) {
-        res.redirect(302, to);
-      } else {
-        res.status(400).send('Redirect to external domain not allowed');
-      }
-    } catch {
-      // Relative URLs are OK
-      if (to.startsWith('/')) {
-        res.redirect(302, to);
-      } else {
+
+    // Block protocol-relative URLs and backslash tricks
+    if (/^\/[\/\\]/.test(to) || /^[a-z]+:/i.test(to)) {
+      try {
+        const parsed = new URL(to, 'http://localhost');
+        if (ALLOWED_HOSTS.includes(parsed.hostname)) {
+          res.redirect(302, to);
+        } else {
+          res.status(400).send('Redirect to external domain not allowed');
+        }
+      } catch {
         res.status(400).send('Invalid redirect URL');
       }
+      return;
     }
+
+    // Relative paths starting with single / are safe
+    if (to.startsWith('/')) {
+      res.redirect(302, to);
+      return;
+    }
+
+    // Anything else (no leading /) — reject
+    res.status(400).send('Invalid redirect URL');
   });
 
   // Directory traversal

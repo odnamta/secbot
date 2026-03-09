@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig, Severity } from '../types.js';
-import { SSRF_PAYLOADS, SSRF_PARAM_PATTERNS, SSRF_INDICATORS, getSSRFPayloads } from '../../config/payloads/ssrf.js';
+import { SSRF_PAYLOADS, SSRF_PARAM_PATTERNS, SSRF_INDICATORS, getSSRFPayloads, CLOUD_METADATA_PROBES } from '../../config/payloads/ssrf.js';
 import { generateDnsCanary } from '../oob/dns-canary.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
@@ -197,6 +197,60 @@ async function testSsrf(
 
         await delay(config.requestDelay);
       }
+
+      // --- Cloud metadata probing ---
+      if (!foundForUrl) {
+        for (const probe of CLOUD_METADATA_PROBES) {
+          const testUrl = new URL(originalUrl);
+          testUrl.searchParams.set(param, probe.url);
+
+          const page = await context.newPage();
+          try {
+            const response = await page.request.fetch(testUrl.href);
+            const body = await response.text();
+
+            requestLogger?.log({
+              timestamp: new Date().toISOString(),
+              method: 'GET',
+              url: testUrl.href,
+              responseStatus: response.status(),
+              phase: 'active-ssrf-cloud-metadata',
+            });
+
+            if (probe.indicator.test(body)) {
+              findings.push({
+                id: randomUUID(),
+                category: 'ssrf',
+                severity: 'critical',
+                title: `SSRF: ${probe.cloud} Cloud Metadata Accessible via "${param}"`,
+                description: `The parameter "${param}" allows accessing ${probe.cloud} cloud metadata. This is a critical vulnerability — an attacker can steal IAM credentials, access tokens, and instance configuration.`,
+                url: originalUrl,
+                evidence: `Payload: ${probe.url}\nCloud: ${probe.cloud}\nResponse snippet: ${body.slice(0, 500)}`,
+                request: { method: 'GET', url: testUrl.href },
+                response: { status: response.status(), bodySnippet: body.slice(0, 300) },
+                timestamp: new Date().toISOString(),
+              });
+              foundForUrl = true;
+              break;
+            }
+          } catch (err) {
+            log.debug(`SSRF cloud metadata: ${(err as Error).message}`);
+          } finally {
+            await page.close();
+          }
+
+          await delay(config.requestDelay);
+        }
+      }
+
+      // --- Time-based SSRF detection ---
+      if (!foundForUrl && config.profile !== 'quick') {
+        const timeFinding = await testTimeSsrf(context, originalUrl, param, config, requestLogger);
+        if (timeFinding) {
+          findings.push(timeFinding);
+          foundForUrl = true;
+        }
+      }
     }
   }
 
@@ -205,4 +259,72 @@ async function testSsrf(
   }
 
   return findings;
+}
+
+/** Time-based SSRF: detect server-side requests via response timing.
+ *  If requesting an internal IP that's unreachable takes significantly longer
+ *  than a baseline request, the server is likely making outbound requests. */
+async function testTimeSsrf(
+  context: BrowserContext,
+  url: string,
+  param: string,
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding | null> {
+  // Measure baseline
+  const baselineStart = Date.now();
+  const baselinePage = await context.newPage();
+  try {
+    await baselinePage.request.fetch(url, { timeout: config.timeout });
+  } catch { /* ignore */ } finally {
+    await baselinePage.close();
+  }
+  const baselineMs = Date.now() - baselineStart;
+
+  // Try a non-routable IP that will cause a timeout if the server fetches it
+  const timeoutPayloads = [
+    'http://10.255.255.1:65535/',      // Non-routable RFC1918
+    'http://192.0.2.1:65535/',          // TEST-NET (RFC 5737)
+    'http://198.51.100.1:65535/',       // TEST-NET-2
+  ];
+
+  for (const payload of timeoutPayloads) {
+    const testUrl = new URL(url);
+    testUrl.searchParams.set(param, payload);
+
+    const start = Date.now();
+    const page = await context.newPage();
+    try {
+      await page.request.fetch(testUrl.href, { timeout: config.timeout });
+    } catch { /* timeout expected */ } finally {
+      await page.close();
+    }
+    const elapsed = Date.now() - start;
+
+    requestLogger?.log({
+      timestamp: new Date().toISOString(),
+      method: 'GET',
+      url: testUrl.href,
+      phase: 'active-ssrf-timing',
+    });
+
+    // If the payload request took >3x longer than baseline, the server is likely making requests
+    if (elapsed > baselineMs * 3 && elapsed > 3000) {
+      return {
+        id: randomUUID(),
+        category: 'ssrf',
+        severity: 'high',
+        title: `Potential SSRF via "${param}" Parameter (Time-Based)`,
+        description: `The parameter "${param}" caused a significant delay (${elapsed}ms vs ${baselineMs}ms baseline) when given a non-routable internal IP, suggesting the server makes outbound requests based on user input.`,
+        url,
+        evidence: `Payload: ${payload}\nBaseline response time: ${baselineMs}ms\nPayload response time: ${elapsed}ms\nTime ratio: ${(elapsed / baselineMs).toFixed(1)}x`,
+        request: { method: 'GET', url: testUrl.href },
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    await delay(config.requestDelay);
+  }
+
+  return null;
 }
