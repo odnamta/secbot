@@ -21,7 +21,8 @@ export type CheckCategory =
   | 'info-disclosure'
   | 'js-cve'
   | 'crlf-injection'
-  | 'rate-limit';
+  | 'rate-limit'
+  | 'jwt';
 
 export type ScanProfile = 'quick' | 'standard' | 'deep' | 'stealth';
 

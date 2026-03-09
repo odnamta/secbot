@@ -406,6 +406,21 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
     }
   });
 
+  // ─── JWT endpoint (returns a weak-secret JWT with no expiry) ───
+  app.get('/api/v1/token', (_req, res) => {
+    const { createHmac } = require('node:crypto');
+    const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
+      .toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const payload = Buffer.from(JSON.stringify({ sub: '1234', role: 'user', name: 'Test User' }))
+      .toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const sig = createHmac('sha256', 'secret')
+      .update(`${header}.${payload}`)
+      .digest()
+      .toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const token = `${header}.${payload}.${sig}`;
+    res.json({ access_token: token, token_type: 'Bearer' });
+  });
+
   // JSON API endpoint that is NOT vulnerable to SQLi (safe search)
   app.post('/api/v1/safe-search', (req, res) => {
     const query = req.body?.query || '';

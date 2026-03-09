@@ -50,6 +50,7 @@ function categoryToRuleName(category: CheckCategory): string {
     'js-cve': 'Known JavaScript CVE',
     'crlf-injection': 'CRLF Injection',
     'rate-limit': 'Missing Rate Limiting',
+    'jwt': 'JWT Security Issue',
   };
   return map[category] ?? category;
 }

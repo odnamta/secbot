@@ -6,9 +6,9 @@
 Developer-friendly tool that scans web apps for OWASP Top 10 vulnerabilities with a single command. Claude AI drives the entire pipeline — planning attacks, validating findings, and writing reports.
 
 ## Status
-- Version: v0.9.0
-- 16 active check types + 6 passive check categories
-- 1120+ tests (unit + integration + false-positive regression)
+- Version: v0.9.1
+- 17 active check types + 6 passive check categories
+- 1143 tests (unit + integration + false-positive regression)
 - AI prompt injection sanitization enabled
 - OOB findings fully wired into report pipeline + exit code
 - CI/CD ready: SARIF, JUnit, baseline diff, --exclude-checks validation
@@ -23,6 +23,7 @@ Developer-friendly tool that scans web apps for OWASP Top 10 vulnerabilities wit
 - Directory listing: 7 detection patterns (Apache, Nginx, IIS, JSON, file extensions)
 - Rate limit check: brute-force protection testing on auth/API endpoints
 - Cloud metadata SSRF: AWS/GCP/Azure/DigitalOcean/Alibaba metadata probing
+- JWT security check: none-algorithm bypass, weak secret detection, missing expiry, sensitive payload data
 - Auth convenience: --auth-cookie and --auth-supabase flags
 
 ## Tech Stack
@@ -82,6 +83,7 @@ src/
       sqli.ts                 # SQLi (error-based GET/POST/JSON, time-based blind, boolean-blind, union, NoSQL)
       crlf.ts                 # CRLF injection (HTTP response splitting via header injection)
       rate-limit.ts           # Rate limiting / brute-force protection check
+      jwt.ts                  # JWT security (none-alg, weak secrets, missing exp, sensitive data)
       cors.ts                 # CORS misconfiguration check
       redirect.ts             # Open redirect check
       traversal.ts            # Directory traversal check
@@ -203,7 +205,7 @@ SECBOT_TOKEN_BUDGET=          # Max AI tokens per scan
 
 **Passive (6):** `security-headers`, `cookie-flags`, `info-leakage`, `mixed-content`, `sensitive-url-data`, `cross-origin-policy`
 
-**Active (16):** `xss`, `sqli`, `open-redirect`, `cors-misconfiguration`, `directory-traversal`, `ssrf`, `ssti`, `command-injection`, `idor`, `tls`, `sri`, `info-disclosure`, `js-cve`, `crlf-injection`, `rate-limit`
+**Active (17):** `xss`, `sqli`, `open-redirect`, `cors-misconfiguration`, `directory-traversal`, `ssrf`, `ssti`, `command-injection`, `idor`, `tls`, `sri`, `info-disclosure`, `js-cve`, `crlf-injection`, `rate-limit`, `jwt`
 
 ## Rules
 - NEVER perform destructive actions (no data modification, no DoS)
