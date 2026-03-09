@@ -43,6 +43,7 @@ import { parseScopeFile, scopeToScanConfig } from './utils/scope-parser.js';
 import { detectChains } from './scanner/active/chain-detector.js';
 import { getHistoryPath, loadHistory, addToHistory, saveHistory, getTrendSummary } from './utils/scan-history.js';
 import { buildPayloadContext, summarizePayloadContext } from './utils/payload-context.js';
+import { deduplicateAgainstDisclosures } from './utils/disclosure-dedup.js';
 import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, AuthOptions } from './scanner/types.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
@@ -585,8 +586,14 @@ program
 
         // Deduplicate before AI validation to save tokens
         log.info(`Raw findings before dedup: ${allRawFindings.length}`);
-        const dedupedFindings = deduplicateFindings(allRawFindings);
-        log.info(`After dedup: ${dedupedFindings.length} unique findings`);
+        const dedupedRaw = deduplicateFindings(allRawFindings);
+        log.info(`After dedup: ${dedupedRaw.length} unique findings`);
+
+        // Filter out findings matching known public disclosures / common rejections
+        const { filtered: dedupedFindings, suppressed } = deduplicateAgainstDisclosures(dedupedRaw);
+        if (suppressed.length > 0) {
+          log.info(`Suppressed ${suppressed.length} known/low-impact finding(s) via disclosure dedup`);
+        }
 
         // ─── Baseline diff ─────────────────────────────────────
         let findingsForValidation = dedupedFindings;

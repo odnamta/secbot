@@ -159,6 +159,7 @@ src/
     scan-history.ts           # Scan result history + trend tracking (per-target, last 100)
     scope-parser.ts           # Bug bounty scope file parser (HackerOne/Bugcrowd format)
     payload-context.ts        # Contextual payload generation from recon (DB, template, OS inference)
+    disclosure-dedup.ts       # Finding dedup against public disclosures / common rejections
   interactive/
     repl.ts                   # Interactive REPL mode
 test/
