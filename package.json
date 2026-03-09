@@ -1,5 +1,5 @@
 {
-  "name": "secbot",
+  "name": "secbot-cli",
   "version": "0.10.0",
   "description": "AI-powered security testing CLI — Playwright for security",
   "type": "module",

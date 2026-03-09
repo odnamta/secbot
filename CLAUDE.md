@@ -158,6 +158,7 @@ src/
     polyglot-payloads.ts      # Polyglot XSS/SQLi payloads
     scan-history.ts           # Scan result history + trend tracking (per-target, last 100)
     scope-parser.ts           # Bug bounty scope file parser (HackerOne/Bugcrowd format)
+    payload-context.ts        # Contextual payload generation from recon (DB, template, OS inference)
   interactive/
     repl.ts                   # Interactive REPL mode
 test/

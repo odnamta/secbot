@@ -42,6 +42,7 @@ import { enumerateSubdomains } from './scanner/recon/subdomain.js';
 import { parseScopeFile, scopeToScanConfig } from './utils/scope-parser.js';
 import { detectChains } from './scanner/active/chain-detector.js';
 import { getHistoryPath, loadHistory, addToHistory, saveHistory, getTrendSummary } from './utils/scan-history.js';
+import { buildPayloadContext, summarizePayloadContext } from './utils/payload-context.js';
 import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, AuthOptions } from './scanner/types.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
@@ -551,6 +552,11 @@ program
           config.detectedFramework = crawledFramework;
           log.info(`Threading framework to active checks: ${crawledFramework.name}${crawledFramework.version ? ` v${crawledFramework.version}` : ''}`);
         }
+
+        // Build payload context from recon for intelligent payload selection
+        const payloadContext = buildPayloadContext(recon);
+        config.payloadContext = payloadContext;
+        log.info(`Payload context: ${summarizePayloadContext(payloadContext)}`);
 
         // ─── Phase 3: AI Attack Plan ─────────────────────────────
         let attackPlan;

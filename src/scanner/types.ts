@@ -104,6 +104,8 @@ export interface ScanConfig {
   rateLimits?: Record<string, number>;
   /** SPA framework detected during crawl — threaded to active checks to avoid re-detection */
   detectedFramework?: import('../scanner/discovery/framework-detector.js').FrameworkInfo;
+  /** Payload context derived from recon — guides active checks to use relevant payloads */
+  payloadContext?: import('../utils/payload-context.js').PayloadContext;
 }
 
 export interface CrawledPage {
