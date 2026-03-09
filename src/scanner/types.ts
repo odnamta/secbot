@@ -22,7 +22,8 @@ export type CheckCategory =
   | 'js-cve'
   | 'crlf-injection'
   | 'rate-limit'
-  | 'jwt';
+  | 'jwt'
+  | 'race-condition';
 
 export type ScanProfile = 'quick' | 'standard' | 'deep' | 'stealth';
 

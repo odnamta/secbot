@@ -51,6 +51,7 @@ function categoryToRuleName(category: CheckCategory): string {
     'crlf-injection': 'CRLF Injection',
     'rate-limit': 'Missing Rate Limiting',
     'jwt': 'JWT Security Issue',
+    'race-condition': 'Race Condition (TOCTOU)',
   };
   return map[category] ?? category;
 }
