@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig, FormInfo } from '../types.js';
 import { CMDI_PAYLOADS_OUTPUT, CMDI_PAYLOADS_TIMING } from '../../config/payloads/cmdi.js';
+import type { CmdiTimingPayload, CmdiOutputPayload } from '../../config/payloads/cmdi.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck } from './index.js';
@@ -9,6 +10,38 @@ import { delay, measureResponseTime } from '../../utils/shared.js';
 
 /** Threshold in ms — if response is this much slower than baseline, flag it */
 const CMDI_TIMING_THRESHOLD_MS = 4000;
+
+/** Reorder CMDi payloads: matching OS first, then the rest */
+export function prioritizeCmdiPayloads(osHint: 'unix' | 'windows' | 'unknown'): {
+  timing: CmdiTimingPayload[];
+  output: CmdiOutputPayload[];
+} {
+  if (osHint === 'unknown') {
+    return { timing: [...CMDI_PAYLOADS_TIMING], output: [...CMDI_PAYLOADS_OUTPUT] };
+  }
+  log.debug(`CMDi payload context: prioritizing ${osHint} payloads`);
+  return {
+    timing: [
+      ...CMDI_PAYLOADS_TIMING.filter((p) => p.os === osHint),
+      ...CMDI_PAYLOADS_TIMING.filter((p) => p.os !== osHint),
+    ],
+    output: [
+      ...CMDI_PAYLOADS_OUTPUT.filter((p) => p.os === osHint),
+      ...CMDI_PAYLOADS_OUTPUT.filter((p) => p.os !== osHint),
+    ],
+  };
+}
+
+/** Get CMDi payloads, optionally prioritized by payload context */
+function getCmdiPayloads(config: ScanConfig): { timing: CmdiTimingPayload[]; output: CmdiOutputPayload[] } {
+  const { timing, output } = config.payloadContext
+    ? prioritizeCmdiPayloads(config.payloadContext.osHint)
+    : { timing: [...CMDI_PAYLOADS_TIMING], output: [...CMDI_PAYLOADS_OUTPUT] };
+  return {
+    timing: config.profile === 'deep' ? timing : timing.slice(0, 2),
+    output: config.profile === 'deep' ? output : output.slice(0, 2),
+  };
+}
 
 export const cmdiCheck: ActiveCheck = {
   name: 'cmdi',
@@ -41,8 +74,7 @@ async function testCmdiParams(
   requestLogger?: RequestLogger,
 ): Promise<RawFinding[]> {
   const findings: RawFinding[] = [];
-  const outputPayloads = config.profile === 'deep' ? CMDI_PAYLOADS_OUTPUT : CMDI_PAYLOADS_OUTPUT.slice(0, 2);
-  const timingPayloads = config.profile === 'deep' ? CMDI_PAYLOADS_TIMING : CMDI_PAYLOADS_TIMING.slice(0, 2);
+  const { output: outputPayloads, timing: timingPayloads } = getCmdiPayloads(config);
 
   for (const originalUrl of urls) {
     let foundForUrl = false;
@@ -168,8 +200,7 @@ async function testCmdiForms(
   requestLogger?: RequestLogger,
 ): Promise<RawFinding[]> {
   const findings: RawFinding[] = [];
-  const outputPayloads = config.profile === 'deep' ? CMDI_PAYLOADS_OUTPUT : CMDI_PAYLOADS_OUTPUT.slice(0, 2);
-  const timingPayloads = config.profile === 'deep' ? CMDI_PAYLOADS_TIMING : CMDI_PAYLOADS_TIMING.slice(0, 2);
+  const { output: outputPayloads, timing: timingPayloads } = getCmdiPayloads(config);
 
   for (const form of forms) {
     let foundForForm = false;

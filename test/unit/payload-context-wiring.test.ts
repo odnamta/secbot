@@ -95,3 +95,32 @@ describe('XSS payload context wiring', () => {
     expect(shouldPrioritizeDomXss(config)).toBe(false);
   });
 });
+
+describe('CMDi payload context wiring', () => {
+  it('prioritizes unix payloads when OS is unix', async () => {
+    const { prioritizeCmdiPayloads } = await import('../../src/scanner/active/cmdi.js');
+    const result = prioritizeCmdiPayloads('unix');
+    expect(result.timing[0].os).toBe('unix');
+    expect(result.output[0].os).toBe('unix');
+  });
+
+  it('prioritizes windows payloads when OS is windows', async () => {
+    const { prioritizeCmdiPayloads } = await import('../../src/scanner/active/cmdi.js');
+    const result = prioritizeCmdiPayloads('windows');
+    expect(result.timing[0].os).toBe('windows');
+  });
+
+  it('keeps all payloads when OS is unknown', async () => {
+    const { prioritizeCmdiPayloads } = await import('../../src/scanner/active/cmdi.js');
+    const result = prioritizeCmdiPayloads('unknown');
+    const totalPayloads = result.timing.length + result.output.length;
+    expect(totalPayloads).toBeGreaterThanOrEqual(7);
+  });
+
+  it('includes all payloads even when prioritizing', async () => {
+    const { prioritizeCmdiPayloads } = await import('../../src/scanner/active/cmdi.js');
+    const result = prioritizeCmdiPayloads('unix');
+    // Windows payloads should still be present (at the end)
+    expect(result.timing.some((p) => p.os === 'windows')).toBe(true);
+  });
+});
