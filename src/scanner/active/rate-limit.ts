@@ -44,6 +44,7 @@ const SENSITIVE_API_RE = /\/(api|graphql|rest)\b/i;
  * 4. If all responses succeed with 200 and no rate-limit headers → finding
  */
 export const rateLimitCheck: ActiveCheck = {
+  parallel: true,
   name: 'rate-limit',
   category: 'rate-limit',
   async run(context, targets, config, requestLogger) {

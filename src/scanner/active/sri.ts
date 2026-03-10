@@ -15,6 +15,7 @@ import type { ActiveCheck } from './index.js';
  * Findings are grouped per page to avoid excessive noise.
  */
 export const sriCheck: ActiveCheck = {
+  parallel: true,
   name: 'sri',
   category: 'sri',
   async run(context, targets, config, requestLogger) {

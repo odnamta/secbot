@@ -54,6 +54,7 @@ export function detectCanaryReflection(
 }
 
 export const hostHeaderCheck: ActiveCheck = {
+  parallel: true,
   name: 'host-header',
   category: 'host-header',
   async run(context, targets, config, requestLogger) {

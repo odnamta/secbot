@@ -499,6 +499,7 @@ export function matchesActuatorEndpoint(body: string): boolean {
  * - Common backup/config files — database dumps, config backups
  */
 export const infoDisclosureCheck: ActiveCheck = {
+  parallel: true,
   name: 'info-disclosure',
   category: 'info-disclosure',
   async run(context, targets, config, requestLogger) {

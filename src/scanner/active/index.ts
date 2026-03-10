@@ -45,6 +45,8 @@ export interface ScanTargets {
 export interface ActiveCheck {
   name: string;
   category: CheckCategory;
+  /** If true, this check can run concurrently with other parallel checks (read-only, no state mutation) */
+  parallel?: boolean;
   run(
     context: BrowserContext,
     targets: ScanTargets,
@@ -101,6 +103,17 @@ export async function loadAndRegisterPlugins(pluginDir?: string): Promise<void> 
   for (const plugin of plugins) {
     registerPlugin(plugin);
   }
+}
+
+/** Split checks into parallel (safe to run concurrently) and sequential groups */
+export function splitChecksByParallelism(checks: ActiveCheck[]): {
+  parallel: ActiveCheck[];
+  sequential: ActiveCheck[];
+} {
+  return {
+    parallel: checks.filter((c) => c.parallel),
+    sequential: checks.filter((c) => !c.parallel),
+  };
 }
 
 /** Regex for redirect-related parameter names */
@@ -235,17 +248,42 @@ export async function runActiveChecks(
     }
   }
 
-  for (let i = 0; i < checksToRun.length; i++) {
-    const check = checksToRun[i];
-    try {
-      // Acquire rate limiter before each check
-      if (i > 0) {
-        await rateLimiter.acquire();
+  const { parallel, sequential } = splitChecksByParallelism(checksToRun);
+
+  // Phase A: Run parallel checks concurrently (read-only, no state mutation)
+  if (parallel.length > 0) {
+    log.info(`Running ${parallel.length} checks in parallel: ${parallel.map((c) => c.name).join(', ')}`);
+    const parallelResults = await Promise.allSettled(
+      parallel.map(async (check) => {
+        try {
+          return await check.run(context, targets, config, requestLogger);
+        } catch (err) {
+          log.warn(`Active check "${check.name}" failed: ${(err as Error).message}`);
+          return [];
+        }
+      }),
+    );
+    for (const result of parallelResults) {
+      if (result.status === 'fulfilled') {
+        findings.push(...result.value);
       }
-      const checkFindings = await check.run(context, targets, config, requestLogger);
-      findings.push(...checkFindings);
-    } catch (err) {
-      log.warn(`Active check "${check.name}" failed: ${(err as Error).message}`);
+    }
+  }
+
+  // Phase B: Run sequential checks one-by-one (inject payloads, may trigger WAF)
+  if (sequential.length > 0) {
+    log.info(`Running ${sequential.length} checks sequentially: ${sequential.map((c) => c.name).join(', ')}`);
+    for (let i = 0; i < sequential.length; i++) {
+      const check = sequential[i];
+      try {
+        if (i > 0) {
+          await rateLimiter.acquire();
+        }
+        const checkFindings = await check.run(context, targets, config, requestLogger);
+        findings.push(...checkFindings);
+      } catch (err) {
+        log.warn(`Active check "${check.name}" failed: ${(err as Error).message}`);
+      }
     }
   }
 

@@ -70,6 +70,7 @@ const BATCH_QUERIES = [
  * OWASP: A01:2021 – Broken Access Control, A05:2021 – Security Misconfiguration
  */
 export const graphqlCheck: ActiveCheck = {
+  parallel: true,
   name: 'graphql',
   category: 'info-disclosure',
   async run(context, targets, config, requestLogger) {

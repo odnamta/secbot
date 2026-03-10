@@ -180,6 +180,7 @@ export function findVulnerabilities(lib: DetectedLib): VulnMatch[] {
  * Bootstrap, Moment, Handlebars, and DOMPurify.
  */
 export const jsCveCheck: ActiveCheck = {
+  parallel: true,
   name: 'js-cve',
   category: 'js-cve',
   async run(context, targets, config, requestLogger) {

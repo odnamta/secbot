@@ -260,6 +260,7 @@ export function analyzeJwtSecurity(
 // ─── Active Check ───────────────────────────────────────────────────
 
 export const jwtCheck: ActiveCheck = {
+  parallel: true,
   name: 'jwt',
   category: 'jwt',
   async run(context, targets, config, requestLogger) {

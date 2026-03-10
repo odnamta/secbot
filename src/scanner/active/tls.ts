@@ -26,6 +26,7 @@ const TLS_CONNECT_TIMEOUT = 10_000;
  * - HSTS preload eligibility
  */
 export const tlsCheck: ActiveCheck = {
+  parallel: true,
   name: 'tls',
   category: 'tls',
   async run(_context, targets, config, requestLogger) {

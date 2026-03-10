@@ -21,6 +21,7 @@ function isApiEndpoint(url: string, contentType?: string): boolean {
 }
 
 export const corsCheck: ActiveCheck = {
+  parallel: true,
   name: 'cors',
   category: 'cors-misconfiguration',
   async run(context, targets, config, requestLogger) {
