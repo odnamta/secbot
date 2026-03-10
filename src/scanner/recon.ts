@@ -200,6 +200,20 @@ function detectFramework(
   pages: CrawledPage[],
   responses: InterceptedResponse[],
 ): FrameworkDetection {
+  // Priority 1: Use framework detected during crawl (Playwright-based, most accurate)
+  const crawledFramework = pages.find((p) => p.framework)?.framework;
+  if (crawledFramework) {
+    const name = crawledFramework.name.charAt(0).toUpperCase() + crawledFramework.name.slice(1);
+    const versionStr = crawledFramework.version ? ` v${crawledFramework.version}` : '';
+    return {
+      name,
+      version: crawledFramework.version,
+      confidence: 'high',
+      evidence: [`Crawl framework detection: ${crawledFramework.name}${versionStr}`],
+    };
+  }
+
+  // Priority 2: Existing header/body/script detection (fallback)
   const evidence: string[] = [];
 
   for (const page of pages) {

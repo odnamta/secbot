@@ -124,3 +124,56 @@ describe('CMDi payload context wiring', () => {
     expect(result.timing.some((p) => p.os === 'windows')).toBe(true);
   });
 });
+
+describe('Recon framework merge', () => {
+  it('uses crawled framework when available', async () => {
+    const { runRecon } = await import('../../src/scanner/recon.js');
+    const pages = [{
+      url: 'http://localhost:3000/',
+      status: 200,
+      headers: {},
+      title: 'Test',
+      forms: [],
+      links: [],
+      scripts: [],
+      cookies: [],
+      framework: { name: 'angular', version: '20.3.17', strategy: 'angular-router' as const },
+    }];
+    const result = runRecon(pages as any, []);
+    expect(result.framework.name).toBe('Angular');
+    expect(result.framework.confidence).toBe('high');
+    expect(result.framework.evidence).toContain('Crawl framework detection: angular v20.3.17');
+  });
+
+  it('falls back to header detection when no crawl framework', async () => {
+    const { runRecon } = await import('../../src/scanner/recon.js');
+    const pages = [{
+      url: 'http://localhost:3000/',
+      status: 200,
+      headers: { 'x-powered-by': 'Express' },
+      title: 'Test',
+      forms: [],
+      links: [],
+      scripts: [],
+      cookies: [],
+    }];
+    const result = runRecon(pages as any, []);
+    expect(result.framework.name).toBe('Express');
+  });
+
+  it('returns low confidence when no framework detected', async () => {
+    const { runRecon } = await import('../../src/scanner/recon.js');
+    const pages = [{
+      url: 'http://localhost:3000/',
+      status: 200,
+      headers: {},
+      title: 'Test',
+      forms: [],
+      links: [],
+      scripts: [],
+      cookies: [],
+    }];
+    const result = runRecon(pages as any, []);
+    expect(result.framework.confidence).toBe('low');
+  });
+});
