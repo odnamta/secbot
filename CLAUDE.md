@@ -6,9 +6,12 @@
 Developer-friendly tool that scans web apps for OWASP Top 10 vulnerabilities with a single command. Claude AI drives the entire pipeline — planning attacks, validating findings, and writing reports.
 
 ## Status
-- Version: v0.10.0
+- Version: v0.11.0
 - 20 active check types + 6 passive check categories + 5 chain rules
-- 1225 tests (unit + integration + false-positive regression)
+- 1275 tests (unit + integration + false-positive regression)
+- Parallel active check runner: 9 read-only checks run concurrently via Promise.allSettled
+- Payload context wiring: SQLi, SSTI, XSS, CMDi use recon-inferred tech stack for payload prioritization
+- Recon ↔ framework merge: crawl framework detection is single source of truth
 - AI prompt injection sanitization enabled
 - OOB findings fully wired into report pipeline + exit code
 - CI/CD ready: SARIF, JUnit, baseline diff, --exclude-checks validation

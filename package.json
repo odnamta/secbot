@@ -1,6 +1,6 @@
 {
   "name": "secbot-cli",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "AI-powered security testing CLI — Playwright for security",
   "type": "module",
   "main": "./dist/index.js",
