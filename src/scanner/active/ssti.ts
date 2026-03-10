@@ -2,10 +2,36 @@ import { randomUUID } from 'node:crypto';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig } from '../types.js';
 import { SSTI_PAYLOADS, SSTI_CONTROL_PAYLOADS } from '../../config/payloads/ssti.js';
+import type { SSTIPayload } from '../../config/payloads/ssti.js';
+import type { TemplateEngine } from '../../utils/payload-context.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck } from './index.js';
 import { delay } from '../../utils/shared.js';
+
+/** Reorder SSTI payloads: matching template engines first */
+export function prioritizeSstiPayloads(engines: TemplateEngine[]): SSTIPayload[] {
+  const engineSet = new Set(engines.filter((e) => e !== 'unknown'));
+  if (engineSet.size === 0) return [...SSTI_PAYLOADS];
+
+  const engineMatchesAny = (p: SSTIPayload) =>
+    [...engineSet].some((e) => p.engine.toLowerCase().includes(e));
+
+  const prioritized = SSTI_PAYLOADS.filter(engineMatchesAny);
+  const rest = SSTI_PAYLOADS.filter((p) => !engineMatchesAny(p));
+  if (prioritized.length > 0) {
+    log.debug(`SSTI payload context: prioritizing ${prioritized.length} ${[...engineSet].join('/')} payloads`);
+  }
+  return [...prioritized, ...rest];
+}
+
+/** Get SSTI payloads, optionally prioritized by payload context */
+function getSstiPayloads(config: ScanConfig): SSTIPayload[] {
+  const all = config.payloadContext
+    ? prioritizeSstiPayloads(config.payloadContext.templateEngines)
+    : [...SSTI_PAYLOADS];
+  return config.profile === 'deep' ? all : all.slice(0, 4);
+}
 
 export const sstiCheck: ActiveCheck = {
   name: 'ssti',
@@ -43,7 +69,7 @@ async function testSstiParams(
   requestLogger?: RequestLogger,
 ): Promise<RawFinding[]> {
   const findings: RawFinding[] = [];
-  const payloadsToTest = config.profile === 'deep' ? SSTI_PAYLOADS : SSTI_PAYLOADS.slice(0, 4);
+  const payloadsToTest = getSstiPayloads(config);
 
   for (const originalUrl of urls) {
     let foundForUrl = false;
@@ -154,7 +180,7 @@ async function testSstiForms(
   requestLogger?: RequestLogger,
 ): Promise<RawFinding[]> {
   const findings: RawFinding[] = [];
-  const payloadsToTest = config.profile === 'deep' ? SSTI_PAYLOADS : SSTI_PAYLOADS.slice(0, 4);
+  const payloadsToTest = getSstiPayloads(config);
 
   for (const form of forms) {
     let foundForForm = false;

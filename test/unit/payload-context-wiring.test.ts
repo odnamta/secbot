@@ -43,3 +43,30 @@ describe('SQLi payload context wiring', () => {
     expect(prioritizedTypes).toContain('sqlite');
   });
 });
+
+describe('SSTI payload context wiring', () => {
+  it('prioritizes Jinja2 payloads when Django detected', async () => {
+    const { prioritizeSstiPayloads } = await import('../../src/scanner/active/ssti.js');
+    const result = prioritizeSstiPayloads(['jinja2']);
+    expect(result[0].engine.toLowerCase()).toContain('jinja2');
+  });
+
+  it('prioritizes ERB payloads when Ruby detected', async () => {
+    const { prioritizeSstiPayloads } = await import('../../src/scanner/active/ssti.js');
+    const result = prioritizeSstiPayloads(['erb']);
+    expect(result[0].engine.toLowerCase()).toContain('erb');
+  });
+
+  it('prioritizes Freemarker payloads when Java detected', async () => {
+    const { prioritizeSstiPayloads } = await import('../../src/scanner/active/ssti.js');
+    const result = prioritizeSstiPayloads(['freemarker']);
+    expect(result[0].engine.toLowerCase()).toContain('freemarker');
+  });
+
+  it('keeps all payloads when no context', async () => {
+    const { prioritizeSstiPayloads } = await import('../../src/scanner/active/ssti.js');
+    const { SSTI_PAYLOADS } = await import('../../src/config/payloads/ssti.js');
+    const result = prioritizeSstiPayloads(['unknown']);
+    expect(result.length).toBe(SSTI_PAYLOADS.length);
+  });
+});
