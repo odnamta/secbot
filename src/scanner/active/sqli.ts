@@ -10,6 +10,8 @@ import {
   NOSQL_PAYLOADS,
   NOSQL_ERROR_PATTERNS,
 } from '../../config/payloads/sqli.js';
+import type { TimedSqliPayload } from '../../config/payloads/sqli.js';
+import type { DatabaseType } from '../../utils/payload-context.js';
 import { getPolyglotSqli } from '../../utils/polyglot-payloads.js';
 import { generateHppVariants } from '../../utils/param-pollution.js';
 import { generateBlindSqliPayloads } from '../oob/blind-payloads.js';
@@ -29,6 +31,25 @@ const BOOLEAN_BLIND_THRESHOLD = 0.50;
  *  If same-condition responses vary more than this, the page is inherently dynamic
  *  and boolean-blind detection is unreliable — skip this parameter. */
 const BOOLEAN_CONSISTENCY_THRESHOLD = 0.30;
+
+/** Reorder timed SQLi payloads: matching DB types first, then the rest */
+export function prioritizeTimedPayloads(databases: DatabaseType[]): TimedSqliPayload[] {
+  const dbSet = new Set(databases.filter((d) => d !== 'unknown'));
+  if (dbSet.size === 0) return [...SQLI_TIME_PAYLOADS];
+
+  const prioritized = SQLI_TIME_PAYLOADS.filter((p) => dbSet.has(p.dbType as DatabaseType));
+  const rest = SQLI_TIME_PAYLOADS.filter((p) => !dbSet.has(p.dbType as DatabaseType));
+  log.debug(`SQLi payload context: prioritizing ${prioritized.length} ${[...dbSet].join('/')} payloads`);
+  return [...prioritized, ...rest];
+}
+
+/** Get timed payloads, optionally prioritized by payload context */
+function getTimedPayloads(config: ScanConfig): TimedSqliPayload[] {
+  const all = config.payloadContext
+    ? prioritizeTimedPayloads(config.payloadContext.databases)
+    : [...SQLI_TIME_PAYLOADS];
+  return config.profile === 'deep' ? all : all.slice(0, 1);
+}
 
 /** Select error-based SQLi payloads, appending polyglots when WAF detected or deep profile */
 function selectSqliPayloads(config: ScanConfig, maxNonDeep: number): string[] {
@@ -300,7 +321,7 @@ async function testSqliOnForms(
 
     // --- Time-based blind SQLi for forms (improved with median-of-3) ---
     if (config.profile !== 'quick' && !hasFormFinding()) {
-      const timePayloads = config.profile === 'deep' ? SQLI_TIME_PAYLOADS : SQLI_TIME_PAYLOADS.slice(0, 1);
+      const timePayloads = getTimedPayloads(config);
       const formBody = textInputs.map((i) => `${encodeURIComponent(i.name)}=${encodeURIComponent('test')}`).join('&');
       const fetchMethod = form.method.toUpperCase() === 'GET' ? 'GET' : 'POST';
 
@@ -312,7 +333,7 @@ async function testSqliOnForms(
       });
 
       if (baselineMedian > 0) {
-        for (const payload of timePayloads) {
+        for (const { payload } of timePayloads) {
           const payloadBody = textInputs
             .map((i) => `${encodeURIComponent(i.name)}=${encodeURIComponent(payload)}`)
             .join('&');
@@ -486,7 +507,7 @@ async function testSqliOnUrls(
 ): Promise<RawFinding[]> {
   const findings: RawFinding[] = [];
   const errorPayloads = selectSqliPayloads(config, 3);
-  const timePayloads = config.profile === 'deep' ? SQLI_TIME_PAYLOADS : SQLI_TIME_PAYLOADS.slice(0, 1);
+  const timePayloads = getTimedPayloads(config);
 
   for (const originalUrl of urls) {
     let parsedUrl: URL;
@@ -609,7 +630,7 @@ async function testSqliOnUrls(
         const baselineMedian = await measureResponseTime(context, originalUrl);
 
         if (baselineMedian > 0) {
-          for (const payload of timePayloads) {
+          for (const { payload } of timePayloads) {
             if (foundForParam) break;
             const testUrl = new URL(originalUrl);
             testUrl.searchParams.set(param, payload);
@@ -917,7 +938,7 @@ async function testPostFormSqli(
 
     // --- Time-based blind detection for POST forms ---
     if (!foundForForm && config.profile !== 'quick') {
-      const timePayloads = config.profile === 'deep' ? SQLI_TIME_PAYLOADS : SQLI_TIME_PAYLOADS.slice(0, 1);
+      const timePayloads = getTimedPayloads(config);
 
       for (const input of textInputs) {
         if (foundForForm) break;
@@ -935,7 +956,7 @@ async function testPostFormSqli(
 
         if (baselineMedian <= 0) continue;
 
-        for (const payload of timePayloads) {
+        for (const { payload } of timePayloads) {
           if (foundForForm) break;
 
           const payloadBody = textInputs.map((i) => {
@@ -1001,7 +1022,7 @@ async function testJsonApiSqli(
 ): Promise<RawFinding[]> {
   const findings: RawFinding[] = [];
   const payloads = selectSqliPayloads(config, 3);
-  const timePayloads = config.profile === 'deep' ? SQLI_TIME_PAYLOADS : SQLI_TIME_PAYLOADS.slice(0, 1);
+  const timePayloads = getTimedPayloads(config);
 
   // Common JSON field names to probe — these are typical injection points
   const probeFields = ['query', 'search', 'q', 'filter', 'name', 'username', 'email', 'id', 'value', 'input', 'data', 'text', 'keyword', 'term', 'param'];
@@ -1116,7 +1137,7 @@ async function testJsonApiSqli(
 
           if (baselineMedian <= 0) continue;
 
-          for (const payload of timePayloads) {
+          for (const { payload } of timePayloads) {
             if (foundForEndpoint) break;
 
             const jsonBody = JSON.stringify({ [fieldName]: payload });
