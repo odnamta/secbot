@@ -70,3 +70,28 @@ describe('SSTI payload context wiring', () => {
     expect(result.length).toBe(SSTI_PAYLOADS.length);
   });
 });
+
+describe('XSS payload context wiring', () => {
+  it('exports shouldPrioritizeDomXss function', async () => {
+    const { shouldPrioritizeDomXss } = await import('../../src/scanner/active/xss.js');
+    expect(typeof shouldPrioritizeDomXss).toBe('function');
+  });
+
+  it('returns true when payloadContext.preferDomXss is true', async () => {
+    const { shouldPrioritizeDomXss } = await import('../../src/scanner/active/xss.js');
+    const config = { payloadContext: { preferDomXss: true } } as any;
+    expect(shouldPrioritizeDomXss(config)).toBe(true);
+  });
+
+  it('returns false when no payloadContext', async () => {
+    const { shouldPrioritizeDomXss } = await import('../../src/scanner/active/xss.js');
+    const config = {} as any;
+    expect(shouldPrioritizeDomXss(config)).toBe(false);
+  });
+
+  it('returns false when preferDomXss is false', async () => {
+    const { shouldPrioritizeDomXss } = await import('../../src/scanner/active/xss.js');
+    const config = { payloadContext: { preferDomXss: false } } as any;
+    expect(shouldPrioritizeDomXss(config)).toBe(false);
+  });
+});

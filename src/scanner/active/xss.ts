@@ -132,48 +132,67 @@ function getSpaSearchPayloads(): XSSPayload[] {
   ];
 }
 
+/** Check if payload context recommends prioritizing DOM XSS over reflected */
+export function shouldPrioritizeDomXss(config: ScanConfig): boolean {
+  return config.payloadContext?.preferDomXss === true;
+}
+
 export const xssCheck: ActiveCheck = {
   name: 'xss',
   category: 'xss',
   async run(context, targets, config, requestLogger) {
     const findings: RawFinding[] = [];
+    const domFirst = shouldPrioritizeDomXss(config);
 
-    if (targets.forms.length > 0) {
-      log.info(`Testing ${targets.forms.length} forms for XSS...`);
-      const formFindings = await testXssOnForms(context, targets.forms, config, requestLogger);
-      findings.push(...formFindings);
+    if (domFirst) {
+      log.info('Payload context: SPA detected — prioritizing DOM XSS');
     }
 
-    // POST form body parameter XSS via direct HTTP requests (no browser form filling)
-    const postForms = targets.forms.filter(f => f.method === 'POST');
-    if (postForms.length > 0) {
-      log.info(`Testing ${postForms.length} POST forms for body parameter XSS...`);
-      findings.push(...(await testPostFormXss(context, postForms, config, requestLogger)));
-    }
+    // --- DOM XSS phases (run first when SPA detected) ---
+    const runDomPhases = async () => {
+      if (targets.pages.length > 0) {
+        log.info(`Testing ${targets.pages.length} pages for DOM XSS...`);
+        findings.push(...(await testDomXss(context, targets.pages, config, requestLogger)));
+      }
 
-    if (targets.urlsWithParams.length > 0) {
-      log.info(`Testing ${targets.urlsWithParams.length} URLs for reflected XSS...`);
-      findings.push(...(await testXssOnUrls(context, targets.urlsWithParams, config, requestLogger)));
-    }
+      const searchUrls = collectSearchUrls(targets, config);
+      if (searchUrls.length > 0) {
+        log.info(`Testing ${searchUrls.length} search URLs for SPA DOM XSS...`);
+        findings.push(...(await testSearchParamXss(context, searchUrls, config, requestLogger)));
+      }
+    };
 
-    // JSON API response XSS: test API endpoints that accept JSON bodies
-    if (targets.apiEndpoints.length > 0) {
-      log.info(`Testing ${targets.apiEndpoints.length} API endpoints for JSON XSS...`);
-      findings.push(...(await testJsonApiXss(context, targets.apiEndpoints, config, requestLogger)));
-    }
+    // --- Reflected XSS phases ---
+    const runReflectedPhases = async () => {
+      if (targets.forms.length > 0) {
+        log.info(`Testing ${targets.forms.length} forms for XSS...`);
+        findings.push(...(await testXssOnForms(context, targets.forms, config, requestLogger)));
+      }
 
-    // DOM XSS detection on crawled pages
-    if (targets.pages.length > 0) {
-      log.info(`Testing ${targets.pages.length} pages for DOM XSS...`);
-      findings.push(...(await testDomXss(context, targets.pages, config, requestLogger)));
-    }
+      const postForms = targets.forms.filter(f => f.method === 'POST');
+      if (postForms.length > 0) {
+        log.info(`Testing ${postForms.length} POST forms for body parameter XSS...`);
+        findings.push(...(await testPostFormXss(context, postForms, config, requestLogger)));
+      }
 
-    // SPA search parameter XSS: detect XSS in SPA-rendered search results
-    // Works for Angular [innerHTML], React dangerouslySetInnerHTML, Vue v-html
-    const searchUrls = collectSearchUrls(targets, config);
-    if (searchUrls.length > 0) {
-      log.info(`Testing ${searchUrls.length} search URLs for SPA DOM XSS...`);
-      findings.push(...(await testSearchParamXss(context, searchUrls, config, requestLogger)));
+      if (targets.urlsWithParams.length > 0) {
+        log.info(`Testing ${targets.urlsWithParams.length} URLs for reflected XSS...`);
+        findings.push(...(await testXssOnUrls(context, targets.urlsWithParams, config, requestLogger)));
+      }
+
+      if (targets.apiEndpoints.length > 0) {
+        log.info(`Testing ${targets.apiEndpoints.length} API endpoints for JSON XSS...`);
+        findings.push(...(await testJsonApiXss(context, targets.apiEndpoints, config, requestLogger)));
+      }
+    };
+
+    // Execute in priority order based on payload context
+    if (domFirst) {
+      await runDomPhases();
+      await runReflectedPhases();
+    } else {
+      await runReflectedPhases();
+      await runDomPhases();
     }
 
     // Stored XSS detection: re-visit pages to check for previously injected markers
