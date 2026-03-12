@@ -554,6 +554,7 @@ export const infoDisclosureCheck: ActiveCheck = {
                 bodySnippet: result.body.slice(0, 200),
               },
               timestamp: new Date().toISOString(),
+              confidence: probe.severity === 'high' ? 'high' : probe.severity === 'medium' ? 'medium' : 'low',
             });
           }
         } finally {
@@ -635,6 +636,7 @@ export const infoDisclosureCheck: ActiveCheck = {
                     bodySnippet: mapResult.body.slice(0, 200),
                   },
                   timestamp: new Date().toISOString(),
+                  confidence: 'medium',
                 });
               }
             } catch (err) {
@@ -692,6 +694,7 @@ export const infoDisclosureCheck: ActiveCheck = {
               },
               timestamp: new Date().toISOString(),
               affectedUrls: sensitivePaths.map((p) => `${origin}${p}`),
+              confidence: 'low',
             });
           }
         }

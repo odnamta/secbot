@@ -149,6 +149,7 @@ async function testHostOverride(
           bodySnippet: body.slice(0, 200),
         },
         timestamp: new Date().toISOString(),
+        confidence: reflection.location === 'header' ? 'high' : 'medium',
       });
     }
   } catch (err) {
@@ -220,6 +221,7 @@ async function testForwardedHeaders(
             bodySnippet: body.slice(0, 200),
           },
           timestamp: new Date().toISOString(),
+          confidence: reflection.location === 'header' ? 'high' : 'medium',
         });
         // One finding per URL per header is enough
         break;
@@ -331,6 +333,7 @@ async function testCachePoisoning(
               bodySnippet: poisonedBody.slice(0, 200),
             },
             timestamp: new Date().toISOString(),
+            confidence: 'high',
           });
         }
       } finally {

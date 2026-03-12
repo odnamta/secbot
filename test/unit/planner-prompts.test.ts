@@ -70,7 +70,7 @@ describe('buildPlannerPrompt', () => {
     expect(prompt).not.toContain('- sri:');
   });
 
-  it('includes all 24 sections when all checks are relevant', () => {
+  it('includes all sections when all checks are relevant', () => {
     const prompt = buildPlannerPrompt(ALL_PLANNER_CHECKS);
     expect(prompt).toContain(`Available checks (${ALL_PLANNER_CHECKS.length} applicable)`);
     for (const check of ALL_PLANNER_CHECKS) {
@@ -544,7 +544,7 @@ describe('determineRelevantChecks', () => {
     expect(checks).not.toContain('websocket');
   });
 
-  it('full-featured target returns all 24 checks', () => {
+  it('full-featured target returns all checks', () => {
     const checks = determineRelevantChecks(
       'https://example.com',
       makeRecon({
@@ -571,12 +571,12 @@ describe('determineRelevantChecks', () => {
             pageUrl: 'https://example.com',
           },
         ],
-        links: ['https://example.com/login?redirect=/home'],
+        links: ['https://example.com/login?redirect=/home', 'https://example.com/oauth/callback'],
         scripts: ['https://cdn.example.com/socket.io/socket.io.js'],
         cookies: [{ name: 'token', value: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc' }],
       })],
     );
-    // All 24 check types should be included
+    // All check types should be included
     for (const check of ALL_PLANNER_CHECKS) {
       expect(checks).toContain(check);
     }

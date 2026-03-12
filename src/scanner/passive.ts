@@ -55,6 +55,7 @@ function checkSecurityHeaders(
     title: string;
     description: string;
     severity: RawFinding['severity'];
+    confidence: RawFinding['confidence'];
   }[] = [
     {
       name: 'strict-transport-security',
@@ -62,6 +63,7 @@ function checkSecurityHeaders(
       description:
         'The Strict-Transport-Security header is missing. This allows downgrade attacks and cookie hijacking.',
       severity: 'high',
+      confidence: 'medium',
     },
     {
       name: 'content-security-policy',
@@ -69,6 +71,7 @@ function checkSecurityHeaders(
       description:
         'No CSP header found. This makes the application more susceptible to XSS attacks.',
       severity: 'high',
+      confidence: 'medium',
     },
     {
       name: 'x-frame-options',
@@ -76,6 +79,7 @@ function checkSecurityHeaders(
       description:
         'The X-Frame-Options header is missing, potentially allowing clickjacking attacks.',
       severity: 'medium',
+      confidence: 'low',
     },
     {
       name: 'x-content-type-options',
@@ -83,6 +87,7 @@ function checkSecurityHeaders(
       description:
         'Missing X-Content-Type-Options: nosniff header. Browsers may MIME-sniff responses.',
       severity: 'low',
+      confidence: 'low',
     },
     {
       name: 'referrer-policy',
@@ -90,6 +95,7 @@ function checkSecurityHeaders(
       description:
         'No Referrer-Policy set. Sensitive data in URLs may leak via the Referer header.',
       severity: 'low',
+      confidence: 'low',
     },
     {
       name: 'permissions-policy',
@@ -97,6 +103,7 @@ function checkSecurityHeaders(
       description:
         'No Permissions-Policy header. Browser features like camera/microphone are not explicitly restricted.',
       severity: 'info',
+      confidence: 'low',
     },
   ];
 
@@ -116,6 +123,7 @@ function checkSecurityHeaders(
         id: randomUUID(),
         category: 'security-headers',
         severity: req.severity,
+        confidence: req.confidence,
         title: req.title,
         description: req.description,
         url: page.url,
@@ -149,6 +157,7 @@ function checkSecurityHeaders(
         id: randomUUID(),
         category: 'security-headers',
         severity: frameworkRequiresUnsafeInline ? 'low' : 'medium',
+        confidence: 'medium',
         title: 'CSP Allows Unsafe Inline Scripts',
         description,
         url: page.url,
@@ -162,6 +171,7 @@ function checkSecurityHeaders(
         id: randomUUID(),
         category: 'security-headers',
         severity: 'medium',
+        confidence: 'medium',
         title: 'CSP Allows Unsafe Eval',
         description:
           "The Content-Security-Policy includes 'unsafe-eval', allowing dynamic code execution.",
@@ -223,6 +233,7 @@ function checkSecurityHeaders(
         id: randomUUID(),
         category: 'cross-origin-policy',
         severity: 'low',
+        confidence: 'low',
         title: value
           ? coHeader.title.replace('Missing ', 'Weak ')
           : coHeader.title,
@@ -258,6 +269,7 @@ function checkSecurityHeaders(
         id: randomUUID(),
         category: 'security-headers',
         severity: 'medium',
+        confidence: 'medium',
         title: 'Overly Permissive Permissions-Policy',
         description: `The Permissions-Policy header allows wildcard access to sensitive features: ${permissive.join(', ')}. These should be restricted to specific origins or disabled.`,
         url: page.url,
@@ -280,6 +292,7 @@ function checkCookieFlags(page: CrawledPage): RawFinding[] {
         id: randomUUID(),
         category: 'cookie-flags',
         severity: 'medium',
+        confidence: 'medium',
         title: `Cookie "${cookie.name}" Missing HttpOnly Flag`,
         description: `The cookie "${cookie.name}" is accessible via JavaScript, increasing XSS impact.`,
         url: page.url,
@@ -293,6 +306,7 @@ function checkCookieFlags(page: CrawledPage): RawFinding[] {
         id: randomUUID(),
         category: 'cookie-flags',
         severity: 'medium',
+        confidence: 'medium',
         title: `Cookie "${cookie.name}" Missing Secure Flag`,
         description: `The cookie "${cookie.name}" can be transmitted over unencrypted connections.`,
         url: page.url,
@@ -306,6 +320,7 @@ function checkCookieFlags(page: CrawledPage): RawFinding[] {
         id: randomUUID(),
         category: 'cookie-flags',
         severity: 'low',
+        confidence: 'low',
         title: `Cookie "${cookie.name}" Weak SameSite Setting`,
         description: `The cookie "${cookie.name}" has SameSite=${cookie.sameSite || 'not set'}, allowing cross-site usage.`,
         url: page.url,
@@ -332,6 +347,7 @@ function checkInfoLeakage(
       id: randomUUID(),
       category: 'info-leakage',
       severity: 'low',
+      confidence: 'low',
       title: 'Server Version Disclosure',
       description: `The Server header discloses version information: "${serverHeader}". This helps attackers identify known vulnerabilities.`,
       url: page.url,
@@ -348,6 +364,7 @@ function checkInfoLeakage(
       id: randomUUID(),
       category: 'info-leakage',
       severity: 'low',
+      confidence: 'low',
       title: 'Technology Stack Disclosure',
       description: `The X-Powered-By header reveals: "${poweredBy}". This helps attackers target known framework vulnerabilities.`,
       url: page.url,
@@ -386,6 +403,7 @@ function checkInfoLeakage(
           id: randomUUID(),
           category: 'info-leakage',
           severity: 'medium',
+          confidence: 'medium',
           title: `Verbose Error Disclosure (${name})`,
           description: `The page exposes a ${name} which could reveal internal implementation details.`,
           url: page.url,
@@ -428,6 +446,7 @@ function checkMixedContent(
         id: randomUUID(),
         category: 'mixed-content',
         severity: 'medium',
+        confidence: 'medium',
         title: 'Mixed Content (HTTP Resource on HTTPS Page)',
         description: `An HTTP resource is loaded on the HTTPS page, potentially allowing MitM attacks.`,
         url: page.url,
@@ -458,6 +477,7 @@ function checkSensitiveUrlData(page: CrawledPage): RawFinding[] {
           id: randomUUID(),
           category: 'sensitive-url-data',
           severity: 'high',
+          confidence: 'high',
           title: `Sensitive Data in URL (${name})`,
           description: `A URL contains what appears to be ${name} data as a query parameter. This data may be logged in server logs, browser history, and proxy caches.`,
           url: page.url,

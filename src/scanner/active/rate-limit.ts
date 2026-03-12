@@ -179,6 +179,7 @@ async function testRateLimit(
     request: { method: 'GET', url: endpoint },
     response: { status: statuses[statuses.length - 1] },
     timestamp: new Date().toISOString(),
+    confidence: 'high',
   };
 }
 
@@ -259,5 +260,6 @@ async function testFormRateLimit(
     request: { method: 'POST', url: formUrl, body },
     response: { status: statuses[statuses.length - 1] },
     timestamp: new Date().toISOString(),
+    confidence: 'high',
   };
 }

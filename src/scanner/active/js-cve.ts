@@ -308,6 +308,7 @@ export const jsCveCheck: ActiveCheck = {
               url: pageUrl,
               evidence: `Detected ${vuln.library} v${vuln.version} (vulnerable below ${KNOWN_VULNS[vuln.library]?.find(e => e.cves.join(',') === vuln.cves.join(','))?.below ?? 'unknown'}). CVEs: ${vuln.cves.join(', ')}`,
               timestamp: new Date().toISOString(),
+              confidence: 'high',
             });
           }
         }

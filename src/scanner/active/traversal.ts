@@ -98,6 +98,7 @@ async function testTraversalUrl(
           request: { method: 'GET', url: testUrl },
           response: { status: response.status(), bodySnippet: body.slice(0, 200) },
           timestamp: new Date().toISOString(),
+          confidence: 'high',
         };
       }
     }

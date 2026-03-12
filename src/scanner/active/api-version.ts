@@ -133,6 +133,7 @@ export const apiVersionCheck: ActiveCheck = {
             },
             timestamp: new Date().toISOString(),
             affectedUrls: [currentUrl, olderUrl],
+            confidence: 'high',
           });
           continue; // No need to also check body size if auth bypass found
         }
@@ -170,6 +171,7 @@ export const apiVersionCheck: ActiveCheck = {
               },
               timestamp: new Date().toISOString(),
               affectedUrls: [currentUrl, olderUrl],
+              confidence: 'medium',
             });
           }
         }

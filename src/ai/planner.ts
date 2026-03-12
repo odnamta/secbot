@@ -1,5 +1,6 @@
 import type { ReconResult, CrawledPage, AttackPlan, ScanProfile } from '../scanner/types.js';
 import type { PayloadContext } from '../utils/payload-context.js';
+import type { LearningContext } from '../learning/types.js';
 import { askClaude, parseJsonResponse } from './client.js';
 import { buildPlannerPrompt, buildPlannerUserPrompt, ALL_PLANNER_CHECKS } from './prompts.js';
 import type { PlannerCheckType } from './prompts.js';
@@ -176,6 +177,22 @@ export function determineRelevantChecks(
   // if none are present the check returns early with 0 findings)
   relevant.push('subdomain-takeover');
 
+  // OAuth — relevant when OAuth-related URLs detected
+  const allPageUrls = pages.flatMap((p) => [p.url, ...p.links]);
+  const oauthPatterns = [/\/oauth\//i, /\/authorize/i, /\/auth\/callback/i, /\/login\/oauth/i,
+    /\/api\/auth/i, /\/connect\/authorize/i, /\.well-known\/openid/i, /\/token$/i, /\/oauth2\//i];
+  const hasOAuthEndpoints = allPageUrls.some((u) => oauthPatterns.some((p) => p.test(u))) ||
+    recon.endpoints.apiRoutes.some((r) => oauthPatterns.some((p) => p.test(r)));
+  if (hasOAuthEndpoints) {
+    relevant.push('oauth');
+  }
+
+  // Cache poisoning — relevant when pages have been crawled
+  // (caching is common on any deployed web app; the check detects caching headers on the fly)
+  if (pages.length > 0) {
+    relevant.push('cache-poisoning');
+  }
+
   return relevant;
 }
 
@@ -189,6 +206,7 @@ export async function planAttack(
   pages: CrawledPage[],
   profile: ScanProfile,
   payloadContext?: PayloadContext,
+  learningContext?: LearningContext,
 ): Promise<AttackPlan> {
   log.info('AI planning attack strategy...');
 
@@ -230,13 +248,14 @@ export async function planAttack(
     log.info('AI unavailable — using default attack plan');
   }
 
-  return buildDefaultPlan(recon, pages, profile);
+  return buildDefaultPlan(recon, pages, profile, learningContext);
 }
 
 function buildDefaultPlan(
   recon: ReconResult,
   pages: CrawledPage[],
   profile: ScanProfile,
+  learningContext?: LearningContext,
 ): AttackPlan {
   const allForms = pages.flatMap((p) => p.forms);
   const urlsWithParams = pages.map((p) => p.url).filter((u) => u.includes('?'));
@@ -510,13 +529,60 @@ function buildDefaultPlan(
     skipReasons['crlf'] = 'No URL parameters or forms found';
   }
 
+  // OAuth: when OAuth-related endpoints detected
+  const oauthPatterns = [/\/oauth\//i, /\/authorize/i, /\/auth\/callback/i, /\/login\/oauth/i,
+    /\/api\/auth/i, /\/connect\/authorize/i, /\.well-known\/openid/i, /\/token$/i, /\/oauth2\//i];
+  const hasOAuthEndpoints = recon.endpoints.apiRoutes.some((r) =>
+    oauthPatterns.some((p) => p.test(r)),
+  ) || recon.endpoints.pages.some((r) =>
+    oauthPatterns.some((p) => p.test(r)),
+  );
+  if (hasOAuthEndpoints) {
+    checks.push({
+      name: 'oauth',
+      priority: priority++,
+      reason: 'OAuth endpoints detected — test for missing state, redirect_uri bypass, token leakage',
+    });
+  } else {
+    skipReasons['oauth'] = 'No OAuth endpoints detected';
+  }
+
+  // Cache poisoning: when pages have been crawled (check detects caching on the fly)
+  if (pages.length > 0) {
+    checks.push({
+      name: 'cache-poisoning',
+      priority: priority++,
+      reason: 'Test unkeyed HTTP headers for cache poisoning via reflected values',
+    });
+  } else {
+    skipReasons['cache-poisoning'] = 'No pages crawled';
+  }
+
+  // ─── Learning-based reordering (v1.0) ───────────────────────────────
+  if (learningContext?.techProfile) {
+    const { prioritize, deprioritize } = learningContext.techProfile;
+    for (const check of checks) {
+      if (prioritize.includes(check.name)) {
+        check.priority = Math.max(1, check.priority - 5);
+        check.reason += ' [learning: historically effective]';
+      }
+      if (deprioritize.includes(check.name)) {
+        check.priority += 10;
+        check.reason += ' [learning: historically ineffective]';
+      }
+    }
+    checks.sort((a, b) => a.priority - b.priority);
+    log.info(`Learning context applied: prioritize=[${prioritize.join(',')}], deprioritize=[${deprioritize.join(',')}]`);
+  }
+
   // Limit by profile
   const maxChecks = profile === 'quick' ? 3 : profile === 'standard' ? 6 : checks.length;
   const limited = checks.slice(0, maxChecks);
 
   return {
     recommendedChecks: limited,
-    reasoning: `Default plan: ${limited.length} checks based on available targets`,
+    reasoning: `Default plan: ${limited.length} checks based on available targets` +
+      (learningContext?.techProfile ? ' (adjusted by learning data)' : ''),
     skipReasons,
   };
 }

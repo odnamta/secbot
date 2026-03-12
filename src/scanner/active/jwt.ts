@@ -281,6 +281,10 @@ export const jwtCheck: ActiveCheck = {
       // Static analysis
       const issues = analyzeJwtSecurity(parsed, token);
       for (const issue of issues) {
+        // Determine confidence based on issue type
+        const isWeakSecret = /weak.*secret|weak.*key/i.test(issue.issue);
+        const isSensitiveData = /sensitive field/i.test(issue.issue);
+        const issueConfidence = isSensitiveData ? 'low' : (isWeakSecret ? 'high' : 'medium');
         findings.push({
           id: randomUUID(),
           category: 'jwt',
@@ -290,6 +294,7 @@ export const jwtCheck: ActiveCheck = {
           url: pageUrl,
           evidence: `Token source: ${source}\nHeader: ${JSON.stringify(parsed.header)}\nPayload keys: ${Object.keys(parsed.payload).join(', ')}\nAlgorithm: ${parsed.header.alg}`,
           timestamp: new Date().toISOString(),
+          confidence: issueConfidence,
         });
       }
 
@@ -446,6 +451,7 @@ async function testNoneAlgorithm(
               },
               response: { status },
               timestamp: new Date().toISOString(),
+              confidence: 'high',
             });
             return findings; // One proof is enough
           }

@@ -32,6 +32,8 @@ export type CheckCategory =
   | 'websocket'
   | 'api-versioning'
   | 'subdomain-takeover'
+  | 'oauth'
+  | 'cache-poisoning'
   | 'vuln-chain';
 
 export type ScanProfile = 'quick' | 'standard' | 'deep' | 'stealth';
@@ -57,6 +59,7 @@ export interface RawFinding {
   };
   timestamp: string;
   affectedUrls?: string[];
+  confidence?: Confidence;
 }
 
 export interface InterpretedFinding {

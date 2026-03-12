@@ -134,6 +134,7 @@ export async function checkSubdomainTakeover(
           },
           timestamp: new Date().toISOString(),
           affectedUrls: [url],
+          confidence: 'high',
         };
 
         return finding;

@@ -6,15 +6,14 @@
 Developer-friendly tool that scans web apps for OWASP Top 10 vulnerabilities with a single command. Claude AI drives the entire pipeline — planning attacks, validating findings, and writing reports.
 
 ## Status
-- Version: v0.14.0
-- 25 active check types + 6 passive check categories + 5 chain rules
-- 1555 tests (unit + integration + false-positive regression)
+- Version: v1.0.0 "Bounty Ready"
+- 27 active check types + 6 passive check categories + 5 chain rules
+- 1783 tests (unit + integration + false-positive regression)
+- **v1.0 Bounty Ready:** confidence scoring (high/medium/low on every finding), auto-verify (Playwright re-confirmation), two-pass pre-filter, OAuth flow testing, cache poisoning detection, behavioral stealth (Gaussian delay, referrer chains, human simulation), adaptive payload encoding (8 strategies), CAPTCHA detection + aggressive backoff, DNS pinning + SSRF self-defense, autonomous hunting (program registry, scan orchestrator, escalation queue, Nara notification), self-learning loop (outcome tracking, FP memory, tech profiles, payload stats, planner integration)
+- CLI commands: `secbot scan`, `secbot hunt`, `secbot outcome`, `secbot interactive`
 - Parallel active check runner: 10 read-only checks run concurrently via Promise.allSettled
-- v0.14 detection depth: subdomain takeover (14 service fingerprints), IDOR query param + horizontal enum, mutation XSS (8 payloads), CSP bypass (6 payloads), 2 new WAF bypass encodings
 - Payload context wiring: SQLi, SSTI, XSS, CMDi use recon-inferred tech stack for payload prioritization
 - Recon ↔ framework merge: crawl framework detection is single source of truth
-- v0.13 AI Intelligence: expanded planner (24 checks + PayloadContext), focusAreas wiring, dynamic validator/reporter prompts, AI response analysis (Phase 5b), complete fallback maps
-- v0.12 coverage expansion: file upload, broken access control, business logic, WebSocket, API versioning
 - CT subdomain enumeration via crt.sh API
 - AI prompt injection sanitization enabled
 - OOB findings fully wired into report pipeline + exit code
@@ -177,6 +176,22 @@ src/
     scope-parser.ts           # Bug bounty scope file parser (HackerOne/Bugcrowd format)
     payload-context.ts        # Contextual payload generation from recon (DB, template, OS inference)
     disclosure-dedup.ts       # Finding dedup against public disclosures / common rejections
+    dns-pin.ts                # DNS pinning + private IP blocking (SSRF self-defense)
+  hunting/
+    types.ts                  # Program, EscalationItem, HuntSummary types
+    registry.ts               # YAML program registry parser + schedule logic
+    orchestrator.ts           # Sequential scan orchestrator for bounty programs
+    escalation.ts             # Escalation queue (CAPTCHA, 2FA, ambiguous findings)
+    notify.ts                 # Hunt summary notification (Nara integration)
+  learning/
+    types.ts                  # OutcomeRecord, FPPattern, LearningContext types
+    outcomes.ts               # Outcome tracker (accepted/duplicate/informative)
+    fp-memory.ts              # False positive pattern memory
+    tech-profiles.ts          # Tech stack effectiveness profiler
+    payload-stats.ts          # WAF bypass strategy tracking
+  scanner/
+    auto-verify.ts            # Playwright re-confirmation of medium-confidence findings
+    pre-filter.ts             # Two-pass validation: drop low-confidence before AI
   interactive/
     repl.ts                   # Interactive REPL mode
 test/
@@ -195,6 +210,8 @@ npm run build                 # Build with tsc
 npm run test                  # Run tests (vitest)
 npm run test:watch            # Run tests in watch mode
 npx secbot scan <url>         # Run a scan
+npx secbot hunt               # Autonomous bounty hunting (registry-based)
+npx secbot outcome <id>       # Record bounty outcome for learning
 ```
 
 ## CLI Options
@@ -237,11 +254,11 @@ SECBOT_TIMEOUT=30000          # Per-page timeout (ms)
 SECBOT_TOKEN_BUDGET=          # Max AI tokens per scan
 ```
 
-## CheckCategory (26 types)
+## CheckCategory (29 types)
 
 **Passive (6):** `security-headers`, `cookie-flags`, `info-leakage`, `mixed-content`, `sensitive-url-data`, `cross-origin-policy`
 
-**Active (25):** `xss`, `sqli`, `open-redirect`, `cors-misconfiguration`, `directory-traversal`, `ssrf`, `ssti`, `command-injection`, `idor`, `tls`, `sri`, `info-disclosure`, `js-cve`, `crlf-injection`, `rate-limit`, `jwt`, `race-condition`, `graphql`, `host-header`, `file-upload`, `broken-access-control`, `business-logic`, `websocket`, `api-versioning`, `subdomain-takeover`
+**Active (27):** `xss`, `sqli`, `open-redirect`, `cors-misconfiguration`, `directory-traversal`, `ssrf`, `ssti`, `command-injection`, `idor`, `tls`, `sri`, `info-disclosure`, `js-cve`, `crlf-injection`, `rate-limit`, `jwt`, `race-condition`, `graphql`, `host-header`, `file-upload`, `broken-access-control`, `business-logic`, `websocket`, `api-versioning`, `subdomain-takeover`, `oauth`, `cache-poisoning`
 
 **Meta:** `vuln-chain` (auto-detected from combinations of active findings)
 

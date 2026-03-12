@@ -154,6 +154,7 @@ async function testSsrf(
                   request: { method: 'GET', url: testUrl.href },
                   response: { status, bodySnippet: body.slice(0, 200) },
                   timestamp: new Date().toISOString(),
+                  confidence: 'high',
                 });
                 foundForUrl = true;
                 break;
@@ -181,6 +182,7 @@ async function testSsrf(
                     request: { method: 'GET', url: testUrl.href },
                     response: { status, bodySnippet: body.slice(0, 200) },
                     timestamp: new Date().toISOString(),
+                    confidence: 'medium',
                   });
                   foundForUrl = true;
                 }
@@ -229,6 +231,7 @@ async function testSsrf(
                 request: { method: 'GET', url: testUrl.href },
                 response: { status: response.status(), bodySnippet: body.slice(0, 300) },
                 timestamp: new Date().toISOString(),
+                confidence: 'high',
               });
               foundForUrl = true;
               break;
@@ -320,6 +323,7 @@ async function testTimeSsrf(
         evidence: `Payload: ${payload}\nBaseline response time: ${baselineMs}ms\nPayload response time: ${elapsed}ms\nTime ratio: ${(elapsed / baselineMs).toFixed(1)}x`,
         request: { method: 'GET', url: testUrl.href },
         timestamp: new Date().toISOString(),
+        confidence: 'low',
       };
     }
 

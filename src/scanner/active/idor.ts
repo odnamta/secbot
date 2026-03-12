@@ -301,6 +301,7 @@ async function testIdor(
               },
               timestamp: new Date().toISOString(),
               affectedUrls: [pattern.url],
+              confidence: 'high',
             });
           }
         } catch (err) {
@@ -411,6 +412,7 @@ async function testQueryParamIdor(
                 },
                 timestamp: new Date().toISOString(),
                 affectedUrls: [qp.url, probeHref],
+                confidence: 'high',
               });
             }
           } catch (err) {

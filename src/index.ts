@@ -7,7 +7,7 @@ import { program } from 'commander';
 import chalk from 'chalk';
 import { resolve, join } from 'node:path';
 import { readFileSync, mkdtempSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { tmpdir, homedir } from 'node:os';
 import { crawl, closeBrowser } from './scanner/browser.js';
 import { runPassiveChecks } from './scanner/passive.js';
 import { runActiveChecks, CHECK_REGISTRY, loadAndRegisterPlugins } from './scanner/active/index.js';
@@ -44,6 +44,15 @@ import { detectChains } from './scanner/active/chain-detector.js';
 import { getHistoryPath, loadHistory, addToHistory, saveHistory, getTrendSummary } from './utils/scan-history.js';
 import { buildPayloadContext, summarizePayloadContext } from './utils/payload-context.js';
 import { deduplicateAgainstDisclosures } from './utils/disclosure-dedup.js';
+import { verifyFindings } from './scanner/auto-verify.js';
+import { preFilterFindings } from './scanner/pre-filter.js';
+import { EscalationQueue } from './hunting/escalation.js';
+import { Orchestrator } from './hunting/orchestrator.js';
+import { OutcomeTracker } from './learning/outcomes.js';
+import { FPMemory } from './learning/fp-memory.js';
+import { TechProfiler } from './learning/tech-profiles.js';
+import { PayloadStats } from './learning/payload-stats.js';
+import type { LearningContext } from './learning/types.js';
 import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, AuthOptions } from './scanner/types.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
@@ -561,11 +570,55 @@ program
         config.payloadContext = payloadContext;
         log.info(`Payload context: ${summarizePayloadContext(payloadContext)}`);
 
+        // ─── Load Learning Data ──────────────────────────────────
+        let learningContext: LearningContext | undefined;
+        try {
+          const techProfiler = new TechProfiler();
+          const fpMemory = new FPMemory();
+          const payloadStatsTracker = new PayloadStats();
+          const outcomeTracker = new OutcomeTracker();
+          await Promise.all([techProfiler.load(), fpMemory.load(), payloadStatsTracker.load(), outcomeTracker.load()]);
+
+          const techStack = [
+            recon.techStack.server,
+            ...recon.techStack.detected,
+            crawledFramework?.name,
+          ].filter((t): t is string => !!t);
+
+          const techProfile = techProfiler.recommend(techStack);
+          const fpPatterns = fpMemory.getPatterns().map(p => `${p.category}:${p.pattern}`);
+          const outcomeRates = outcomeTracker.successRateByCategory();
+
+          // Build payload stats per detected WAF
+          const wafName = recon.waf?.name;
+          const payloadStatsMap: Record<string, { best: string; worst: string }> = {};
+          if (wafName) {
+            const best = payloadStatsTracker.bestStrategy(wafName);
+            const worst = payloadStatsTracker.worstStrategy(wafName);
+            if (best || worst) {
+              payloadStatsMap[wafName] = { best: best ?? 'unknown', worst: worst ?? 'unknown' };
+            }
+          }
+
+          learningContext = {
+            techProfile,
+            fpPatterns: fpPatterns.length > 0 ? fpPatterns : undefined,
+            payloadStats: Object.keys(payloadStatsMap).length > 0 ? payloadStatsMap : undefined,
+            outcomeRates: Object.keys(outcomeRates).length > 0 ? outcomeRates : undefined,
+          };
+
+          if (techProfile.prioritize.length > 0 || techProfile.deprioritize.length > 0) {
+            log.info(`Learning: prioritize [${techProfile.prioritize.join(', ')}], deprioritize [${techProfile.deprioritize.join(', ')}]`);
+          }
+        } catch (err) {
+          log.debug(`Learning data not available: ${(err as Error).message}`);
+        }
+
         // ─── Phase 3: AI Attack Plan ─────────────────────────────
         let attackPlan;
         if (config.useAI) {
           log.info('Phase 3: AI planning attack strategy...');
-          attackPlan = await planAttack(targetUrl, recon, pages, config.profile, payloadContext);
+          attackPlan = await planAttack(targetUrl, recon, pages, config.profile, payloadContext, learningContext);
         } else {
           log.info('Phase 3: Skipping AI planning (--no-ai)');
         }
@@ -608,15 +661,33 @@ program
           log.info(`Suppressed ${suppressed.length} known/low-impact finding(s) via disclosure dedup`);
         }
 
+        // ─── Pre-filter: drop low-confidence findings ──────────
+        const { passed: filteredFindings, dropped: droppedFindings } = preFilterFindings(dedupedFindings);
+        if (droppedFindings.length > 0) {
+          log.info(`Pre-filter: dropped ${droppedFindings.length} low-confidence finding(s)`);
+        }
+
+        // ─── Auto-verify: re-confirm medium-confidence findings ─
+        log.info('Auto-verifying medium-confidence findings...');
+        const verifiedFindings = await verifyFindings(filteredFindings, context);
+        const upgraded = verifiedFindings.filter((f, i) => f.confidence !== filteredFindings[i].confidence);
+        if (upgraded.length > 0) {
+          log.info(`Auto-verify: ${upgraded.length} finding(s) had confidence updated`);
+        }
+
+        // ─── Escalation Queue ───────────────────────────────────
+        const escalationQueue = new EscalationQueue();
+        escalationQueue.setTarget(targetUrl);
+
         // ─── Baseline diff ─────────────────────────────────────
-        let findingsForValidation = dedupedFindings;
+        let findingsForValidation = verifiedFindings;
         if (config.baselinePath) {
           try {
             const { existsSync } = await import('node:fs');
             if (existsSync(config.baselinePath)) {
               const baseline = loadBaseline(config.baselinePath);
-              const newFindings = diffFindings(dedupedFindings, baseline);
-              log.info(`${newFindings.length} findings are new (${baseline.length} in baseline, ${dedupedFindings.length} total)`);
+              const newFindings = diffFindings(verifiedFindings, baseline);
+              log.info(`${newFindings.length} findings are new (${baseline.length} in baseline, ${verifiedFindings.length} total)`);
               findingsForValidation = newFindings;
             } else {
               log.info(`Baseline file not found at ${config.baselinePath} — treating all findings as new`);
@@ -818,6 +889,65 @@ program
 
         process.exitCode = exitCode;
 
+        // ─── Escalation Queue: record ambiguous findings ─────
+        // Track medium-confidence findings that need human review
+        for (const f of findingsForValidation) {
+          if (f.confidence === 'medium') {
+            escalationQueue.addAmbiguousFinding(f);
+          }
+        }
+        escalationQueue.setCompleted(findingsForValidation.filter(f => f.confidence === 'high').length);
+
+        if (escalationQueue.getItems().length > 0) {
+          try {
+            const { homedir: getHome } = await import('node:os');
+            const queueDir = join(getHome(), '.secbot', 'queue');
+            const hostname = new URL(targetUrl).hostname;
+            const queuePath = await escalationQueue.save(queueDir, hostname);
+            log.info(`Escalation queue saved: ${queuePath} (${escalationQueue.getItems().length} items)`);
+          } catch (err) {
+            log.debug(`Escalation queue save failed: ${(err as Error).message}`);
+          }
+        }
+
+        // ─── Post-scan Learning Data ─────────────────────────
+        try {
+          const techStack = [
+            recon.techStack.server,
+            ...recon.techStack.detected,
+            crawledFramework?.name,
+          ].filter((t): t is string => !!t);
+
+          // Record tech profile data — which check categories found valid results
+          const techProfiler = new TechProfiler();
+          await techProfiler.load();
+          // Map interpreted findings back to raw findings to get categories
+          const validRawIds = new Set(interpretedFindings.flatMap(f => f.rawFindingIds));
+          const categoriesWithValidFindings = new Set(
+            allRawFindings.filter(f => validRawIds.has(f.id)).map(f => f.category)
+          );
+          for (const checkName of checksRun) {
+            techProfiler.record(techStack, checkName as string, categoriesWithValidFindings.has(checkName as CheckCategory));
+          }
+          await techProfiler.save();
+
+          // Record payload stats — WAF bypass effectiveness
+          if (recon.waf?.name) {
+            const payloadStatsTracker = new PayloadStats();
+            await payloadStatsTracker.load();
+            // If findings got through, the current encoding strategy worked
+            const waf = recon.waf.name;
+            if (interpretedFindings.length > 0) {
+              payloadStatsTracker.record(waf, 'default', true);
+            }
+            await payloadStatsTracker.save();
+          }
+
+          log.info('Learning data saved');
+        } catch (err) {
+          log.debug(`Learning data save failed: ${(err as Error).message}`);
+        }
+
         // Post-scan callback URL reminder (external callback, not our server)
         if (config.callbackUrl && !callbackServer) {
           log.info('Callback URLs injected for blind detection. Check your callback server for hits.');
@@ -913,6 +1043,84 @@ program
       }
       process.exit(2);
     }
+  });
+
+// ─── Hunt Command ─────────────────────────────────────────────
+program
+  .command('hunt')
+  .description('Run autonomous bounty hunting across registered programs')
+  .option('--registry <path>', 'Path to program registry YAML', join(homedir(), '.secbot', 'registry.yaml'))
+  .option('--dry-run', 'Show which programs would be scanned without scanning', false)
+  .option('--verbose', 'Enable verbose logging', false)
+  .action(async (options: Record<string, unknown>) => {
+    if (options.verbose) setLogLevel('debug');
+    log.banner();
+
+    const registryPath = options.registry as string;
+    const orch = new Orchestrator({
+      registryPath,
+      dryRun: options.dryRun === true,
+    });
+
+    log.info(`Hunt mode: registry at ${registryPath}`);
+
+    const summary = await orch.hunt(async (prog) => {
+      // Placeholder — in a full implementation this would run a full scan
+      // and return findings. For now, log and return empty results.
+      log.info(`Would scan: ${prog.name} (${prog.platform})`);
+      return {
+        program: prog.name,
+        findings: { high: 0, medium: 0, low: 0 },
+        escalations: 0,
+        duration: 0,
+      };
+    });
+
+    console.log(chalk.cyan('\n─── Hunt Summary ───'));
+    console.log(chalk.gray(`Programs: ${summary.programs}`));
+    console.log(chalk.gray(`Findings: H:${summary.findings.high} M:${summary.findings.medium} L:${summary.findings.low}`));
+    console.log(chalk.gray(`Escalations: ${summary.escalations}`));
+    console.log(chalk.gray(`Duration: ${summary.duration}`));
+  });
+
+// ─── Outcome Command ──────────────────────────────────────────
+program
+  .command('outcome')
+  .description('Record a bounty outcome for learning')
+  .argument('<finding-id>', 'Finding ID from scan results')
+  .requiredOption('--program <name>', 'Program name')
+  .requiredOption('--result <result>', 'Outcome: accepted, duplicate, informative, not-applicable, out-of-scope')
+  .option('--bounty <amount>', 'Bounty amount in USD')
+  .option('--category <category>', 'Finding category (e.g., xss, sqli)')
+  .option('--tech <stack>', 'Comma-separated tech stack (e.g., "next.js,node")')
+  .option('--notes <text>', 'Additional notes')
+  .action(async (findingId: string, options: Record<string, unknown>) => {
+    const validResults = ['accepted', 'duplicate', 'informative', 'not-applicable', 'out-of-scope'];
+    const result = options.result as string;
+    if (!validResults.includes(result)) {
+      console.error(chalk.red(`Invalid result. Must be one of: ${validResults.join(', ')}`));
+      process.exit(1);
+    }
+
+    const tracker = new OutcomeTracker();
+    await tracker.load();
+
+    tracker.record({
+      findingId,
+      program: options.program as string,
+      category: (options.category as string) ?? 'unknown',
+      techStack: options.tech ? (options.tech as string).split(',').map(s => s.trim()) : [],
+      outcome: result as 'accepted' | 'duplicate' | 'informative' | 'not-applicable' | 'out-of-scope',
+      bounty: options.bounty ? parseFloat(options.bounty as string) : undefined,
+      submittedAt: new Date().toISOString(),
+      notes: options.notes as string | undefined,
+    });
+
+    await tracker.save();
+
+    const stats = tracker.getStats();
+    console.log(chalk.green(`Outcome recorded: ${findingId} → ${result}`));
+    console.log(chalk.gray(`Total: ${stats.total} outcomes | ${stats.accepted} accepted | $${stats.totalBounty} earned`));
   });
 
 program.parse();

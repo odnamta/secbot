@@ -209,6 +209,7 @@ async function testIntrospection(
               },
               response: { status, bodySnippet: body.slice(0, 300) },
               timestamp: new Date().toISOString(),
+              confidence: 'high',
             },
             schema,
           };
@@ -258,6 +259,7 @@ function analyzeMutations(
       url: endpoint,
       evidence: `Sensitive mutations found:\n${sensitiveMutations.map((m) => `  - ${m.name}`).join('\n')}`,
       timestamp: new Date().toISOString(),
+      confidence: 'medium',
     });
   }
 
@@ -309,6 +311,7 @@ async function testDepthLimit(
             request: { method: 'POST', url: endpoint },
             response: { status, bodySnippet: body.slice(0, 200) },
             timestamp: new Date().toISOString(),
+            confidence: 'medium',
           };
         }
       } catch {
@@ -369,6 +372,7 @@ async function testBatchQueries(
             request: { method: 'POST', url: endpoint },
             response: { status, bodySnippet: body.slice(0, 200) },
             timestamp: new Date().toISOString(),
+            confidence: 'low',
           };
         }
       } catch {

@@ -248,6 +248,7 @@ async function testPriceQuantityManipulation(
               request: { method, url: actionUrl, body: JSON.stringify(formData) },
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
+              confidence: 'high',
             });
             // One finding per field is enough
             break;
@@ -308,6 +309,7 @@ async function testPriceQuantityManipulation(
               request: { method, url: actionUrl, body: JSON.stringify(formData) },
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
+              confidence: 'high',
             });
             break;
           }
@@ -412,6 +414,7 @@ async function testApiPriceManipulation(
                 request: { method: 'PUT', url: endpoint, body: JSON.stringify({ [field]: payload.value }) },
                 response: { status: putStatus, bodySnippet: putBody.slice(0, 200) },
                 timestamp: new Date().toISOString(),
+                confidence: 'medium',
               });
               break; // One finding per field
             }
@@ -479,6 +482,7 @@ async function testWorkflowBypass(
             request: { method: 'GET', url: testUrl.href },
             response: { status, bodySnippet: body.slice(0, 200) },
             timestamp: new Date().toISOString(),
+            confidence: 'medium',
           });
           // One finding per URL is enough
           break;

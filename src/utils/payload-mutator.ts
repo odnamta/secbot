@@ -163,6 +163,63 @@ export function sqlCommentObfuscate(payload: string): string {
   return result;
 }
 
+// ─── Adaptive Encoder (v1.0) ────────────────────────────────────────
+
+/**
+ * Adaptive encoding strategy that automatically switches encoding
+ * when the current one gets blocked (403/406).
+ * Cycles through all strategies, skipping blocked ones.
+ */
+export class AdaptiveEncoder {
+  private strategies: EncodingStrategy[];
+  private index = 0;
+  private blocked = new Set<EncodingStrategy>();
+
+  constructor(initial?: EncodingStrategy[]) {
+    this.strategies = initial ?? ['none', 'url', 'double-url', 'html-entity', 'unicode', 'mixed', 'from-char-code', 'json-unicode'];
+  }
+
+  /** Current encoding strategy. */
+  currentStrategy(): EncodingStrategy {
+    return this.strategies[this.index];
+  }
+
+  /** Record that the current strategy was blocked — advance to next unblocked. */
+  recordBlock(): void {
+    this.blocked.add(this.strategies[this.index]);
+    this.advance();
+  }
+
+  /** Record that the current strategy succeeded — stay on it. */
+  recordSuccess(): void {
+    // Keep current strategy
+  }
+
+  /** Whether all strategies have been blocked. */
+  allBlocked(): boolean {
+    return this.blocked.size >= this.strategies.length;
+  }
+
+  /** Encode a payload with the current strategy. */
+  encode(payload: string): string {
+    return applyEncoding(payload, this.strategies[this.index]);
+  }
+
+  /** Number of strategies still available. */
+  remaining(): number {
+    return this.strategies.length - this.blocked.size;
+  }
+
+  private advance(): void {
+    const start = this.index;
+    do {
+      this.index = (this.index + 1) % this.strategies.length;
+      if (!this.blocked.has(this.strategies[this.index])) return;
+    } while (this.index !== start);
+    // All blocked — stays at current
+  }
+}
+
 /**
  * Case randomize a payload to bypass case-sensitive WAF rules.
  * e.g., "<script>" → "<ScRiPt>"

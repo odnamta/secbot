@@ -45,3 +45,87 @@ export async function jitteredDelay(baseMs: number): Promise<void> {
 
 /** Expose the UA pool size for testing. */
 export const USER_AGENT_COUNT = USER_AGENTS.length;
+
+// ─── Behavioral Stealth (v1.0) ──────────────────────────────────────
+
+/**
+ * Gaussian-distributed delay using Box-Muller transform.
+ * Produces human-like timing (bell curve centered on meanMs).
+ */
+export function gaussianDelay(meanMs: number, stdDev?: number): number {
+  const sigma = stdDev ?? meanMs * 0.3;
+  // Box-Muller transform
+  const u1 = Math.random() || 0.0001; // avoid log(0)
+  const u2 = Math.random();
+  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  return Math.max(50, Math.round(meanMs + z * sigma));
+}
+
+/**
+ * Generates a plausible referrer chain for a target URL.
+ * Simulates: search engine → landing page → target.
+ */
+export function generateRefererChain(targetUrl: string): string[] {
+  const url = new URL(targetUrl);
+  const searchEngines = [
+    `https://www.google.com/search?q=${encodeURIComponent(url.hostname)}`,
+    `https://www.bing.com/search?q=${encodeURIComponent(url.hostname)}`,
+    `https://duckduckgo.com/?q=${encodeURIComponent(url.hostname)}`,
+  ];
+  const engine = searchEngines[Math.floor(Math.random() * searchEngines.length)];
+  const landing = `${url.origin}/`;
+  return [engine, landing, targetUrl];
+}
+
+/**
+ * Simulates basic human behavior on a Playwright page.
+ * Mouse movement, scroll, brief pause — for stealth profile.
+ */
+export async function simulateHumanBehavior(page: { mouse: { move: (x: number, y: number) => Promise<void> }; evaluate: (fn: () => void) => Promise<void> }): Promise<void> {
+  // Random mouse movement
+  const x = 100 + Math.floor(Math.random() * 800);
+  const y = 100 + Math.floor(Math.random() * 400);
+  await page.mouse.move(x, y);
+
+  // Small random scroll
+  await page.evaluate(() => {
+    window.scrollBy(0, Math.floor(Math.random() * 300) + 50);
+  });
+
+  // Brief human-like pause
+  const pause = gaussianDelay(800);
+  await new Promise(resolve => setTimeout(resolve, pause));
+}
+
+/** Browser profile for consistent fingerprinting per scan session. */
+export interface BrowserProfile {
+  userAgent: string;
+  viewport: { width: number; height: number };
+  locale: string;
+  timezoneId: string;
+}
+
+/** Common viewport sizes paired with their typical OS/browser combos. */
+const VIEWPORT_PROFILES: Array<{ viewport: { width: number; height: number }; indices: number[] }> = [
+  // 1920x1080 — desktop Chrome/Edge on Windows
+  { viewport: { width: 1920, height: 1080 }, indices: [0, 1, 2, 5, 6, 10, 11] },
+  // 1440x900 — macOS Chrome/Safari
+  { viewport: { width: 1440, height: 900 }, indices: [3, 4, 7, 8, 9] },
+];
+
+/**
+ * Builds a consistent browser profile — matched UA + viewport + timezone.
+ * Use once per scan to avoid fingerprint inconsistencies.
+ */
+export function buildConsistentProfile(): BrowserProfile {
+  const profile = VIEWPORT_PROFILES[Math.floor(Math.random() * VIEWPORT_PROFILES.length)];
+  const uaIndex = profile.indices[Math.floor(Math.random() * profile.indices.length)];
+  const ua = USER_AGENTS[uaIndex];
+  const isMac = ua.includes('Macintosh');
+  return {
+    userAgent: ua,
+    viewport: profile.viewport,
+    locale: 'en-US',
+    timezoneId: isMac ? 'America/Los_Angeles' : 'America/New_York',
+  };
+}

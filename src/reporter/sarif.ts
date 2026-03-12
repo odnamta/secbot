@@ -59,6 +59,9 @@ function categoryToRuleName(category: CheckCategory): string {
     'business-logic': 'Business Logic Vulnerability',
     'websocket': 'WebSocket Security Issue',
     'api-versioning': 'API Versioning Security Issue',
+    'subdomain-takeover': 'Subdomain Takeover',
+    'oauth': 'OAuth Flow Vulnerability',
+    'cache-poisoning': 'Cache Poisoning',
     'vuln-chain': 'Vulnerability Chain',
   };
   return map[category] ?? category;

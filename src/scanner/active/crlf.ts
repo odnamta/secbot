@@ -199,6 +199,7 @@ async function testCrlfParams(
                 bodySnippet: body.slice(0, 200),
               },
               timestamp: new Date().toISOString(),
+              confidence: 'high',
             });
             foundForUrl = true;
           }

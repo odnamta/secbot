@@ -435,6 +435,7 @@ async function testXssOnForms(
               body: textInputs.map((i) => `${i.name}=${xssPayload.payload}`).join('&'),
             },
             timestamp: new Date().toISOString(),
+            confidence: 'medium',
           });
           break;
         }
@@ -538,6 +539,7 @@ async function testPostFormXss(
               description: `The POST body parameter "${input.name}" reflects XSS payload (${xssPayload.type}) in the response without proper encoding. ${dangerousContext}. This is exploitable via a crafted form that auto-submits via JavaScript.`,
               url: form.pageUrl,
               evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nParameter: ${input.name}\nMethod: POST\nAction: ${actionUrl}\n${dangerousContext}`,
+              confidence: 'medium',
               request: {
                 method: 'POST',
                 url: actionUrl,
@@ -678,6 +680,7 @@ async function testJsonApiXss(
                 bodySnippet: responseText.slice(0, 500),
               },
               timestamp: new Date().toISOString(),
+              confidence: 'medium',
             });
             break; // One finding per endpoint is enough
           }
@@ -703,6 +706,7 @@ async function testJsonApiXss(
                 body: testBody,
               },
               timestamp: new Date().toISOString(),
+              confidence: 'medium',
             });
             break;
           }
@@ -780,6 +784,7 @@ async function testXssOnUrls(
                 evidence: `Payload: ${variant}\nOriginal: ${xssPayload.payload}\nType: ${xssPayload.type}\nTest URL: ${testUrl.href}\n${dangerousContext}${isWafBypass ? '\nWAF bypass: yes' : ''}`,
                 request: { method: 'GET', url: testUrl.href },
                 timestamp: new Date().toISOString(),
+                confidence: 'medium',
               });
               foundForParam = true;
             }
@@ -824,6 +829,7 @@ async function testXssOnUrls(
                   evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nHPP URL: ${hppUrl}\n${dangerousContext}\nWAF bypass: HPP`,
                   request: { method: 'GET', url: hppUrl },
                   timestamp: new Date().toISOString(),
+                  confidence: 'medium',
                 });
                 foundForParam = true;
               }
@@ -905,6 +911,7 @@ async function testDomXss(
             evidence: `Payload: ${xssPayload.payload}\nSinks: ${sinkNames}\nTest URL: ${pageUrl}#${fragmentPayload}`,
             request: { method: 'GET', url: `${pageUrl}#${fragmentPayload}` },
             timestamp: new Date().toISOString(),
+            confidence: 'medium',
           });
           break; // One finding per page is enough
         }
@@ -1148,6 +1155,7 @@ export async function testSearchParamXss(
               evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nParameter: ${param}\nTest URL: ${testUrl.href}\nFramework: ${framework?.name ?? 'none detected'}\n${dangerousContext}`,
               request: { method: 'GET', url: testUrl.href },
               timestamp: new Date().toISOString(),
+              confidence: 'medium',
             });
             foundForParam = true;
             continue;
@@ -1176,6 +1184,7 @@ export async function testSearchParamXss(
             evidence: `Payload: ${xssPayload.payload}\nSinks: ${sinkNames}\nParameter: ${param}\nTest URL: ${testUrl.href}\nFramework: ${framework?.name ?? 'none detected'}`,
             request: { method: 'GET', url: testUrl.href },
             timestamp: new Date().toISOString(),
+            confidence: 'medium',
           });
           foundForParam = true;
           continue;
@@ -1244,6 +1253,7 @@ export async function testSearchParamXss(
             evidence: `Payload: ${xssPayload.payload}\nParameter: ${param}\nDOM contexts: ${contexts}\nTest URL: ${testUrl.href}\nFramework: ${framework?.name ?? 'none detected'}\nDOM snippet: ${markerInDom[0].content.slice(0, 200)}`,
             request: { method: 'GET', url: testUrl.href },
             timestamp: new Date().toISOString(),
+            confidence: 'medium',
           });
           foundForParam = true;
         }
@@ -1301,6 +1311,7 @@ async function testStoredXss(
             evidence: `Marker found: ${marker}\nOriginal payload: ${xssPayload.payload}\nType: ${xssPayload.type}`,
             request: { method: 'GET', url: pageUrl },
             timestamp: new Date().toISOString(),
+            confidence: 'medium',
           });
           break; // One stored XSS finding per page is enough
         }
@@ -1519,6 +1530,7 @@ async function testMutationXss(
             evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nSinks: ${sinkNames}\nTest URL: ${pageUrl}#${fragmentPayload}`,
             request: { method: 'GET', url: `${pageUrl}#${fragmentPayload}` },
             timestamp: new Date().toISOString(),
+            confidence: 'medium',
           });
           break; // One finding per page is enough
         }
@@ -1538,6 +1550,7 @@ async function testMutationXss(
             evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\n${dangerousContext}\nTest URL: ${pageUrl}#${fragmentPayload}`,
             request: { method: 'GET', url: `${pageUrl}#${fragmentPayload}` },
             timestamp: new Date().toISOString(),
+            confidence: 'medium',
           });
           break;
         }
@@ -1621,6 +1634,7 @@ async function testCspBypassXss(
               evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nParameter: ${param}\nTest URL: ${testUrl.href}\n${dangerousContext}`,
               request: { method: 'GET', url: testUrl.href },
               timestamp: new Date().toISOString(),
+              confidence: 'low',
             });
             foundForUrl = true;
           }
@@ -1708,6 +1722,7 @@ async function testCspBypassXss(
               body: textInputs.map((i) => `${i.name}=${xssPayload.payload}`).join('&'),
             },
             timestamp: new Date().toISOString(),
+            confidence: 'low',
           });
           break;
         }

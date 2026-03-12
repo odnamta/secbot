@@ -132,6 +132,7 @@ async function testCmdiParams(
               request: { method: 'GET', url: testUrl.href },
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
+              confidence: 'high',
             });
             foundForUrl = true;
             break;
@@ -178,6 +179,7 @@ async function testCmdiParams(
                   evidence: `Payload: ${payload}\nBaseline median: ${Math.round(baselineMedian)}ms\nWith payload median: ${payloadMedian}ms\nDifference: ${Math.round(diff)}ms (threshold: ${CMDI_TIMING_THRESHOLD_MS}ms)`,
                   request: { method: 'GET', url: testUrl.href },
                   timestamp: new Date().toISOString(),
+                  confidence: 'medium',
                 });
                 foundForUrl = true;
               }
@@ -275,6 +277,7 @@ async function testCmdiForms(
               request: { method, url: actionUrl, body: JSON.stringify(formData) },
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
+              confidence: 'high',
             });
             foundForForm = true;
             break;
@@ -380,6 +383,7 @@ async function testCmdiForms(
                   evidence: `Payload: ${payload}\nBaseline median: ${Math.round(baselineMedian)}ms\nWith payload median: ${payloadMedian}ms\nDifference: ${Math.round(diff)}ms (threshold: ${CMDI_TIMING_THRESHOLD_MS}ms)`,
                   request: { method: fetchMethod, url: actionUrl, body: payloadFormData },
                   timestamp: new Date().toISOString(),
+                  confidence: 'medium',
                 });
                 foundForForm = true;
               }

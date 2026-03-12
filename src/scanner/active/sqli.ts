@@ -34,11 +34,11 @@ const BOOLEAN_CONSISTENCY_THRESHOLD = 0.30;
 
 /** Reorder timed SQLi payloads: matching DB types first, then the rest */
 export function prioritizeTimedPayloads(databases: DatabaseType[]): TimedSqliPayload[] {
-  const dbSet = new Set(databases.filter((d) => d !== 'unknown'));
+  const dbSet: Set<string> = new Set(databases.filter((d) => d !== 'unknown'));
   if (dbSet.size === 0) return [...SQLI_TIME_PAYLOADS];
 
-  const prioritized = SQLI_TIME_PAYLOADS.filter((p) => dbSet.has(p.dbType as DatabaseType));
-  const rest = SQLI_TIME_PAYLOADS.filter((p) => !dbSet.has(p.dbType as DatabaseType));
+  const prioritized = SQLI_TIME_PAYLOADS.filter((p) => dbSet.has(p.dbType));
+  const rest = SQLI_TIME_PAYLOADS.filter((p) => !dbSet.has(p.dbType));
   log.debug(`SQLi payload context: prioritizing ${prioritized.length} ${[...dbSet].join('/')} payloads`);
   return [...prioritized, ...rest];
 }
@@ -290,6 +290,7 @@ async function testSqliOnForms(
               id: randomUUID(),
               category: 'sqli',
               severity: 'critical',
+              confidence: 'high',
               title: `SQL Injection in Form Input "${textInputs[0].name}"`,
               description: `SQL error message detected when injecting payload into "${textInputs[0].name}". This indicates the input is not properly parameterized.`,
               url: form.pageUrl,
@@ -359,6 +360,7 @@ async function testSqliOnForms(
                 id: randomUUID(),
                 category: 'sqli',
                 severity: 'high',
+                confidence: 'medium',
                 title: `Potential Blind SQL Injection in Form "${textInputs[0].name}"`,
                 description: `Time-based blind SQL injection suspected. The median response was ${Math.round(diff)}ms slower when a time-delay payload was submitted via form input "${textInputs[0].name}". Baseline median: ${Math.round(baselineMedian)}ms, With payload median: ${payloadMedian}ms.`,
                 url: form.pageUrl,
@@ -415,6 +417,7 @@ async function testSqliOnForms(
             id: randomUUID(),
             category: 'sqli',
             severity: 'high',
+            confidence: 'medium',
             title: `Potential Boolean-Based Blind SQL Injection in Form "${textInputs[0].name}"`,
             description: `Boolean-based blind SQL injection suspected. Multi-round confirmation: TRUE responses consistent, FALSE responses consistent, and the difference between TRUE vs FALSE exceeds threshold. Submitted via form input "${textInputs[0].name}".`,
             url: form.pageUrl,
@@ -468,6 +471,7 @@ async function testSqliOnForms(
                 id: randomUUID(),
                 category: 'sqli',
                 severity: 'high',
+                confidence: 'low',
                 title: `NoSQL Injection in Form Input "${textInputs[0].name}"`,
                 description: `NoSQL error message detected when injecting payload into form input "${textInputs[0].name}". This indicates the input may be used in a NoSQL query without proper sanitization.`,
                 url: form.pageUrl,
@@ -554,6 +558,7 @@ async function testSqliOnUrls(
                   id: randomUUID(),
                   category: 'sqli',
                   severity: 'critical',
+                  confidence: 'high',
                   title: `SQL Injection in URL Parameter "${param}"${isWafBypass ? ' (WAF bypass)' : ''}`,
                   description: `SQL error message detected when injecting payload into URL parameter "${param}". This indicates the parameter is directly interpolated into SQL queries.${isWafBypass ? ' Encoded payload bypassed WAF detection.' : ''}`,
                   url: originalUrl,
@@ -602,6 +607,7 @@ async function testSqliOnUrls(
                     id: randomUUID(),
                     category: 'sqli',
                     severity: 'critical',
+                    confidence: 'high',
                     title: `SQL Injection in URL Parameter "${param}" (HPP bypass)`,
                     description: `SQL error message detected when injecting payload into URL parameter "${param}" via HTTP Parameter Pollution. WAF was bypassed by duplicating the parameter.`,
                     url: originalUrl,
@@ -651,6 +657,7 @@ async function testSqliOnUrls(
                   id: randomUUID(),
                   category: 'sqli',
                   severity: 'high',
+                  confidence: 'medium',
                   title: `Potential Blind SQL Injection in URL Parameter "${param}"`,
                   description: `Time-based blind SQL injection suspected. The median response was ${Math.round(diff)}ms slower when a time-delay payload was injected into "${param}". Baseline median: ${Math.round(baselineMedian)}ms, With payload median: ${payloadMedian}ms.`,
                   url: originalUrl,
@@ -696,6 +703,7 @@ async function testSqliOnUrls(
               id: randomUUID(),
               category: 'sqli',
               severity: 'high',
+              confidence: 'medium',
               title: `Potential Boolean-Based Blind SQL Injection in URL Parameter "${param}"`,
               description: `Boolean-based blind SQL injection suspected. Multi-round confirmation: TRUE responses consistent, FALSE responses consistent, and the difference between TRUE (${truePayload}) vs FALSE (${falsePayload}) exceeds threshold in parameter "${param}".`,
               url: originalUrl,
@@ -768,6 +776,7 @@ async function testSqliOnUrls(
                 id: randomUUID(),
                 category: 'sqli',
                 severity: 'critical',
+                confidence: 'high',
                 title: `Union-Based SQL Injection in URL Parameter "${param}"`,
                 description: `Union-based SQL injection detected. ORDER BY probing determined ${columnCount} columns, and a UNION SELECT with ${columnCount} NULLs was accepted without error.`,
                 url: originalUrl,
@@ -817,6 +826,7 @@ async function testSqliOnUrls(
                   id: randomUUID(),
                   category: 'sqli',
                   severity: 'high',
+                  confidence: 'low',
                   title: `NoSQL Injection in URL Parameter "${param}"`,
                   description: `NoSQL error message detected when injecting payload into URL parameter "${param}". This indicates the parameter may be used in a NoSQL query without proper sanitization.`,
                   url: originalUrl,
@@ -910,6 +920,7 @@ async function testPostFormSqli(
                 id: randomUUID(),
                 category: 'sqli',
                 severity: 'critical',
+                confidence: 'medium',
                 title: `SQL Injection in POST Form Field "${input.name}"`,
                 description: `SQL error message detected when injecting payload into POST form field "${input.name}" at ${form.action}. This indicates the input is directly interpolated into SQL queries.`,
                 url: form.pageUrl,
@@ -985,6 +996,7 @@ async function testPostFormSqli(
                 id: randomUUID(),
                 category: 'sqli',
                 severity: 'high',
+                confidence: 'medium',
                 title: `Potential Blind SQL Injection in POST Form Field "${input.name}"`,
                 description: `Time-based blind SQL injection suspected in POST form field "${input.name}" at ${form.action}. The median response was ${Math.round(diff)}ms slower when a time-delay payload was submitted.`,
                 url: form.pageUrl,
@@ -1096,6 +1108,7 @@ async function testJsonApiSqli(
                   id: randomUUID(),
                   category: 'sqli',
                   severity: 'critical',
+                  confidence: 'medium',
                   title: `SQL Injection in JSON API Field "${fieldName}" (${method})`,
                   description: `SQL error message detected when injecting payload into JSON body field "${fieldName}" via ${method} ${endpoint}. This indicates the field value is directly interpolated into SQL queries.`,
                   url: endpoint,
@@ -1162,6 +1175,7 @@ async function testJsonApiSqli(
                   id: randomUUID(),
                   category: 'sqli',
                   severity: 'high',
+                  confidence: 'medium',
                   title: `Potential Blind SQL Injection in JSON API Field "${fieldName}" (${method})`,
                   description: `Time-based blind SQL injection suspected in JSON body field "${fieldName}" via ${method} ${endpoint}. The median response was ${Math.round(diff)}ms slower when a time-delay payload was submitted.`,
                   url: endpoint,

@@ -152,6 +152,7 @@ async function testPayloadForParam(
           request: { method: 'GET', url: testUrl.href },
           response: { status: fetchResponse.status(), headers: fetchResponse.headers() },
           timestamp: new Date().toISOString(),
+          confidence: 'high',
         };
       }
     } catch (err) {
@@ -188,6 +189,7 @@ async function testPayloadForParam(
             evidence: `Payload: ${payload}\nRedirected to: ${finalUrl}`,
             request: { method: 'GET', url: testUrl.href },
             timestamp: new Date().toISOString(),
+            confidence: 'high',
           };
         }
 
@@ -210,6 +212,7 @@ async function testPayloadForParam(
             evidence: `Payload: ${payload}\nMeta refresh URL: ${metaRefreshUrl}`,
             request: { method: 'GET', url: testUrl.href },
             timestamp: new Date().toISOString(),
+            confidence: 'high',
           };
         }
 
@@ -234,6 +237,7 @@ async function testPayloadForParam(
             evidence: `Payload: ${payload}\nJS redirect URL: ${jsRedirectUrl}`,
             request: { method: 'GET', url: testUrl.href },
             timestamp: new Date().toISOString(),
+            confidence: 'high',
           };
         }
       } catch (err) {
@@ -250,6 +254,7 @@ async function testPayloadForParam(
             evidence: `Payload: ${payload}\nNavigation error confirms redirect: ${errMsg.slice(0, 200)}`,
             request: { method: 'GET', url: testUrl.href },
             timestamp: new Date().toISOString(),
+            confidence: 'medium',
           };
         }
         log.debug(`Redirect browser check: ${errMsg}`);

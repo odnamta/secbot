@@ -5,6 +5,31 @@ export interface RateLimiterOptions {
   backoffMultiplier?: number;
 }
 
+// ─── CAPTCHA Detection ──────────────────────────────────────────────
+
+const CAPTCHA_PATTERNS = [
+  'g-recaptcha',
+  'h-captcha',
+  'cf-turnstile',
+  'captcha-container',
+  'recaptcha/api',
+  'hcaptcha.com',
+  'challenges.cloudflare.com',
+  'captcha_challenge',
+  'id="captcha"',
+  'class="captcha"',
+  'data-sitekey',
+  'data-captcha',
+];
+
+/**
+ * Detects if a response body contains a CAPTCHA challenge.
+ */
+export function isCaptchaResponse(body: string): boolean {
+  const lower = body.toLowerCase();
+  return CAPTCHA_PATTERNS.some(p => lower.includes(p.toLowerCase()));
+}
+
 export interface RateLimiterStats {
   totalRequests: number;
   backoffs: number;
@@ -104,6 +129,19 @@ export class RateLimiter {
       // Other statuses (4xx, 5xx besides 503): reset consecutive counter but don't backoff
       this.consecutive2xx = 0;
     }
+  }
+
+  /**
+   * Call when a CAPTCHA is detected in the response body.
+   * Applies aggressive backoff (4x multiplier) — CAPTCHA means we're flagged.
+   */
+  recordCaptcha(): void {
+    this.consecutive2xx = 0;
+    this.currentDelayMs = Math.min(
+      this.currentDelayMs * (this.backoffMultiplier * 2),
+      this.maxDelayMs,
+    );
+    this.backoffs += 1;
   }
 
   /** Returns current stats for logging. */

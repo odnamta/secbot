@@ -47,12 +47,45 @@ function generateBountyMarkdown(result: ScanResult): string {
     return lines.join('\n');
   }
 
-  // Findings
-  lines.push('---');
-  lines.push('');
+  // Split by confidence — only high goes into main report
+  const highConfidence = sorted.filter(f => f.confidence === 'high');
+  const mediumConfidence = sorted.filter(f => f.confidence === 'medium');
+  const lowConfidence = sorted.filter(f => f.confidence !== 'high' && f.confidence !== 'medium');
 
-  for (let i = 0; i < sorted.length; i++) {
-    lines.push(...renderBountyFinding(i + 1, sorted[i]));
+  // High confidence findings — ready to submit
+  if (highConfidence.length > 0) {
+    lines.push('## Confirmed Findings');
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+    for (let i = 0; i < highConfidence.length; i++) {
+      lines.push(...renderBountyFinding(i + 1, highConfidence[i]));
+    }
+  }
+
+  // Medium confidence — needs human review
+  if (mediumConfidence.length > 0) {
+    lines.push('## Needs Review (Medium Confidence)');
+    lines.push('');
+    lines.push('> These findings have strong indicators but need manual verification before submission.');
+    lines.push('');
+    lines.push('---');
+    lines.push('');
+    for (let i = 0; i < mediumConfidence.length; i++) {
+      lines.push(...renderBountyFinding(highConfidence.length + i + 1, mediumConfidence[i]));
+    }
+  }
+
+  // Low confidence — informational only (no bounty submission)
+  if (lowConfidence.length > 0) {
+    lines.push('## Informational (Low Confidence)');
+    lines.push('');
+    lines.push('> These findings are heuristic matches only. Do not submit without thorough investigation.');
+    lines.push('');
+    for (let i = 0; i < lowConfidence.length; i++) {
+      lines.push(`- **${lowConfidence[i].title}** — ${lowConfidence[i].affectedUrls?.[0] ?? 'N/A'}`);
+    }
+    lines.push('');
   }
 
   // Footer

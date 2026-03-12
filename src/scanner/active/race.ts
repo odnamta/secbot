@@ -254,6 +254,7 @@ function analyzeRaceResults(
       },
       response: { status: statuses[0] },
       timestamp: new Date().toISOString(),
+      confidence: allIdentical ? 'medium' : 'low',
     };
   }
 

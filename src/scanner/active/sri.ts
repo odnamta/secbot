@@ -95,6 +95,7 @@ export const sriCheck: ActiveCheck = {
             evidence: `External resources without SRI:\n${resourceList}`,
             timestamp: new Date().toISOString(),
             affectedUrls: missingIntegrity.map((r) => r.url),
+            confidence: 'medium',
           });
         }
       } catch (err) {

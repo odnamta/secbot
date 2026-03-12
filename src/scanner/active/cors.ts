@@ -97,6 +97,7 @@ async function testCorsMisconfiguration(
               headers: response.headers(),
             },
             timestamp: new Date().toISOString(),
+            confidence: 'low',
           });
         } else if (acao === '*' && !isApiEndpoint(url, contentType)) {
           // Wildcard on static assets is normal — skip
@@ -120,6 +121,7 @@ async function testCorsMisconfiguration(
               headers: response.headers(),
             },
             timestamp: new Date().toISOString(),
+            confidence: acac === 'true' ? 'high' : 'medium',
           });
         } else if (acao === 'null') {
           findings.push({
@@ -136,6 +138,7 @@ async function testCorsMisconfiguration(
               headers: response.headers(),
             },
             timestamp: new Date().toISOString(),
+            confidence: 'medium',
           });
         }
 
@@ -172,6 +175,7 @@ async function testCorsMisconfiguration(
                 headers: nullResponse.headers(),
               },
               timestamp: new Date().toISOString(),
+              confidence: 'medium',
             });
           }
         } catch {
@@ -219,6 +223,7 @@ async function testCorsMisconfiguration(
                   headers: preflight.headers(),
                 },
                 timestamp: new Date().toISOString(),
+                confidence: 'medium',
               });
             }
           }

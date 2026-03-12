@@ -108,6 +108,7 @@ export const accessControlCheck: ActiveCheck = {
               request: { method: 'GET', url: endpoint },
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
+              confidence: 'high',
             });
           }
         } catch (err) {
@@ -155,6 +156,7 @@ export const accessControlCheck: ActiveCheck = {
               request: { method, url: endpoint },
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
+              confidence: 'medium',
             });
             break; // One finding per endpoint is enough
           }
@@ -206,6 +208,7 @@ export const accessControlCheck: ActiveCheck = {
                 request: { method: 'GET', url: baseUrl },
                 response: { status, bodySnippet: body.slice(0, 200) },
                 timestamp: new Date().toISOString(),
+                confidence: 'medium',
               });
               break;
             }

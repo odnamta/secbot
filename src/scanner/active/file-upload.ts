@@ -164,6 +164,12 @@ export const fileUploadCheck: ActiveCheck = {
             });
 
             if (isUploadAccepted(status, body)) {
+              // shell-extension = high confidence (direct RCE path)
+              // double-extension / svg-xss = medium confidence (bypass technique, needs serving)
+              // mime-type-bypass = medium confidence (filter bypass, RCE needs execution)
+              const uploadConfidence: 'high' | 'medium' =
+                payload.label === 'shell-extension' ? 'high' : 'medium';
+
               findings.push({
                 id: randomUUID(),
                 category: 'file-upload',
@@ -187,6 +193,7 @@ export const fileUploadCheck: ActiveCheck = {
                 },
                 response: { status, bodySnippet: body.slice(0, 200) },
                 timestamp: new Date().toISOString(),
+                confidence: uploadConfidence,
               });
 
               // One finding per payload type per form is enough — move to next payload

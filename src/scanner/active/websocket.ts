@@ -226,6 +226,7 @@ async function testAuthBypass(
         request: { method: 'WS', url: wsUrl },
         response: { status: 101, bodySnippet: 'WebSocket connected + data received' },
         timestamp: new Date().toISOString(),
+        confidence: 'medium',
       };
     }
   } catch (err) {
@@ -313,6 +314,7 @@ async function testOriginValidation(
         request: { method: 'WS', url: wsUrl, headers: { Origin: 'null' } },
         response: { status: 101, bodySnippet: 'WebSocket accepted from null origin' },
         timestamp: new Date().toISOString(),
+        confidence: 'low',
       };
     }
   } catch (err) {
@@ -403,6 +405,7 @@ async function testMessageInjection(
         request: { method: 'WS', url: wsUrl, body: XSS_PAYLOAD },
         response: { status: 101, bodySnippet: (result.response || '').slice(0, 200) },
         timestamp: new Date().toISOString(),
+        confidence: 'high',
       };
     }
   } catch (err) {

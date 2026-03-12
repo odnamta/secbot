@@ -77,6 +77,7 @@ export const tlsCheck: ActiveCheck = {
             url: targetUrl,
             evidence: `Negotiated protocol: ${tlsInfo.protocol}`,
             timestamp: new Date().toISOString(),
+            confidence: 'high',
           });
         } else {
           log.debug(`TLS version: ${tlsInfo.protocol} (OK)`);
@@ -101,6 +102,7 @@ export const tlsCheck: ActiveCheck = {
             url: targetUrl,
             evidence: `Certificate valid to: ${tlsInfo.validTo}\nExpired ${Math.abs(daysUntilExpiry)} days ago`,
             timestamp: new Date().toISOString(),
+            confidence: 'high',
           });
         } else if (daysUntilExpiry <= CERT_EXPIRY_WARNING_DAYS) {
           findings.push({
@@ -112,6 +114,7 @@ export const tlsCheck: ActiveCheck = {
             url: targetUrl,
             evidence: `Certificate valid to: ${tlsInfo.validTo}\nExpires in ${daysUntilExpiry} days`,
             timestamp: new Date().toISOString(),
+            confidence: 'high',
           });
         } else {
           log.debug(`Certificate expires in ${daysUntilExpiry} days (OK)`);
@@ -130,6 +133,7 @@ export const tlsCheck: ActiveCheck = {
           url: targetUrl,
           evidence: `Issuer: ${tlsInfo.issuer ?? 'unknown'}\nSubject: ${tlsInfo.subject ?? 'unknown'}`,
           timestamp: new Date().toISOString(),
+          confidence: 'medium',
         });
       }
 
@@ -155,6 +159,7 @@ export const tlsCheck: ActiveCheck = {
             url: targetUrl,
             evidence: `Strict-Transport-Security: ${hstsInfo}`,
             timestamp: new Date().toISOString(),
+            confidence: 'low',
           });
         }
       } else {

@@ -44,7 +44,7 @@ export type PlannerCheckType =
   | 'rate-limit' | 'jwt' | 'race' | 'graphql' | 'host-header'
   | 'file-upload' | 'access-control' | 'business-logic'
   | 'websocket' | 'api-version' | 'info-disclosure' | 'js-cve' | 'crlf'
-  | 'subdomain-takeover';
+  | 'subdomain-takeover' | 'oauth' | 'cache-poisoning';
 
 export const ALL_PLANNER_CHECKS: PlannerCheckType[] = [
   'xss', 'sqli', 'cors', 'redirect', 'traversal',
@@ -52,7 +52,7 @@ export const ALL_PLANNER_CHECKS: PlannerCheckType[] = [
   'rate-limit', 'jwt', 'race', 'graphql', 'host-header',
   'file-upload', 'access-control', 'business-logic',
   'websocket', 'api-version', 'info-disclosure', 'js-cve', 'crlf',
-  'subdomain-takeover',
+  'subdomain-takeover', 'oauth', 'cache-poisoning',
 ];
 
 // ─── Planner Prompt Sections ────────────────────────────────────────
@@ -157,6 +157,12 @@ const CHECK_SECTIONS: Record<PlannerCheckType, string> = {
 
   'subdomain-takeover': `- subdomain-takeover: Dangling CNAME subdomain takeover — check for dangling CNAME records pointing to unclaimed cloud resources
   Rule: Recommend when subdomain enumeration results are available (--subdomains flag). Skip if no CNAMEs found.`,
+
+  oauth: `- oauth: OAuth flow testing — detect OAuth endpoints and test for missing state parameter, redirect_uri bypass, and token leakage in URLs
+  Rule: Recommend when OAuth-related URLs detected (/oauth/, /authorize, /auth/callback, /api/auth, /connect/authorize).`,
+
+  'cache-poisoning': `- cache-poisoning: Web cache poisoning — test unkeyed HTTP headers (X-Forwarded-Host, X-Original-URL, etc.) for reflection in cached responses
+  Rule: Recommend when caching headers detected (X-Cache, CF-Cache-Status, Age, X-Varnish). Skip if no caching layer present.`,
 };
 
 /**

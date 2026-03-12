@@ -155,6 +155,7 @@ async function testSstiParams(
               request: { method: 'GET', url: testUrl.href },
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
+              confidence: 'high',
             });
             foundForUrl = true;
             break;
@@ -252,6 +253,7 @@ async function testSstiForms(
               request: { method, url: actionUrl, body: JSON.stringify(formData) },
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
+              confidence: 'high',
             });
             foundForForm = true;
             break;

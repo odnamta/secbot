@@ -37,6 +37,8 @@ import { businessLogicCheck } from './business-logic.js';
 import { websocketCheck } from './websocket.js';
 import { accessControlCheck } from './access-control.js';
 import { subdomainTakeoverCheck } from './subdomain-takeover.js';
+import { oauthCheck } from './oauth.js';
+import { cachePoisoningCheck } from './cache-poisoning.js';
 import { log } from '../../utils/logger.js';
 
 export interface ScanTargets {
@@ -88,6 +90,8 @@ export const CHECK_REGISTRY: ActiveCheck[] = [
   websocketCheck,
   accessControlCheck,
   subdomainTakeoverCheck,
+  oauthCheck,
+  cachePoisoningCheck,
 ];
 
 /**

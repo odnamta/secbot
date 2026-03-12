@@ -108,6 +108,8 @@ export function mapToOwasp(category: string): string {
     'api-versioning': 'A05:2021 - Security Misconfiguration',
     'vuln-chain': 'A01:2021 - Broken Access Control',
     'subdomain-takeover': 'A05:2021 - Security Misconfiguration',
+    oauth: 'A07:2021 - Identification and Authentication Failures',
+    'cache-poisoning': 'A05:2021 - Security Misconfiguration',
   };
   return map[category] ?? 'Unknown';
 }
@@ -146,6 +148,8 @@ export function getGenericImpact(category: string): string {
     'api-versioning': 'Deprecated or unpatched API versions may lack security fixes present in current versions, exposing legacy vulnerabilities.',
     'vuln-chain': 'Combining multiple lower-severity vulnerabilities creates a higher-impact attack chain that bypasses individual mitigations.',
     'subdomain-takeover': 'An attacker can register the unclaimed cloud resource and serve malicious content, phishing pages, or steal cookies from a trusted subdomain of your domain.',
+    oauth: 'Flaws in the OAuth flow allow attackers to perform CSRF attacks to link victim accounts, steal authorization codes via redirect_uri bypass, or harvest tokens from URL logs and Referer headers.',
+    'cache-poisoning': 'An attacker can poison the cache with a crafted response, causing all subsequent visitors to receive malicious content served from the cache — enabling XSS, phishing, or credential theft at scale.',
   };
   return map[category] ?? 'Unknown impact.';
 }
@@ -184,6 +188,8 @@ export function getGenericFix(category: string): string {
     'api-versioning': 'Deprecate and disable old API versions, apply the same security patches across all active versions, and redirect clients to the latest version.',
     'vuln-chain': 'Address each individual vulnerability in the chain; fixing any single link breaks the entire attack path.',
     'subdomain-takeover': 'Remove the dangling CNAME DNS record immediately, or claim the resource on the target service to prevent takeover. Audit all subdomain CNAMEs regularly.',
+    oauth: 'Always require and validate the state parameter in OAuth authorization requests. Enforce a strict allowlist of registered redirect_uri values. Never include access tokens in URL parameters — use response_mode=fragment only when necessary and prefer response_mode=form_post for server-side flows.',
+    'cache-poisoning': 'Ensure all user-controlled headers that affect the response are included in the cache key. Validate and normalize Host and forwarding headers server-side. Use Vary headers correctly and consider using cache-busting techniques for sensitive endpoints.',
   };
   return map[category] ?? 'Review and fix the identified vulnerability.';
 }
