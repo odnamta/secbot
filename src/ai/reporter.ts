@@ -38,7 +38,7 @@ export async function generateReport(
 
   log.info(`Generating AI report for ${validFindings.length} validated findings...`);
 
-  const userPrompt = buildReporterUserPrompt(url, rawFindings, validations, recon);
+  const userPrompt = buildReporterUserPrompt(url, rawFindings, validations, recon, passedChecks);
   const response = await askClaude(REPORTER_SYSTEM_PROMPT, userPrompt, {
     maxTokens: 16384,
     timeout: 120000,
@@ -58,7 +58,7 @@ export async function generateReport(
 
     // Retry with reduced prompt (no code examples, shorter descriptions)
     log.warn('AI reporter returned invalid JSON — retrying with reduced prompt...');
-    const reducedPrompt = buildReducedReporterUserPrompt(url, rawFindings, validations, recon);
+    const reducedPrompt = buildReducedReporterUserPrompt(url, rawFindings, validations, recon, passedChecks);
     const retryResponse = await askClaude(REPORTER_SYSTEM_PROMPT, reducedPrompt, {
       maxTokens: 8192,
       timeout: 60000,

@@ -523,6 +523,8 @@ program
             log.info(`  ${sub.subdomain} -> ${sub.ips.join(', ')}${cnameInfo}`);
           }
           log.warn('Discovered subdomains are reported only — not added as scan targets (may be out of scope)');
+          // Wire results into config so subdomain-takeover check can use them
+          config.subdomainResults = subdomainResults;
         } else {
           log.info('No subdomains discovered via DNS brute-force');
         }
@@ -563,7 +565,7 @@ program
         let attackPlan;
         if (config.useAI) {
           log.info('Phase 3: AI planning attack strategy...');
-          attackPlan = await planAttack(targetUrl, recon, pages, config.profile);
+          attackPlan = await planAttack(targetUrl, recon, pages, config.profile, payloadContext);
         } else {
           log.info('Phase 3: Skipping AI planning (--no-ai)');
         }
@@ -582,7 +584,18 @@ program
           requestLogger,
         );
 
-        const allRawFindings = [...passiveFindings, ...activeFindings];
+        // ─── Phase 5b: AI Response Analysis ──────────────────────
+        let aiResponseFindings: import('./scanner/types.js').RawFinding[] = [];
+        if (config.useAI) {
+          const { analyzeResponses } = await import('./ai/response-analyzer.js');
+          log.info('Phase 5b: AI analyzing HTTP responses...');
+          aiResponseFindings = await analyzeResponses(targetUrl, pages, recon);
+          if (aiResponseFindings.length > 0) {
+            log.info(`AI response analysis: ${aiResponseFindings.length} additional finding(s)`);
+          }
+        }
+
+        const allRawFindings = [...passiveFindings, ...activeFindings, ...aiResponseFindings];
 
         // Deduplicate before AI validation to save tokens
         log.info(`Raw findings before dedup: ${allRawFindings.length}`);

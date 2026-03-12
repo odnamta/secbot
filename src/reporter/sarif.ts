@@ -54,6 +54,11 @@ function categoryToRuleName(category: CheckCategory): string {
     'race-condition': 'Race Condition (TOCTOU)',
     'host-header': 'Host Header Injection',
     'graphql': 'GraphQL Security Issue',
+    'file-upload': 'File Upload Vulnerability',
+    'broken-access-control': 'Broken Access Control',
+    'business-logic': 'Business Logic Vulnerability',
+    'websocket': 'WebSocket Security Issue',
+    'api-versioning': 'API Versioning Security Issue',
     'vuln-chain': 'Vulnerability Chain',
   };
   return map[category] ?? category;

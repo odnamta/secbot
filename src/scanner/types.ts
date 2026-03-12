@@ -26,6 +26,12 @@ export type CheckCategory =
   | 'race-condition'
   | 'host-header'
   | 'graphql'
+  | 'file-upload'
+  | 'broken-access-control'
+  | 'business-logic'
+  | 'websocket'
+  | 'api-versioning'
+  | 'subdomain-takeover'
   | 'vuln-chain';
 
 export type ScanProfile = 'quick' | 'standard' | 'deep' | 'stealth';
@@ -106,6 +112,10 @@ export interface ScanConfig {
   detectedFramework?: import('../scanner/discovery/framework-detector.js').FrameworkInfo;
   /** Payload context derived from recon — guides active checks to use relevant payloads */
   payloadContext?: import('../utils/payload-context.js').PayloadContext;
+  /** AI planner focus areas for the current check — URLs, forms, or patterns to prioritize */
+  aiFocusAreas?: string[];
+  /** Subdomain enumeration results from recon phase — used by subdomain-takeover check */
+  subdomainResults?: import('./recon/subdomain.js').SubdomainResult[];
 }
 
 export interface CrawledPage {

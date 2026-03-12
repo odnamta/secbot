@@ -70,20 +70,12 @@ describe('buildPlannerPrompt', () => {
     expect(prompt).not.toContain('- sri:');
   });
 
-  it('includes all 11 sections when all checks are relevant', () => {
+  it('includes all 24 sections when all checks are relevant', () => {
     const prompt = buildPlannerPrompt(ALL_PLANNER_CHECKS);
-    expect(prompt).toContain('Available checks (11 applicable)');
-    expect(prompt).toContain('- xss:');
-    expect(prompt).toContain('- sqli:');
-    expect(prompt).toContain('- cors:');
-    expect(prompt).toContain('- redirect:');
-    expect(prompt).toContain('- traversal:');
-    expect(prompt).toContain('- ssrf:');
-    expect(prompt).toContain('- ssti:');
-    expect(prompt).toContain('- cmdi:');
-    expect(prompt).toContain('- idor:');
-    expect(prompt).toContain('- tls:');
-    expect(prompt).toContain('- sri:');
+    expect(prompt).toContain(`Available checks (${ALL_PLANNER_CHECKS.length} applicable)`);
+    for (const check of ALL_PLANNER_CHECKS) {
+      expect(prompt).toContain(`- ${check}:`);
+    }
   });
 
   it('always includes the base context regardless of checks', () => {
@@ -116,6 +108,19 @@ describe('buildPlannerPrompt', () => {
     idor: 'Insecure direct object reference',
     tls: 'TLS/crypto checks',
     sri: 'Subresource integrity',
+    'rate-limit': 'Brute-force protection',
+    jwt: 'JWT security',
+    race: 'Race condition',
+    graphql: 'GraphQL deep check',
+    'host-header': 'Host header injection',
+    'file-upload': 'File upload vulnerabilities',
+    'access-control': 'Broken access control',
+    'business-logic': 'Business logic flaws',
+    websocket: 'WebSocket security',
+    'api-version': 'API versioning',
+    'info-disclosure': 'Information disclosure',
+    'js-cve': 'JavaScript library CVEs',
+    crlf: 'CRLF injection',
   };
 
   for (const [check, description] of Object.entries(checkDescriptions)) {
@@ -322,51 +327,259 @@ describe('determineRelevantChecks', () => {
     expect(checks).not.toContain('cmdi');
   });
 
-  it('minimal target only returns cors and sri', () => {
+  // ─── New check type heuristics ──────────────────────────────────────
+
+  it('always includes host-header and info-disclosure (low cost)', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon(),
+      [],
+    );
+    expect(checks).toContain('host-header');
+    expect(checks).toContain('info-disclosure');
+  });
+
+  it('includes rate-limit when forms exist', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon(),
+      [makePage({
+        forms: [{
+          action: '/login',
+          method: 'POST',
+          inputs: [{ name: 'password', type: 'password' }],
+          pageUrl: 'http://example.com',
+        }],
+      })],
+    );
+    expect(checks).toContain('rate-limit');
+  });
+
+  it('includes jwt when API endpoints exist', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon(),
+      [makePage({ url: 'http://example.com/api/data' })],
+    );
+    expect(checks).toContain('jwt');
+  });
+
+  it('includes graphql when /graphql endpoint discovered', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon({ endpoints: { pages: [], apiRoutes: [], forms: [], staticAssets: [], graphql: ['/graphql'] } }),
+      [],
+    );
+    expect(checks).toContain('graphql');
+  });
+
+  it('skips graphql when no graphql endpoints', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon(),
+      [makePage()],
+    );
+    expect(checks).not.toContain('graphql');
+  });
+
+  it('includes file-upload when file inputs exist', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon(),
+      [makePage({
+        forms: [{
+          action: '/upload',
+          method: 'POST',
+          inputs: [{ name: 'file', type: 'file' }],
+          pageUrl: 'http://example.com',
+        }],
+      })],
+    );
+    expect(checks).toContain('file-upload');
+  });
+
+  it('skips file-upload when no file inputs', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon(),
+      [makePage({
+        forms: [{
+          action: '/submit',
+          method: 'POST',
+          inputs: [{ name: 'name', type: 'text' }],
+          pageUrl: 'http://example.com',
+        }],
+      })],
+    );
+    expect(checks).not.toContain('file-upload');
+  });
+
+  it('includes access-control when admin URLs detected', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon({ endpoints: { pages: ['http://example.com/admin/settings'], apiRoutes: [], forms: [], staticAssets: [], graphql: [] } }),
+      [],
+    );
+    expect(checks).toContain('access-control');
+  });
+
+  it('includes business-logic when business form fields detected', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon(),
+      [makePage({
+        forms: [{
+          action: '/checkout',
+          method: 'POST',
+          inputs: [{ name: 'price', type: 'text' }, { name: 'quantity', type: 'number' }],
+          pageUrl: 'http://example.com',
+        }],
+      })],
+    );
+    expect(checks).toContain('business-logic');
+  });
+
+  it('includes websocket when socket.io detected in scripts', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon(),
+      [makePage({
+        scripts: ['https://cdn.example.com/socket.io/socket.io.js'],
+      })],
+    );
+    expect(checks).toContain('websocket');
+  });
+
+  it('skips websocket when no ws references', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon(),
+      [makePage()],
+    );
+    expect(checks).not.toContain('websocket');
+  });
+
+  it('includes api-version when /api/v{N}/ patterns found', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon({ endpoints: { pages: [], apiRoutes: ['/api/v2/users'], forms: [], staticAssets: [], graphql: [] } }),
+      [],
+    );
+    expect(checks).toContain('api-version');
+  });
+
+  it('skips api-version when no versioned routes', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon({ endpoints: { pages: [], apiRoutes: ['/api/users'], forms: [], staticAssets: [], graphql: [] } }),
+      [],
+    );
+    expect(checks).not.toContain('api-version');
+  });
+
+  it('includes js-cve when pages crawled', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon(),
+      [makePage()],
+    );
+    expect(checks).toContain('js-cve');
+  });
+
+  it('skips js-cve when no pages crawled', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon(),
+      [],
+    );
+    expect(checks).not.toContain('js-cve');
+  });
+
+  it('includes crlf when URL params exist', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon(),
+      [makePage({ url: 'http://example.com/page?id=1' })],
+    );
+    expect(checks).toContain('crlf');
+  });
+
+  it('includes race when POST forms exist', () => {
+    const checks = determineRelevantChecks(
+      'http://example.com',
+      makeRecon(),
+      [makePage({
+        forms: [{
+          action: '/transfer',
+          method: 'POST',
+          inputs: [{ name: 'amount', type: 'text' }],
+          pageUrl: 'http://example.com',
+        }],
+      })],
+    );
+    expect(checks).toContain('race');
+  });
+
+  it('minimal target returns low-cost always-on checks', () => {
     // HTTP target, 1 page crawled, no forms, no params, no API
     const checks = determineRelevantChecks(
       'http://example.com',
       makeRecon(),
       [makePage()],
     );
-    expect(checks).toEqual(['cors', 'sri']);
+    // Always-on checks: cors, sri (pages crawled), host-header, info-disclosure, js-cve (pages crawled)
+    expect(checks).toContain('cors');
+    expect(checks).toContain('sri');
+    expect(checks).toContain('host-header');
+    expect(checks).toContain('info-disclosure');
+    expect(checks).toContain('js-cve');
+    // Should NOT include checks requiring forms, params, or specific features
+    expect(checks).not.toContain('xss');
+    expect(checks).not.toContain('sqli');
+    expect(checks).not.toContain('ssrf');
+    expect(checks).not.toContain('ssti');
+    expect(checks).not.toContain('cmdi');
+    expect(checks).not.toContain('graphql');
+    expect(checks).not.toContain('file-upload');
+    expect(checks).not.toContain('websocket');
   });
 
-  it('full-featured target returns all checks', () => {
+  it('full-featured target returns all 24 checks', () => {
     const checks = determineRelevantChecks(
       'https://example.com',
       makeRecon({
         techStack: { languages: ['Python'], detected: ['Flask', 'Jinja2'] },
         endpoints: {
-          pages: ['https://example.com'],
-          apiRoutes: ['/api/users/123'],
+          pages: ['https://example.com', 'https://example.com/admin/panel'],
+          apiRoutes: ['/api/v2/users/123'],
           forms: [],
           staticAssets: [],
-          graphql: [],
+          graphql: ['/graphql'],
         },
       }),
       [makePage({
         url: 'https://example.com/search?q=test',
-        forms: [{
-          action: '/submit',
-          method: 'POST',
-          inputs: [{ name: 'url', type: 'text' }],
-          pageUrl: 'https://example.com',
-        }],
+        forms: [
+          {
+            action: '/submit',
+            method: 'POST',
+            inputs: [
+              { name: 'url', type: 'text' },
+              { name: 'price', type: 'text' },
+              { name: 'avatar', type: 'file' },
+            ],
+            pageUrl: 'https://example.com',
+          },
+        ],
         links: ['https://example.com/login?redirect=/home'],
+        scripts: ['https://cdn.example.com/socket.io/socket.io.js'],
+        cookies: [{ name: 'token', value: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc' }],
       })],
     );
-    expect(checks).toContain('cors');
-    expect(checks).toContain('xss');
-    expect(checks).toContain('sqli');
-    expect(checks).toContain('redirect');
-    expect(checks).toContain('traversal');
-    expect(checks).toContain('ssrf');
-    expect(checks).toContain('ssti');
-    expect(checks).toContain('cmdi');
-    expect(checks).toContain('idor');
-    expect(checks).toContain('tls');
-    expect(checks).toContain('sri');
-    expect(checks).toHaveLength(11);
+    // All 24 check types should be included
+    for (const check of ALL_PLANNER_CHECKS) {
+      expect(checks).toContain(check);
+    }
+    expect(checks).toHaveLength(ALL_PLANNER_CHECKS.length);
   });
 });

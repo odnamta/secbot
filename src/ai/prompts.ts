@@ -1,4 +1,5 @@
 import type { ReconResult, CrawledPage, RawFinding, ValidatedFinding } from '../scanner/types.js';
+import type { PayloadContext } from '../utils/payload-context.js';
 
 // ─── Prompt Injection Sanitization ──────────────────────────────────
 
@@ -39,11 +40,19 @@ function sanitizeObjectForPrompt(obj: unknown): unknown {
 
 export type PlannerCheckType =
   | 'xss' | 'sqli' | 'cors' | 'redirect' | 'traversal'
-  | 'ssrf' | 'ssti' | 'cmdi' | 'idor' | 'tls' | 'sri';
+  | 'ssrf' | 'ssti' | 'cmdi' | 'idor' | 'tls' | 'sri'
+  | 'rate-limit' | 'jwt' | 'race' | 'graphql' | 'host-header'
+  | 'file-upload' | 'access-control' | 'business-logic'
+  | 'websocket' | 'api-version' | 'info-disclosure' | 'js-cve' | 'crlf'
+  | 'subdomain-takeover';
 
 export const ALL_PLANNER_CHECKS: PlannerCheckType[] = [
   'xss', 'sqli', 'cors', 'redirect', 'traversal',
   'ssrf', 'ssti', 'cmdi', 'idor', 'tls', 'sri',
+  'rate-limit', 'jwt', 'race', 'graphql', 'host-header',
+  'file-upload', 'access-control', 'business-logic',
+  'websocket', 'api-version', 'info-disclosure', 'js-cve', 'crlf',
+  'subdomain-takeover',
 ];
 
 // ─── Planner Prompt Sections ────────────────────────────────────────
@@ -106,6 +115,48 @@ const CHECK_SECTIONS: Record<PlannerCheckType, string> = {
 
   sri: `- sri: Subresource integrity — check external scripts/stylesheets for missing SRI hashes
   Rule: Recommend when pages have been crawled (external scripts/stylesheets are common).`,
+
+  'rate-limit': `- rate-limit: Brute-force protection — test auth and API endpoints for rate limiting
+  Rule: Recommend when forms or API endpoints exist (login forms, signup, password reset, API keys).`,
+
+  jwt: `- jwt: JWT security — analyze tokens for none-algorithm bypass, weak secrets, missing expiry
+  Rule: Recommend when JWT-like tokens detected in cookies, headers, or localStorage.`,
+
+  race: `- race: Race condition (TOCTOU) — test state-changing endpoints for concurrent request abuse
+  Rule: Recommend when forms with state-changing actions exist (checkout, transfer, coupon, vote).`,
+
+  graphql: `- graphql: GraphQL deep check — test for introspection, depth limits, batch queries, sensitive mutations
+  Rule: Recommend when /graphql endpoint discovered during recon.`,
+
+  'host-header': `- host-header: Host header injection — test for Host, X-Forwarded-Host, cache poisoning
+  Rule: Recommend always (low cost). Lower priority if CDN/WAF detected.`,
+
+  'file-upload': `- file-upload: File upload vulnerabilities — test for shell upload, polyglot files, MIME bypass
+  Rule: Recommend when forms have file inputs (type="file").`,
+
+  'access-control': `- access-control: Broken access control — test admin endpoints as unauthenticated/low-priv user, method override, header bypass
+  Rule: Recommend when admin-like URLs detected (admin, dashboard, manage, panel, settings) AND auth is configured.`,
+
+  'business-logic': `- business-logic: Business logic flaws — test price/quantity manipulation, workflow step bypass, negative values
+  Rule: Recommend when business-like form fields detected (price, quantity, amount, total, discount, coupon).`,
+
+  websocket: `- websocket: WebSocket security — test for auth bypass, origin validation, message injection
+  Rule: Recommend when WebSocket URLs (ws://, wss://) or socket.io references found.`,
+
+  'api-version': `- api-version: API versioning — probe older API version endpoints for exposed/deprecated features
+  Rule: Recommend when /api/v{N}/ patterns found in discovered routes.`,
+
+  'info-disclosure': `- info-disclosure: Information disclosure — probe for exposed .git, .env, source maps, debug endpoints, backups
+  Rule: Recommend always (low cost, high value). Run on all targets.`,
+
+  'js-cve': `- js-cve: JavaScript library CVEs — scan for known CVEs in client-side JS libraries (jQuery, Angular, Lodash, etc.)
+  Rule: Recommend when pages have been crawled (external scripts are common).`,
+
+  crlf: `- crlf: CRLF injection — test for HTTP header injection via CR/LF characters in parameters
+  Rule: Recommend when URL parameters or form inputs exist.`,
+
+  'subdomain-takeover': `- subdomain-takeover: Dangling CNAME subdomain takeover — check for dangling CNAME records pointing to unclaimed cloud resources
+  Rule: Recommend when subdomain enumeration results are available (--subdomains flag). Skip if no CNAMEs found.`,
 };
 
 /**
@@ -139,6 +190,7 @@ export function buildPlannerUserPrompt(
   recon: ReconResult,
   pages: CrawledPage[],
   profile: string,
+  payloadContext?: PayloadContext,
 ): string {
   const allForms = pages.flatMap((p) => p.forms);
   const urlsWithParams = pages.map((p) => p.url).filter((u) => u.includes('?'));
@@ -150,12 +202,54 @@ export function buildPlannerUserPrompt(
   );
   const numericIdUrls = recon.endpoints.apiRoutes.filter((r) => /\/\d+/.test(r));
   const isHttps = url.startsWith('https://');
+  const hasFileInputs = allForms.some((f) => f.inputs.some((i) => i.type === 'file'));
+  const hasWebSocket = pages.some((p) =>
+    p.scripts.some((s) => /socket\.io|ws:\/\/|wss:\/\//i.test(s)) ||
+    p.links.some((l) => /ws:\/\/|wss:\/\//i.test(l)),
+  );
+  const apiVersionUrls = recon.endpoints.apiRoutes.filter((r) => /\/api\/v\d+/i.test(r));
+  const adminUrls = [...recon.endpoints.pages, ...recon.endpoints.apiRoutes].filter((r) =>
+    /\/(admin|dashboard|manage|panel|settings)/i.test(r),
+  );
+  const businessFields = allForms.filter((f) =>
+    f.inputs.some((i) => /price|quantity|amount|total|discount|coupon|qty/i.test(i.name)),
+  );
 
   // Sanitize recon data that comes from target website responses
   const safeTechStack = sanitizeObjectForPrompt(recon.techStack);
   const safeWaf = sanitizeObjectForPrompt(recon.waf);
   const safeFramework = sanitizeObjectForPrompt(recon.framework);
   const safeApiRoutes = recon.endpoints.apiRoutes.slice(0, 5).map((r) => sanitizeForPrompt(r));
+
+  // Build technology context section from PayloadContext
+  let techContextSection = '';
+  if (payloadContext) {
+    const parts: string[] = [];
+    if (payloadContext.databases[0] !== 'unknown') {
+      parts.push(`- Detected databases: ${payloadContext.databases.join(', ')}`);
+    }
+    if (payloadContext.templateEngines[0] !== 'unknown') {
+      parts.push(`- Template engines: ${payloadContext.templateEngines.join(', ')}`);
+    }
+    if (payloadContext.backendLanguages[0] !== 'unknown') {
+      parts.push(`- Backend: ${payloadContext.backendLanguages.join(', ')}`);
+    }
+    if (payloadContext.osHint !== 'unknown') {
+      parts.push(`- OS: ${payloadContext.osHint}`);
+    }
+    if (payloadContext.wafPresent && payloadContext.wafBypasses.length > 0) {
+      parts.push(`- WAF bypasses: ${payloadContext.wafBypasses.slice(0, 5).join(', ')}`);
+    }
+    if (payloadContext.frameworkHints.length > 0) {
+      parts.push(`- Framework hints: ${payloadContext.frameworkHints.slice(0, 3).map((h) => sanitizeForPrompt(h)).join('; ')}`);
+    }
+    if (payloadContext.preferDomXss) {
+      parts.push('- SPA detected: prioritize DOM-based XSS');
+    }
+    if (parts.length > 0) {
+      techContextSection = `\n\nTechnology Context (inferred from recon):\n${parts.join('\n')}`;
+    }
+  }
 
   return `Analyze this target and recommend security checks.
 
@@ -175,17 +269,22 @@ Endpoints:
 - URLs with redirect params: ${redirectParams.length}
 - Forms with URL-accepting inputs: ${urlAcceptingParams.length}
 - API routes with numeric IDs: ${numericIdUrls.length}
+- Forms with file inputs: ${hasFileInputs ? 'yes' : 'no'}
+- WebSocket references: ${hasWebSocket ? 'yes' : 'no'}
+- API versioned routes: ${apiVersionUrls.length}
+- Admin-like URLs: ${adminUrls.length}
+- Business logic forms: ${businessFields.length}
 - HTTPS: ${isHttps}
-- Pages crawled: ${pages.length}
+- Pages crawled: ${pages.length}${techContextSection}
 
-Available checks: xss, sqli, cors, redirect, traversal, ssrf, ssti, cmdi, idor, tls, sri
+Available checks: ${ALL_PLANNER_CHECKS.join(', ')}
 
 Output ONLY valid JSON.`;
 }
 
 // ─── Validator Prompts ────────────────────────────────────────────────
 
-export const VALIDATOR_SYSTEM_PROMPT = `You are SecBot's AI vulnerability validator. You assess whether each raw finding from an automated security scanner is a true vulnerability or a false positive.
+const VALIDATOR_BASE_PROMPT = `You are SecBot's AI vulnerability validator. You assess whether each raw finding from an automated security scanner is a true vulnerability or a false positive.
 
 For each finding, determine:
 1. Is this a real vulnerability? (isValid: true/false)
@@ -210,6 +309,7 @@ Finding categories you may encounter:
 - info-leakage: Exposed server version, stack traces, or debug information
 - mixed-content: HTTP resources loaded on HTTPS pages
 - sensitive-url-data: Sensitive data exposed in URL parameters
+- vuln-chain: Vulnerability chains combining multiple lower-severity findings into attack paths
 
 Common false positives to watch for:
 - Missing security headers on static assets or CDN-served content
@@ -236,6 +336,61 @@ Output ONLY valid JSON matching this schema:
     }
   ]
 }`;
+
+/**
+ * Build a validator system prompt that optionally includes technology context
+ * from recon data. When recon is available, the AI can make stack-specific
+ * validation decisions instead of generic ones.
+ */
+export function buildValidatorSystemPrompt(recon?: ReconResult): string {
+  const sections: string[] = [VALIDATOR_BASE_PROMPT];
+
+  if (recon) {
+    const techLines: string[] = [];
+
+    if (recon.framework.name) {
+      const fw = sanitizeForPrompt(recon.framework.name);
+      const ver = recon.framework.version ? ` ${sanitizeForPrompt(recon.framework.version)}` : '';
+      techLines.push(`- Framework: ${fw}${ver}`);
+    }
+
+    if (recon.waf.detected) {
+      const wafName = sanitizeForPrompt(recon.waf.name ?? 'unknown');
+      techLines.push(`- WAF: ${wafName} (confidence: ${recon.waf.confidence})`);
+      if (recon.waf.recommendedTechniques && recon.waf.recommendedTechniques.length > 0) {
+        const techniques = recon.waf.recommendedTechniques
+          .slice(0, 5)
+          .map((t) => sanitizeForPrompt(t))
+          .join(', ');
+        techLines.push(`- WAF bypass techniques: ${techniques}`);
+      }
+    }
+
+    if (recon.techStack.cdn) {
+      techLines.push(`- CDN: ${sanitizeForPrompt(recon.techStack.cdn)}`);
+    }
+
+    if (recon.techStack.languages.length > 0) {
+      const langs = recon.techStack.languages.map((l) => sanitizeForPrompt(l)).join(', ');
+      techLines.push(`- Backend language hints: ${langs}`);
+    }
+
+    if (techLines.length > 0) {
+      sections.push(`\nTechnology Context (use for stack-specific validation decisions):\n${techLines.join('\n')}`);
+    }
+  }
+
+  sections.push(`\nCategory-specific guidance:
+- vuln-chain: Vulnerability chains represent attack paths combining multiple lower-severity findings. Validate that the chain is realistic and the attack steps are feasible.`);
+
+  return sections.join('\n');
+}
+
+/**
+ * @deprecated Use buildValidatorSystemPrompt() for dynamic prompts.
+ * Kept for backward compatibility.
+ */
+export const VALIDATOR_SYSTEM_PROMPT = buildValidatorSystemPrompt();
 
 export function buildValidatorUserPrompt(
   url: string,
@@ -319,6 +474,7 @@ export function buildReporterUserPrompt(
   rawFindings: RawFinding[],
   validations: ValidatedFinding[],
   recon: ReconResult,
+  passedChecks?: string[],
 ): string {
   // Filter to only validated findings
   const validIds = new Set(validations.filter((v) => v.isValid).map((v) => v.findingId));
@@ -337,14 +493,34 @@ export function buildReporterUserPrompt(
     };
   });
 
+  // Build technology context section
+  const techLines: string[] = [];
+  techLines.push(`- Framework: ${sanitizeForPrompt(recon.framework.name ?? 'unknown')}`);
+  techLines.push(`- WAF: ${recon.waf.detected ? sanitizeForPrompt(recon.waf.name ?? 'unknown') : 'none'}`);
+  if (recon.techStack.cdn) {
+    techLines.push(`- CDN: ${sanitizeForPrompt(recon.techStack.cdn)}`);
+  }
+  if (recon.techStack.languages.length > 0) {
+    const langs = recon.techStack.languages.map((l) => sanitizeForPrompt(l)).join(', ');
+    techLines.push(`- Backend language hints: ${langs}`);
+  }
+  if (recon.framework.version) {
+    techLines.push(`- Framework version: ${sanitizeForPrompt(recon.framework.version)}`);
+  }
+
+  // Build passed checks section
+  let passedChecksSection = '';
+  if (passedChecks && passedChecks.length > 0) {
+    passedChecksSection = `\n\n## Checks That Passed (0 findings)\n${passedChecks.join(', ')}`;
+  }
+
   return `Analyze these validated security findings for ${url}.
 
 Total raw findings: ${rawFindings.length}
 Validated as real: ${validFindings.length}
 
 Tech context:
-- Framework: ${sanitizeForPrompt(recon.framework.name ?? 'unknown')}
-- WAF: ${recon.waf.detected ? sanitizeForPrompt(recon.waf.name ?? 'unknown') : 'none'}
+${techLines.join('\n')}${passedChecksSection}
 
 Findings:
 ${JSON.stringify(compactFindings, null, 2)}
@@ -353,6 +529,7 @@ Remember:
 - Deduplicate aggressively (same issue on multiple pages = 1 finding)
 - Target <10 actionable findings
 - Provide specific fix suggestions with code examples
+- If checks passed clean, mention them positively in the summary
 - Output ONLY valid JSON`;
 }
 
@@ -365,6 +542,7 @@ export function buildReducedReporterUserPrompt(
   rawFindings: RawFinding[],
   validations: ValidatedFinding[],
   recon: ReconResult,
+  passedChecks?: string[],
 ): string {
   const validIds = new Set(validations.filter((v) => v.isValid).map((v) => v.findingId));
   const validFindings = rawFindings.filter((f) => validIds.has(f.id));
@@ -380,13 +558,19 @@ export function buildReducedReporterUserPrompt(
     };
   });
 
+  // Build passed checks section
+  let passedChecksSection = '';
+  if (passedChecks && passedChecks.length > 0) {
+    passedChecksSection = `\n\n## Checks That Passed (0 findings)\n${passedChecks.join(', ')}`;
+  }
+
   return `Analyze these validated security findings for ${url}.
 
 Total raw findings: ${rawFindings.length}
 Validated as real: ${validFindings.length}
 
 Tech context:
-- Framework: ${sanitizeForPrompt(recon.framework.name ?? 'unknown')}
+- Framework: ${sanitizeForPrompt(recon.framework.name ?? 'unknown')}${passedChecksSection}
 
 Findings:
 ${JSON.stringify(compactFindings, null, 2)}

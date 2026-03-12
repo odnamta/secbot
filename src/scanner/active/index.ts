@@ -31,6 +31,12 @@ import { jwtCheck } from './jwt.js';
 import { raceCheck } from './race.js';
 import { graphqlCheck } from './graphql.js';
 import { hostHeaderCheck } from './host-header.js';
+import { apiVersionCheck } from './api-version.js';
+import { fileUploadCheck } from './file-upload.js';
+import { businessLogicCheck } from './business-logic.js';
+import { websocketCheck } from './websocket.js';
+import { accessControlCheck } from './access-control.js';
+import { subdomainTakeoverCheck } from './subdomain-takeover.js';
 import { log } from '../../utils/logger.js';
 
 export interface ScanTargets {
@@ -76,6 +82,12 @@ export const CHECK_REGISTRY: ActiveCheck[] = [
   raceCheck,
   graphqlCheck,
   hostHeaderCheck,
+  apiVersionCheck,
+  fileUploadCheck,
+  businessLogicCheck,
+  websocketCheck,
+  accessControlCheck,
+  subdomainTakeoverCheck,
 ];
 
 /**
@@ -213,6 +225,19 @@ export async function runActiveChecks(
 
   let checksToRun: ActiveCheck[];
 
+  // Build focusAreas map from attack plan (AI planner → per-check targeting)
+  const focusAreasMap = new Map<string, string[]>();
+  if (attackPlan) {
+    for (const rec of attackPlan.recommendedChecks) {
+      if (rec.focusAreas?.length) {
+        focusAreasMap.set(rec.name, rec.focusAreas);
+      }
+    }
+    if (focusAreasMap.size > 0) {
+      log.info(`AI focus areas: ${[...focusAreasMap.entries()].map(([k, v]) => `${k}(${v.length})`).join(', ')}`);
+    }
+  }
+
   if (attackPlan) {
     // Run only recommended checks in priority order
     const sorted = [...attackPlan.recommendedChecks].sort((a, b) => a.priority - b.priority);
@@ -250,13 +275,20 @@ export async function runActiveChecks(
 
   const { parallel, sequential } = splitChecksByParallelism(checksToRun);
 
+  // Helper: create per-check config with AI focus areas threaded in
+  const configForCheck = (checkName: string): ScanConfig => {
+    const areas = focusAreasMap.get(checkName);
+    if (!areas) return config;
+    return { ...config, aiFocusAreas: areas };
+  };
+
   // Phase A: Run parallel checks concurrently (read-only, no state mutation)
   if (parallel.length > 0) {
     log.info(`Running ${parallel.length} checks in parallel: ${parallel.map((c) => c.name).join(', ')}`);
     const parallelResults = await Promise.allSettled(
       parallel.map(async (check) => {
         try {
-          return await check.run(context, targets, config, requestLogger);
+          return await check.run(context, targets, configForCheck(check.name), requestLogger);
         } catch (err) {
           log.warn(`Active check "${check.name}" failed: ${(err as Error).message}`);
           return [];
@@ -279,7 +311,7 @@ export async function runActiveChecks(
         if (i > 0) {
           await rateLimiter.acquire();
         }
-        const checkFindings = await check.run(context, targets, config, requestLogger);
+        const checkFindings = await check.run(context, targets, configForCheck(check.name), requestLogger);
         findings.push(...checkFindings);
       } catch (err) {
         log.warn(`Active check "${check.name}" failed: ${(err as Error).message}`);

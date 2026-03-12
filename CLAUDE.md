@@ -6,12 +6,16 @@
 Developer-friendly tool that scans web apps for OWASP Top 10 vulnerabilities with a single command. Claude AI drives the entire pipeline — planning attacks, validating findings, and writing reports.
 
 ## Status
-- Version: v0.11.0
-- 20 active check types + 6 passive check categories + 5 chain rules
-- 1275 tests (unit + integration + false-positive regression)
-- Parallel active check runner: 9 read-only checks run concurrently via Promise.allSettled
+- Version: v0.14.0
+- 25 active check types + 6 passive check categories + 5 chain rules
+- 1555 tests (unit + integration + false-positive regression)
+- Parallel active check runner: 10 read-only checks run concurrently via Promise.allSettled
+- v0.14 detection depth: subdomain takeover (14 service fingerprints), IDOR query param + horizontal enum, mutation XSS (8 payloads), CSP bypass (6 payloads), 2 new WAF bypass encodings
 - Payload context wiring: SQLi, SSTI, XSS, CMDi use recon-inferred tech stack for payload prioritization
 - Recon ↔ framework merge: crawl framework detection is single source of truth
+- v0.13 AI Intelligence: expanded planner (24 checks + PayloadContext), focusAreas wiring, dynamic validator/reporter prompts, AI response analysis (Phase 5b), complete fallback maps
+- v0.12 coverage expansion: file upload, broken access control, business logic, WebSocket, API versioning
+- CT subdomain enumeration via crt.sh API
 - AI prompt injection sanitization enabled
 - OOB findings fully wired into report pipeline + exit code
 - CI/CD ready: SARIF, JUnit, baseline diff, --exclude-checks validation
@@ -53,7 +57,8 @@ Phase 1: Crawl         → Playwright browser (crawl + intercept traffic, SPA fr
 Phase 2: Recon         → Tech fingerprinting, enhanced WAF detection, endpoint mapping
 Phase 3: AI Plan       → Claude analyzes recon, recommends which checks to run
 Phase 4: Passive Scan  → Headers, cookies, info leaks, mixed content, cross-origin policy, sensitive URL data
-Phase 5: Active Scan   → AI-selected checks (16 types — see CHECK_REGISTRY)
+Phase 5: Active Scan   → AI-selected checks (24 types — see CHECK_REGISTRY)
+Phase 5b: AI Analysis  → Claude analyzes HTTP responses for subtle vulnerabilities
   ↓ Pre-dedup          → Deduplicate raw findings before AI validation (save tokens)
 Phase 6: AI Validate   → Claude validates each finding (real vuln or false positive?)
 Phase 7: AI Report     → Claude deduplicates, prioritizes, explains, suggests fixes
@@ -85,6 +90,7 @@ src/
       spa-crawler.ts          # SPA-aware crawling helpers
     recon/
       subdomain.ts            # DNS subdomain enumeration (70+ prefixes, batched)
+      ct-enum.ts              # Certificate Transparency subdomain enumeration (crt.sh API)
     auth/
       authenticator.ts        # Credential-based authentication
       login-detector.ts       # Login page heuristic detection
@@ -111,6 +117,13 @@ src/
       sri.ts                  # Subresource Integrity check
       info-disclosure.ts      # Information disclosure (exposed .git, .env, source maps, robots.txt, backups)
       js-cve.ts               # JS library CVE checking (built-in vuln DB for jQuery, Angular, Lodash, etc.)
+      api-version.ts          # API versioning check (probe older /api/v1/ endpoints)
+      file-upload.ts          # File upload vulnerability check (shell/polyglot/MIME bypass)
+      business-logic.ts       # Business logic check (price manipulation, workflow bypass)
+      websocket.ts            # WebSocket security check (auth bypass, injection)
+      access-control.ts       # Broken access control (admin endpoint replay, method override, header bypass)
+      subdomain-takeover.ts   # Subdomain takeover (dangling CNAME → 14 service fingerprints)
+      subdomain-takeover-fingerprints.ts  # Service fingerprint database (GitHub Pages, Heroku, S3, etc.)
     oob/
       callback-server.ts      # OOB HTTP callback server (binds 127.0.0.1)
       blind-payloads.ts       # Blind XSS/SQLi/SSRF payload generators
@@ -118,11 +131,12 @@ src/
       delayed-detection.ts    # Delayed OOB detection wait
   ai/
     client.ts                 # Anthropic client + askClaude() + JSON parser + token budget
-    planner.ts                # AI analyzes recon -> AttackPlan
-    validator.ts              # AI validates findings -> ValidatedFinding[]
-    reporter.ts               # AI generates final report -> InterpretedFinding[]
-    fallback.ts               # Rule-based fallback when AI unavailable
-    prompts.ts                # Prompt builder with injection sanitization
+    planner.ts                # AI analyzes recon -> AttackPlan (24 checks + PayloadContext)
+    validator.ts              # AI validates findings -> ValidatedFinding[] (dynamic tech-aware prompts)
+    reporter.ts               # AI generates final report -> InterpretedFinding[] (passedChecks context)
+    response-analyzer.ts      # AI HTTP response analysis (Phase 5b — subtle vuln detection)
+    fallback.ts               # Rule-based fallback when AI unavailable (all 24 categories mapped)
+    prompts.ts                # Prompt builder with injection sanitization (24 PlannerCheckTypes)
   reporter/
     terminal.ts               # Chalk-colored terminal output
     json.ts                   # JSON report
@@ -223,11 +237,11 @@ SECBOT_TIMEOUT=30000          # Per-page timeout (ms)
 SECBOT_TOKEN_BUDGET=          # Max AI tokens per scan
 ```
 
-## CheckCategory (20 types)
+## CheckCategory (26 types)
 
 **Passive (6):** `security-headers`, `cookie-flags`, `info-leakage`, `mixed-content`, `sensitive-url-data`, `cross-origin-policy`
 
-**Active (20):** `xss`, `sqli`, `open-redirect`, `cors-misconfiguration`, `directory-traversal`, `ssrf`, `ssti`, `command-injection`, `idor`, `tls`, `sri`, `info-disclosure`, `js-cve`, `crlf-injection`, `rate-limit`, `jwt`, `race-condition`, `graphql`, `host-header`
+**Active (25):** `xss`, `sqli`, `open-redirect`, `cors-misconfiguration`, `directory-traversal`, `ssrf`, `ssti`, `command-injection`, `idor`, `tls`, `sri`, `info-disclosure`, `js-cve`, `crlf-injection`, `rate-limit`, `jwt`, `race-condition`, `graphql`, `host-header`, `file-upload`, `broken-access-control`, `business-logic`, `websocket`, `api-versioning`, `subdomain-takeover`
 
 **Meta:** `vuln-chain` (auto-detected from combinations of active findings)
 

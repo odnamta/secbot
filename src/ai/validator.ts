@@ -1,6 +1,6 @@
 import type { RawFinding, ReconResult, ValidatedFinding } from '../scanner/types.js';
 import { askClaude, parseJsonResponse } from './client.js';
-import { VALIDATOR_SYSTEM_PROMPT, buildValidatorUserPrompt } from './prompts.js';
+import { buildValidatorSystemPrompt, buildValidatorUserPrompt } from './prompts.js';
 import { log } from '../utils/logger.js';
 import { AICache } from '../utils/ai-cache.js';
 
@@ -52,8 +52,9 @@ export async function validateFindings(
         }
       }
 
+      const systemPrompt = buildValidatorSystemPrompt(recon);
       const userPrompt = buildValidatorUserPrompt(url, batch, recon);
-      const response = await askClaude(VALIDATOR_SYSTEM_PROMPT, userPrompt);
+      const response = await askClaude(systemPrompt, userPrompt);
 
       if (response) {
         const parsed = parseJsonResponse<{ validations: ValidatedFinding[] }>(response);

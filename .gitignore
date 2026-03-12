@@ -4,3 +4,5 @@ dist/
 .env.local
 secbot-reports/
 *.tsbuildinfo
+tmp/
+.claude/worktrees/

@@ -178,15 +178,18 @@ describe('planAttack', () => {
     it('system prompt contains only relevant check descriptions', async () => {
       mockAskClaude.mockResolvedValue(null);
 
-      // Minimal target: only cors and sri should be relevant
+      // Minimal target: low-cost always-on checks + page-dependent checks
       await planAttack('http://example.com', makeRecon({ endpoints: { pages: [], apiRoutes: [], forms: [], staticAssets: [], graphql: [] } }), [makePage()], 'standard');
 
       const systemPrompt = mockAskClaude.mock.calls[0][0];
       expect(systemPrompt).toContain('- cors:');
       expect(systemPrompt).toContain('- sri:');
+      expect(systemPrompt).toContain('- host-header:');
+      expect(systemPrompt).toContain('- info-disclosure:');
       // Should not include checks that have no targets
       expect(systemPrompt).not.toContain('- xss:');
       expect(systemPrompt).not.toContain('- sqli:');
+      expect(systemPrompt).not.toContain('- graphql:');
     });
   });
 

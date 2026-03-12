@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig, FormInfo } from '../types.js';
-import { XSS_PAYLOADS, type XSSPayload } from '../../config/payloads/xss.js';
+import { XSS_PAYLOADS, MUTATION_XSS_PAYLOADS, CSP_BYPASS_PAYLOADS, type XSSPayload } from '../../config/payloads/xss.js';
 import { getPolyglotXss } from '../../utils/polyglot-payloads.js';
 import { generateHppVariants } from '../../utils/param-pollution.js';
 import { generateBlindXssPayloads } from '../oob/blind-payloads.js';
@@ -206,6 +206,26 @@ export const xssCheck: ActiveCheck = {
       const blindPayloads = generateBlindXssPayloads(config.callbackUrl);
       log.info(`Injecting ${blindPayloads.length} blind XSS payloads (callback: ${config.callbackUrl})`);
       findings.push(...(await injectBlindXss(context, targets, blindPayloads, config, requestLogger)));
+    }
+
+    // Mutation XSS: test parser-confusion payloads when profile is 'deep'
+    // or when AI focus areas mention mutation/mxss testing
+    const runMutationXss = config.profile === 'deep' ||
+      config.aiFocusAreas?.some(a => /mutation|mxss/i.test(a));
+
+    if (runMutationXss && targets.pages.length > 0) {
+      log.info(`Testing mutation XSS payloads (${MUTATION_XSS_PAYLOADS.length} payloads)...`);
+      findings.push(...(await testMutationXss(context, targets.pages, config, requestLogger)));
+    }
+
+    // CSP bypass: test CSP-evasion payloads when CSP was detected or deep profile
+    const hasCsp = await detectCsp(context, config.targetUrl, config);
+    const runCspBypass = hasCsp ||
+      config.aiFocusAreas?.some(a => /csp|content.security.policy/i.test(a));
+
+    if (runCspBypass && (targets.urlsWithParams.length > 0 || targets.forms.length > 0)) {
+      log.info(`Testing CSP bypass payloads (${CSP_BYPASS_PAYLOADS.length} payloads, CSP detected: ${hasCsp})...`);
+      findings.push(...(await testCspBypassXss(context, targets, config, requestLogger)));
     }
 
     return findings;
@@ -1408,4 +1428,298 @@ async function injectBlindXss(
 
   // Blind XSS findings are detected out-of-band — no immediate findings to return
   return [];
+}
+
+/**
+ * Detect whether the target URL sends a Content-Security-Policy header.
+ * Makes a single lightweight GET request and inspects response headers.
+ * Returns false on any error to avoid blocking the scan.
+ */
+async function detectCsp(
+  context: BrowserContext,
+  targetUrl: string,
+  config: ScanConfig,
+): Promise<boolean> {
+  const page = await context.newPage();
+  try {
+    const response = await page.request.fetch(targetUrl, {
+      method: 'GET',
+      headers: { Accept: 'text/html' },
+    }).catch(() => null);
+
+    if (!response) return false;
+
+    const headers = response.headers();
+    return 'content-security-policy' in headers ||
+      'content-security-policy-report-only' in headers;
+  } catch (err) {
+    log.debug(`CSP detection: ${(err as Error).message}`);
+    return false;
+  } finally {
+    await page.close();
+  }
+}
+
+/**
+ * Mutation XSS: test payloads that exploit browser parser quirks to bypass sanitizers.
+ * Uses the same injection+detection pattern as testDomXss (URL fragment + sink monitoring).
+ * Only runs when profile is 'deep' or AI focus areas mention mutation/mxss.
+ */
+async function testMutationXss(
+  context: BrowserContext,
+  pageUrls: string[],
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+
+  // Limit pages in non-deep mode
+  const pagesToTest = config.profile === 'deep' ? pageUrls : pageUrls.slice(0, 3);
+
+  for (const pageUrl of pagesToTest) {
+    for (const xssPayload of MUTATION_XSS_PAYLOADS) {
+      const page = await context.newPage();
+      try {
+        // Install sink monitors before navigation
+        await page.addInitScript(DOM_XSS_INIT_SCRIPT);
+
+        // Navigate with payload in URL fragment
+        const fragmentPayload = xssPayload.payload.startsWith('#')
+          ? xssPayload.payload.slice(1)
+          : xssPayload.payload;
+        const testUrl = `${pageUrl.split('#')[0]}#${fragmentPayload}`;
+
+        await page.goto(testUrl, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
+        await delay(500);
+
+        requestLogger?.log({
+          timestamp: new Date().toISOString(),
+          method: 'GET',
+          url: testUrl,
+          phase: 'active-xss-mutation',
+        });
+
+        // Check if any sink received a value containing our marker
+        const sinkHits = await page.evaluate((marker: string) => {
+          const hits = (window as any).__secbot_dom_xss || [];
+          return hits.filter((h: { sink: string; value: string }) =>
+            h.value.includes(marker),
+          );
+        }, xssPayload.marker);
+
+        if (sinkHits.length > 0) {
+          const sinkNames = sinkHits.map((h: { sink: string }) => h.sink).join(', ');
+          findings.push({
+            id: randomUUID(),
+            category: 'xss',
+            severity: 'high',
+            title: `Mutation XSS via URL Fragment`,
+            description: `Mutation XSS payload (${xssPayload.type}) injected via URL fragment reaches dangerous DOM sink(s): ${sinkNames}. This payload exploits browser parser quirks to bypass sanitizers such as DOMPurify.`,
+            url: pageUrl,
+            evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nSinks: ${sinkNames}\nTest URL: ${pageUrl}#${fragmentPayload}`,
+            request: { method: 'GET', url: `${pageUrl}#${fragmentPayload}` },
+            timestamp: new Date().toISOString(),
+          });
+          break; // One finding per page is enough
+        }
+
+        // Also check rendered page content for unencoded payload reflection
+        const content = await page.content();
+        const dangerousContext = checkDangerousReflection(content, xssPayload.payload, xssPayload.marker);
+
+        if (dangerousContext) {
+          findings.push({
+            id: randomUUID(),
+            category: 'xss',
+            severity: 'high',
+            title: `Mutation XSS Payload Reflected`,
+            description: `Mutation XSS payload (${xssPayload.type}) appears unencoded in rendered page content. ${dangerousContext}. This payload exploits browser parser quirks that may bypass sanitizers.`,
+            url: pageUrl,
+            evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\n${dangerousContext}\nTest URL: ${pageUrl}#${fragmentPayload}`,
+            request: { method: 'GET', url: `${pageUrl}#${fragmentPayload}` },
+            timestamp: new Date().toISOString(),
+          });
+          break;
+        }
+      } catch (err) {
+        log.debug(`Mutation XSS test: ${(err as Error).message}`);
+      } finally {
+        await page.close();
+      }
+
+      await delay(config.requestDelay);
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * CSP bypass XSS: test payloads designed to circumvent Content-Security-Policy.
+ * Injects into URL parameters and form fields, checking for unencoded reflection.
+ * Only runs when a CSP header is detected on the target.
+ */
+async function testCspBypassXss(
+  context: BrowserContext,
+  targets: ScanTargets,
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+
+  // Test URL parameters
+  const urlsToTest = config.profile === 'deep'
+    ? targets.urlsWithParams
+    : targets.urlsWithParams.slice(0, 3);
+
+  for (const originalUrl of urlsToTest) {
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(originalUrl);
+    } catch {
+      continue;
+    }
+
+    const params = Array.from(parsedUrl.searchParams.keys());
+    let foundForUrl = false;
+
+    for (const param of params) {
+      if (foundForUrl) break;
+
+      for (const xssPayload of CSP_BYPASS_PAYLOADS) {
+        if (foundForUrl) break;
+
+        // Skip template-type payloads for URL reflection — they require server-side
+        // template evaluation and are better tested by the SSTI check
+        if (xssPayload.type === 'template') continue;
+
+        const testUrl = new URL(originalUrl);
+        testUrl.searchParams.set(param, xssPayload.payload);
+
+        const page = await context.newPage();
+        try {
+          await page.goto(testUrl.href, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
+
+          requestLogger?.log({
+            timestamp: new Date().toISOString(),
+            method: 'GET',
+            url: testUrl.href,
+            phase: 'active-xss-csp-bypass',
+          });
+
+          const content = await page.content();
+          const dangerousContext = checkDangerousReflection(content, xssPayload.payload, xssPayload.marker);
+
+          if (dangerousContext) {
+            findings.push({
+              id: randomUUID(),
+              category: 'xss',
+              severity: 'high',
+              title: `CSP Bypass XSS in URL Parameter "${param}"`,
+              description: `Despite a Content-Security-Policy being present, the XSS payload (${xssPayload.type}) is reflected in a dangerous context. ${dangerousContext}. The payload is designed to bypass common CSP configurations.`,
+              url: originalUrl,
+              evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nParameter: ${param}\nTest URL: ${testUrl.href}\n${dangerousContext}`,
+              request: { method: 'GET', url: testUrl.href },
+              timestamp: new Date().toISOString(),
+            });
+            foundForUrl = true;
+          }
+        } catch (err) {
+          log.debug(`CSP bypass XSS test: ${(err as Error).message}`);
+        } finally {
+          await page.close();
+        }
+
+        await delay(config.requestDelay);
+      }
+    }
+  }
+
+  // Test form fields (limit to 2 forms in non-deep mode)
+  const formsToTest = config.profile === 'deep'
+    ? targets.forms
+    : targets.forms.slice(0, 2);
+
+  for (const form of formsToTest) {
+    if (DESTRUCTIVE_ACTION_RE.test(form.action)) continue;
+
+    const textInputs = form.inputs.filter(
+      (i) => ['text', 'search', 'email', 'url', 'tel', ''].includes(i.type) && i.name,
+    );
+    if (textInputs.length === 0) continue;
+
+    for (const xssPayload of CSP_BYPASS_PAYLOADS) {
+      const page = await context.newPage();
+      try {
+        let responseBody = '';
+        page.on('response', async (response) => {
+          try {
+            const ct = response.headers()['content-type'] ?? '';
+            if (ct.includes('text/html')) {
+              responseBody = await response.text();
+            }
+          } catch { /* ignore */ }
+        });
+
+        await page.goto(form.pageUrl, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
+
+        for (const input of textInputs) {
+          try {
+            await page.fill(`[name="${input.name}"]`, xssPayload.payload);
+          } catch (err) {
+            log.debug(`CSP bypass form fill: ${(err as Error).message}`);
+          }
+        }
+
+        responseBody = '';
+        try {
+          const submitBtn = page.locator('form button[type="submit"], form input[type="submit"]').first();
+          if (await submitBtn.count() > 0) {
+            await submitBtn.click({ timeout: 5000 });
+            await delay(2000);
+          }
+        } catch (err) {
+          log.debug(`CSP bypass form submit: ${(err as Error).message}`);
+        }
+
+        requestLogger?.log({
+          timestamp: new Date().toISOString(),
+          method: form.method,
+          url: form.action,
+          body: textInputs.map((i) => `${i.name}=${xssPayload.payload}`).join('&'),
+          phase: 'active-xss-csp-bypass',
+        });
+
+        const content = responseBody || (await page.content());
+        const dangerousContext = checkDangerousReflection(content, xssPayload.payload, xssPayload.marker);
+
+        if (dangerousContext) {
+          findings.push({
+            id: randomUUID(),
+            category: 'xss',
+            severity: 'high',
+            title: `CSP Bypass XSS in Form Input "${textInputs[0].name}"`,
+            description: `Despite a Content-Security-Policy being present, the form input "${textInputs[0].name}" reflects XSS payload (${xssPayload.type}) in a dangerous context. ${dangerousContext}. The payload is designed to bypass common CSP configurations.`,
+            url: form.pageUrl,
+            evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\n${dangerousContext}`,
+            request: {
+              method: form.method,
+              url: form.action,
+              body: textInputs.map((i) => `${i.name}=${xssPayload.payload}`).join('&'),
+            },
+            timestamp: new Date().toISOString(),
+          });
+          break;
+        }
+      } catch (err) {
+        log.debug(`CSP bypass form XSS test: ${(err as Error).message}`);
+      } finally {
+        await page.close();
+      }
+
+      await delay(config.requestDelay);
+    }
+  }
+
+  return findings;
 }

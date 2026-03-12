@@ -1,6 +1,6 @@
 import type { WafDetection } from '../scanner/types.js';
 
-export type EncodingStrategy = 'none' | 'url' | 'double-url' | 'html-entity' | 'unicode' | 'mixed';
+export type EncodingStrategy = 'none' | 'url' | 'double-url' | 'html-entity' | 'unicode' | 'mixed' | 'from-char-code' | 'json-unicode';
 
 /**
  * Mutate a payload using various encoding strategies to bypass WAFs.
@@ -31,13 +31,13 @@ export function pickStrategies(waf: WafDetection | undefined): EncodingStrategy[
 
   switch (waf.name?.toLowerCase()) {
     case 'cloudflare':
-      // Cloudflare is aggressive on common patterns — use unicode + mixed
-      strategies.push('unicode', 'mixed');
+      // Cloudflare is aggressive on common patterns — use unicode + mixed + fromCharCode
+      strategies.push('unicode', 'mixed', 'from-char-code');
       break;
     case 'aws waf':
     case 'unknown waf':
-      // Generic WAFs — try all encodings
-      strategies.push('html-entity', 'unicode', 'mixed');
+      // Generic WAFs — try all encodings including JSON unicode
+      strategies.push('html-entity', 'unicode', 'mixed', 'json-unicode');
       break;
     case 'akamai':
     case 'imperva':
@@ -71,9 +71,32 @@ function applyEncoding(payload: string, strategy: EncodingStrategy): string {
     case 'mixed':
       return mixedEncode(payload);
 
+    case 'from-char-code':
+      return fromCharCodeEncode(payload);
+
+    case 'json-unicode':
+      return jsonUnicodeEncode(payload);
+
     default:
       return payload;
   }
+}
+
+/** Convert to String.fromCharCode() — bypasses string-matching WAFs */
+export function fromCharCodeEncode(input: string): string {
+  const codes = [...input].map((ch) => ch.charCodeAt(0));
+  return `String.fromCharCode(${codes.join(',')})`;
+}
+
+/** JSON Unicode escape — bypasses WAFs that don't decode JSON unicode */
+export function jsonUnicodeEncode(input: string): string {
+  return input
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/"/g, '\\u0022')
+    .replace(/'/g, '\\u0027')
+    .replace(/&/g, '\\u0026')
+    .replace(/\//g, '\\u002f');
 }
 
 /** URL-encode special characters that WAFs look for */
