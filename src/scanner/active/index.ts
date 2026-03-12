@@ -195,7 +195,7 @@ export function buildTargets(pages: CrawledPage[], targetUrl: string, scope?: Sc
 /**
  * Run active security checks.
  * If an attack plan is provided, only run recommended checks in priority order.
- * Otherwise, run all checks (except traversal on non-deep profiles).
+ * Otherwise, run all checks (except traversal on quick profile).
  */
 export async function runActiveChecks(
   context: BrowserContext,
@@ -251,9 +251,9 @@ export async function runActiveChecks(
 
     log.info(`Running ${checksToRun.length} AI-recommended checks: ${checksToRun.map((c) => c.name).join(', ')}`);
   } else {
-    // Run all checks (filter traversal for non-deep)
+    // Run all checks (skip traversal only on quick profile)
     checksToRun = CHECK_REGISTRY.filter((c) => {
-      if (c.name === 'traversal' && config.profile !== 'deep') return false;
+      if (c.name === 'traversal' && config.profile === 'quick') return false;
       return true;
     });
     log.info(`Running ${checksToRun.length} active checks: ${checksToRun.map((c) => c.name).join(', ')}`);

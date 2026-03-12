@@ -11,8 +11,13 @@ export const traversalCheck: ActiveCheck = {
   name: 'traversal',
   category: 'directory-traversal',
   async run(context, targets, config, requestLogger) {
-    // Combine API endpoints and file-param URLs, deduplicated
-    const allTargets = [...new Set([...targets.apiEndpoints, ...targets.fileParams])];
+    // Combine API endpoints, file-param URLs, and all URLs with query params
+    // (any query param could be a file path — don't rely solely on discovery heuristics)
+    const allTargets = [...new Set([
+      ...targets.apiEndpoints,
+      ...targets.fileParams,
+      ...targets.urlsWithParams,
+    ])];
 
     if (allTargets.length === 0) return [];
 
@@ -31,7 +36,10 @@ async function testDirectoryTraversal(
   requestLogger?: RequestLogger,
 ): Promise<RawFinding[]> {
   const findings: RawFinding[] = [];
-  const payloadsToTest = config.profile === 'deep' ? TRAVERSAL_PAYLOADS : TRAVERSAL_PAYLOADS.slice(0, 2);
+  // Standard: test first 5 (basic Unix + encoded). Deep: test all including PHP wrappers + Windows.
+  const payloadsToTest = config.profile === 'deep' ? TRAVERSAL_PAYLOADS
+    : config.profile === 'quick' ? TRAVERSAL_PAYLOADS.slice(0, 2)
+    : TRAVERSAL_PAYLOADS.slice(0, 5);
 
   for (const endpoint of endpoints) {
     // Strategy 1: Path segment replacement (for API-like endpoints with path segments)
