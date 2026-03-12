@@ -44,7 +44,7 @@ Developer-friendly tool that scans web apps for OWASP Top 10 vulnerabilities wit
 - **Runtime:** Node.js 20+
 - **CLI:** commander
 - **Browser automation:** Playwright
-- **AI:** Anthropic SDK (Claude Sonnet 4.5) — plans, validates, reports
+- **AI:** Anthropic SDK (Claude Sonnet 4.6) — plans, validates, reports
 - **Output:** chalk (terminal), JSON, HTML, bug bounty markdown, SARIF, JUnit
 - **Testing:** Vitest (unit + integration), Express vulnerable server fixture
 
@@ -247,7 +247,7 @@ secbot scan <url>
 ## Environment Variables
 ```
 ANTHROPIC_API_KEY=            # Required for AI features (optional — fallback works without)
-SECBOT_MODEL=                 # AI model override (default: claude-sonnet-4-5-20250929)
+SECBOT_MODEL=                 # AI model override (default: claude-sonnet-4-6-latest)
 SECBOT_CREDENTIALS=           # Credentials (user:pass) — secure alternative to --credentials
 SECBOT_MAX_PAGES=50           # Max pages to crawl
 SECBOT_TIMEOUT=30000          # Per-page timeout (ms)
