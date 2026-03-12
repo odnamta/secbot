@@ -11,6 +11,29 @@ import { delay, measureResponseTime } from '../../utils/shared.js';
 /** Threshold in ms — if response is this much slower than baseline, flag it */
 const CMDI_TIMING_THRESHOLD_MS = 4000;
 
+/**
+ * Strip all encoding variants of a payload from the response body.
+ * Frameworks (Next.js RSC, React hydration) reflect query params in multiple
+ * encodings: literal, encodeURIComponent (%20), form-encoded (+), mixed.
+ * All of these are reflection, not command execution.
+ */
+function stripPayloadVariants(body: string, payload: string, marker: string): string {
+  let s = body;
+  // 1. Literal payload
+  s = s.replaceAll(payload, '');
+  // 2. encodeURIComponent variant (spaces → %20, ; → %3B, etc.)
+  s = s.replaceAll(encodeURIComponent(payload), '');
+  // 3. Form URL-encoded variant (spaces → +)
+  s = s.replaceAll(encodeURIComponent(payload).replace(/%20/g, '+'), '');
+  // 4. JSON-escaped variant (quotes and backslashes escaped)
+  const jsonEscaped = JSON.stringify(payload).slice(1, -1); // strip outer quotes
+  if (jsonEscaped !== payload) s = s.replaceAll(jsonEscaped, '');
+  // 5. HTML-entity-escaped variant
+  const htmlEscaped = payload.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  if (htmlEscaped !== payload) s = s.replaceAll(htmlEscaped, '');
+  return s;
+}
+
 /** Reorder CMDi payloads: matching OS first, then the rest */
 export function prioritizeCmdiPayloads(osHint: 'unix' | 'windows' | 'unknown'): {
   timing: CmdiTimingPayload[];
@@ -126,12 +149,13 @@ async function testCmdiParams(
           if (body.includes(marker) && !baselineBody.includes(marker)) {
             // Distinguish true execution from simple reflection:
             // If the full payload string appears in the response, the marker might just be
-            // reflected (XSS/error message). Strip all payload instances and check if the
-            // marker still appears — that means the command was actually executed.
+            // reflected (XSS/error message). Strip all payload instances — including URL-encoded
+            // variants (frameworks like Next.js reflect searchParams in multiple encodings) —
+            // and check if the marker still appears.
             const isReflection = body.includes(payload);
             let confidence: 'high' | 'medium' = 'high';
             if (isReflection) {
-              const stripped = body.replaceAll(payload, '');
+              const stripped = stripPayloadVariants(body, payload, marker);
               if (!stripped.includes(marker)) {
                 // Marker only appears inside reflected payload — not command execution
                 log.debug(`CMDi: marker only in reflected payload, not executed — skipping (${param})`);
@@ -289,7 +313,7 @@ async function testCmdiForms(
             const isReflection = body.includes(payload);
             let confidence: 'high' | 'medium' = 'high';
             if (isReflection) {
-              const stripped = body.replaceAll(payload, '');
+              const stripped = stripPayloadVariants(body, payload, marker);
               if (!stripped.includes(marker)) {
                 log.debug(`CMDi: marker only in reflected payload, not executed — skipping (${input.name})`);
                 continue;
