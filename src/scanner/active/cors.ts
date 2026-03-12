@@ -25,10 +25,9 @@ export const corsCheck: ActiveCheck = {
   name: 'cors',
   category: 'cors-misconfiguration',
   async run(context, targets, config, requestLogger) {
-    // Prioritize API endpoints, fall back to regular pages
-    const testUrls = targets.apiEndpoints.length > 0
-      ? [...targets.apiEndpoints, ...targets.pages.slice(0, 2)]
-      : targets.pages;
+    // Test all unique URLs — API endpoints plus all pages
+    // The per-origin limit (10 URLs) in testCorsMisconfiguration prevents over-testing
+    const testUrls = [...new Set([...targets.apiEndpoints, ...targets.pages])];
     log.info(`Testing CORS configuration on ${testUrls.length} URLs...`);
     return testCorsMisconfiguration(context, testUrls, config, requestLogger);
   },
@@ -57,7 +56,8 @@ async function testCorsMisconfiguration(
   }
 
   for (const [, urls] of byOrigin) {
-    const testUrls = urls.slice(0, 3);
+    // Test up to 25 URLs per origin — CORS misconfigs are often on specific endpoints
+    const testUrls = urls.slice(0, 25);
 
     for (const url of testUrls) {
       const page = await context.newPage();

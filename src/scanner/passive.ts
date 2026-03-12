@@ -30,7 +30,21 @@ export function runPassiveChecks(
 
   const detectedFramework = recon?.framework?.name;
 
+  // Determine the target origin from the first page — skip external pages
+  let targetOrigin: string | undefined;
+  if (pages.length > 0) {
+    try {
+      targetOrigin = new URL(pages[0].url).origin;
+    } catch { /* ignore */ }
+  }
+
   for (const page of pages) {
+    // Skip external pages (e.g., links followed to github.com) — they're out of scope
+    if (targetOrigin) {
+      try {
+        if (new URL(page.url).origin !== targetOrigin) continue;
+      } catch { /* check anyway if URL parse fails */ }
+    }
     findings.push(...checkSecurityHeaders(page, reportedHeaders, detectedFramework));
     findings.push(...checkCookieFlags(page));
     findings.push(...checkInfoLeakage(page, responses));

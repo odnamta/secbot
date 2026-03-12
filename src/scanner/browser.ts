@@ -408,8 +408,18 @@ async function extractForms(page: Page, pageUrl: string): Promise<FormInfo[]> {
           }),
         );
 
+        // Resolve action URL relative to page URL (form.getAttribute returns raw value
+        // which may be relative, causing "Invalid URL" in fetch())
+        const rawAction = form.getAttribute('action') ?? pUrl;
+        let resolvedAction: string;
+        try {
+          resolvedAction = new URL(rawAction, pUrl).href;
+        } catch {
+          resolvedAction = pUrl;
+        }
+
         return {
-          action: form.getAttribute('action') ?? pUrl,
+          action: resolvedAction,
           method: (form.getAttribute('method') ?? 'GET').toUpperCase(),
           inputs,
           pageUrl: pUrl,

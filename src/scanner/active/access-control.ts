@@ -73,9 +73,8 @@ export const accessControlCheck: ActiveCheck = {
     // The primary auth (--auth) is the admin, --idor-alt-auth is the regular user
     let altContext: BrowserContext | undefined;
     try {
-      const browser = chromium.connect
-        ? context.browser()!
-        : await chromium.launch({ headless: true });
+      const browser = context.browser()
+        ?? await chromium.launch({ headless: true });
       altContext = await browser.newContext({
         storageState: config.idorAltAuthState,
       });

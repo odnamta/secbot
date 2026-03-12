@@ -99,11 +99,14 @@ async function testCmdiParams(
       if (foundForUrl) break;
 
       // --- Output-based detection ---
+      const originalValue = parsed.searchParams.get(param) || '';
       for (const { payload, marker } of outputPayloads) {
         if (foundForUrl) break;
 
         const testUrl = new URL(originalUrl);
-        testUrl.searchParams.set(param, payload);
+        // Append payload after original value so the command chain works
+        // e.g., "test; echo marker" not "; echo marker" (which is a syntax error)
+        testUrl.searchParams.set(param, originalValue + payload);
 
         const page = await context.newPage();
         try {
@@ -121,18 +124,34 @@ async function testCmdiParams(
 
           // Check if the marker appears in the response but was NOT in the baseline
           if (body.includes(marker) && !baselineBody.includes(marker)) {
+            // Distinguish true execution from simple reflection:
+            // If the full payload string appears in the response, the marker might just be
+            // reflected (XSS/error message). Strip all payload instances and check if the
+            // marker still appears — that means the command was actually executed.
+            const isReflection = body.includes(payload);
+            let confidence: 'high' | 'medium' = 'high';
+            if (isReflection) {
+              const stripped = body.replaceAll(payload, '');
+              if (!stripped.includes(marker)) {
+                // Marker only appears inside reflected payload — not command execution
+                log.debug(`CMDi: marker only in reflected payload, not executed — skipping (${param})`);
+                continue;
+              }
+              // Marker appears both inside reflection AND separately (command was executed too)
+              confidence = 'high';
+            }
             findings.push({
               id: randomUUID(),
               category: 'command-injection',
               severity: 'critical',
               title: `Command Injection via "${param}" Parameter`,
-              description: `The parameter "${param}" is vulnerable to OS command injection. The injected command's output marker ("${marker}") appeared in the response. This allows Remote Code Execution (RCE).`,
+              description: `The parameter "${param}" is vulnerable to OS command injection. The injected command's output marker ("${marker}") appeared in the response, indicating actual execution. This allows Remote Code Execution (RCE).`,
               url: originalUrl,
               evidence: `Payload: ${payload}\nMarker: ${marker}\nResponse snippet: ${body.slice(0, 300)}`,
               request: { method: 'GET', url: testUrl.href },
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
-              confidence: 'high',
+              confidence,
             });
             foundForUrl = true;
             break;
@@ -155,7 +174,7 @@ async function testCmdiParams(
             if (foundForUrl) break;
 
             const testUrl = new URL(originalUrl);
-            testUrl.searchParams.set(param, payload);
+            testUrl.searchParams.set(param, originalValue + payload);
 
             const payloadMedian = await measureResponseTime(context, testUrl.href);
 
@@ -266,18 +285,29 @@ async function testCmdiForms(
           });
 
           if (body.includes(marker) && !baselineBody.includes(marker)) {
+            // Distinguish true execution from simple reflection
+            const isReflection = body.includes(payload);
+            let confidence: 'high' | 'medium' = 'high';
+            if (isReflection) {
+              const stripped = body.replaceAll(payload, '');
+              if (!stripped.includes(marker)) {
+                log.debug(`CMDi: marker only in reflected payload, not executed — skipping (${input.name})`);
+                continue;
+              }
+              confidence = 'high';
+            }
             findings.push({
               id: randomUUID(),
               category: 'command-injection',
               severity: 'critical',
               title: `Command Injection via "${input.name}" Form Input`,
-              description: `The form input "${input.name}" on ${form.pageUrl} is vulnerable to OS command injection. The injected command's output marker appeared in the response. This allows Remote Code Execution (RCE).`,
+              description: `The form input "${input.name}" on ${form.pageUrl} is vulnerable to OS command injection. The injected command's output marker appeared in the response, indicating actual execution. This allows Remote Code Execution (RCE).`,
               url: form.pageUrl,
               evidence: `Payload: ${payload}\nMarker: ${marker}\nForm action: ${actionUrl}\nResponse snippet: ${body.slice(0, 300)}`,
               request: { method, url: actionUrl, body: JSON.stringify(formData) },
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
-              confidence: 'high',
+              confidence,
             });
             foundForForm = true;
             break;

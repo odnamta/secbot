@@ -130,6 +130,25 @@ async function testCrlfParams(
 
     if (params.length === 0) continue;
 
+    // Fetch baseline to detect parameter reflection
+    let reflectsParams = false;
+    const probeValue = 'secbot-crlf-probe-' + Math.random().toString(36).slice(2, 8);
+    const probePage = await context.newPage();
+    try {
+      const probeUrl = new URL(originalUrl);
+      const firstParam = Array.from(probeUrl.searchParams.keys())[0];
+      if (firstParam) {
+        probeUrl.searchParams.set(firstParam, probeValue);
+        const probeResp = await probePage.request.fetch(probeUrl.href, { maxRedirects: 0 });
+        const probeBody = await probeResp.text();
+        reflectsParams = probeBody.includes(probeValue);
+      }
+    } catch {
+      // probe may fail
+    } finally {
+      await probePage.close();
+    }
+
     // Prioritize redirect-like parameter names (common CRLF injection vectors)
     const sortedParams = [...params].sort((a, b) => {
       const aIsRedirect = REDIRECT_PARAM_RE.test(a) ? 0 : 1;
@@ -163,8 +182,15 @@ async function testCrlfParams(
           });
 
           const headerInjected = detectInjectedHeader(headers);
-          const responseSplit = crlfPayload.name === 'response-splitting'
+          let responseSplit = crlfPayload.name === 'response-splitting'
             && detectResponseSplitting(body);
+
+          // If the endpoint reflects parameters, a <script> in the body is just reflection (XSS),
+          // not actual HTTP response splitting. Only trust header injection in that case.
+          if (responseSplit && reflectsParams) {
+            log.debug(`CRLF: response splitting detected but endpoint reflects params — likely XSS, not CRLF (${param})`);
+            responseSplit = false;
+          }
 
           if (headerInjected || responseSplit) {
             const isRedirectParam = REDIRECT_PARAM_RE.test(param);

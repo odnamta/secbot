@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHmac } from 'node:crypto';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig } from '../types.js';
 import { log } from '../../utils/logger.js';
@@ -113,7 +113,6 @@ async function signHs256(payload: Record<string, unknown>, secret: string): Prom
  * Verify if an HMAC-SHA256 JWT was signed with the given secret.
  */
 export function verifyHs256(token: string, secret: string): boolean {
-  const { createHmac } = require('node:crypto');
   const parts = token.split('.');
   if (parts.length !== 3) return false;
   const expected = createHmac('sha256', secret)
@@ -324,13 +323,32 @@ async function collectJwtsFromPages(
   const results: Array<{ token: string; source: string; pageUrl: string }> = [];
   const seen = new Set<string>();
 
-  // Test auth-related and API endpoints (most likely to return JWTs)
-  const priorityUrls = targets.pages.filter((url) =>
-    /\/(login|auth|token|api|dashboard|profile|account|user)/i.test(url),
+  // Include API endpoints (most likely to return JWTs in response body)
+  const allUrls = [...new Set([...targets.pages, ...targets.apiEndpoints])];
+
+  // Probe well-known token endpoints that might not be linked in HTML (deep mode only)
+  if (config.profile === 'deep') {
+    const origin = allUrls.length > 0 ? new URL(allUrls[0]).origin : '';
+    if (origin) {
+      const wellKnownPaths = [
+        '/api/v1/token', '/api/token', '/api/auth/token',
+        '/oauth/token', '/auth/token', '/token',
+        '/api/v1/auth', '/api/v1/login',
+      ];
+      for (const path of wellKnownPaths) {
+        const probe = `${origin}${path}`;
+        if (!allUrls.includes(probe)) allUrls.push(probe);
+      }
+    }
+  }
+
+  // Prioritize auth/token-related endpoints
+  const priorityUrls = allUrls.filter((url) =>
+    /\/(login|auth|token|api|dashboard|profile|account|user|oauth|session|jwt)/i.test(url),
   );
   // Add remaining pages (capped)
-  const otherUrls = targets.pages.filter((url) => !priorityUrls.includes(url));
-  const urlsToCheck = [...priorityUrls, ...otherUrls].slice(0, 15);
+  const otherUrls = allUrls.filter((url) => !priorityUrls.includes(url));
+  const urlsToCheck = [...priorityUrls, ...otherUrls].slice(0, 30);
 
   for (const url of urlsToCheck) {
     const page = await context.newPage();

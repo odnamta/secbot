@@ -36,7 +36,7 @@ describe('CORS Integration Tests', () => {
     await stopTestServer();
   });
 
-  it('detects CORS wildcard with credentials on /cors-api', async () => {
+  it('detects CORS origin reflection with credentials on /cors-api', async () => {
     const targets: ScanTargets = {
       pages: [`${baseUrl}/cors-api`],
       forms: [],
@@ -51,11 +51,11 @@ describe('CORS Integration Tests', () => {
     expect(findings.length).toBeGreaterThanOrEqual(1);
 
     const corsFinding = findings.find(
-      (f) => f.category === 'cors-misconfiguration' && f.title.includes('Wildcard with Credentials'),
+      (f) => f.category === 'cors-misconfiguration' && f.title.includes('Reflects Origin with Credentials'),
     );
     expect(corsFinding).toBeDefined();
-    expect(corsFinding!.severity).toBe('high');
-    expect(corsFinding!.evidence).toContain('Access-Control-Allow-Origin: *');
+    expect(corsFinding!.severity).toBe('critical');
+    expect(corsFinding!.evidence).toContain('Access-Control-Allow-Origin: https://evil.example.com');
     expect(corsFinding!.evidence).toContain('Access-Control-Allow-Credentials: true');
   }, 60000);
 

@@ -1,5 +1,6 @@
 import express from 'express';
 import { execSync } from 'node:child_process';
+import { createHmac } from 'node:crypto';
 import type { Server } from 'node:http';
 
 export async function createVulnerableServer(): Promise<{ server: Server; url: string }> {
@@ -279,9 +280,14 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
 </body></html>`);
   });
 
-  // CORS misconfiguration
-  app.get('/cors-api', (_req, res) => {
-    res.set('Access-Control-Allow-Origin', '*');
+  // CORS misconfiguration — reflects Origin header with credentials (most dangerous pattern)
+  app.get('/cors-api', (req, res) => {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.set('Access-Control-Allow-Origin', origin);
+    } else {
+      res.set('Access-Control-Allow-Origin', '*');
+    }
     res.set('Access-Control-Allow-Credentials', 'true');
     res.json({ secret: 'sensitive-data', apiKey: 'sk-12345' });
   });
@@ -408,7 +414,6 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
 
   // ─── JWT endpoint (returns a weak-secret JWT with no expiry) ───
   app.get('/api/v1/token', (_req, res) => {
-    const { createHmac } = require('node:crypto');
     const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' }))
       .toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     const payload = Buffer.from(JSON.stringify({ sub: '1234', role: 'user', name: 'Test User' }))
