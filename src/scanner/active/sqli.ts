@@ -21,11 +21,17 @@ import type { ActiveCheck, ScanTargets } from './index.js';
 import { delay, measureResponseTime } from '../../utils/shared.js';
 import { mutatePayload, pickStrategies, sqlCommentObfuscate } from '../../utils/payload-mutator.js';
 
-/** Threshold in ms — if response is this much slower than baseline, it's suspicious */
-const BLIND_SQLI_THRESHOLD_MS = 3500;
+/** Threshold in ms — if response is this much slower than baseline, it's suspicious.
+ *  With SLEEP(5) payloads and median-of-3 reducing jitter, 2500ms gives
+ *  sufficient margin while catching genuine delays on slower networks. */
+const BLIND_SQLI_THRESHOLD_MS = 2500;
 
-/** Minimum body length difference ratio to flag boolean-based blind SQLi */
-const BOOLEAN_BLIND_THRESHOLD = 0.50;
+/** Minimum body length difference ratio to flag boolean-based blind SQLi.
+ *  Adaptive: large HTML pages use lower threshold (15%) since even a 15% shift
+ *  on a 20KB response is significant. Small JSON uses 35%. */
+const BOOLEAN_BLIND_THRESHOLD = 0.35;
+const BOOLEAN_BLIND_THRESHOLD_LARGE = 0.15;
+const LARGE_RESPONSE_BYTES = 10000;
 
 /** Maximum variance allowed within same-condition requests (TRUE-TRUE or FALSE-FALSE).
  *  If same-condition responses vary more than this, the page is inherently dynamic
@@ -113,7 +119,7 @@ async function confirmBooleanBlind(
   trueFetcher: () => Promise<number>,
   falseFetcher: () => Promise<number>,
   requestDelay: number,
-): Promise<{ diff: number; trueLen: number; falseLen: number; trueLen2: number; falseLen2: number } | null> {
+): Promise<{ diff: number; trueLen: number; falseLen: number; trueLen2: number; falseLen2: number; effectiveThreshold: number } | null> {
   // Round 1: TRUE condition
   const trueLen1 = await trueFetcher();
   await delay(requestDelay);
@@ -159,7 +165,11 @@ async function confirmBooleanBlind(
   const maxLen = Math.max(trueAvg, falseAvg);
   const diff = Math.abs(trueAvg - falseAvg) / maxLen;
 
-  return { diff, trueLen: trueLen1, falseLen: falseLen1, trueLen2, falseLen2 };
+  // Adaptive threshold: large HTML pages need a lower threshold
+  const effectiveThreshold = maxLen > LARGE_RESPONSE_BYTES ? BOOLEAN_BLIND_THRESHOLD_LARGE : BOOLEAN_BLIND_THRESHOLD;
+  log.debug(`Boolean-blind: trueAvg=${Math.round(trueAvg)} falseAvg=${Math.round(falseAvg)} diff=${(diff * 100).toFixed(1)}% threshold=${(effectiveThreshold * 100).toFixed(0)}%`);
+
+  return { diff, trueLen: trueLen1, falseLen: falseLen1, trueLen2, falseLen2, effectiveThreshold };
 }
 
 /** Destructive action path segments — skip these to avoid data loss */
@@ -412,7 +422,7 @@ async function testSqliOnForms(
           phase: 'active-sqli-boolean',
         });
 
-        if (result && result.diff > BOOLEAN_BLIND_THRESHOLD) {
+        if (result && result.diff > result.effectiveThreshold) {
           findings.push({
             id: randomUUID(),
             category: 'sqli',
@@ -652,6 +662,7 @@ async function testSqliOnUrls(
 
             if (payloadMedian > 0) {
               const diff = payloadMedian - baselineMedian;
+              log.debug(`SQLi blind: param="${param}" baseline=${Math.round(baselineMedian)}ms payload=${Math.round(payloadMedian)}ms diff=${Math.round(diff)}ms threshold=${BLIND_SQLI_THRESHOLD_MS}ms`);
               if (diff > BLIND_SQLI_THRESHOLD_MS) {
                 findings.push({
                   id: randomUUID(),
@@ -698,7 +709,7 @@ async function testSqliOnUrls(
             phase: 'active-sqli-boolean',
           });
 
-          if (result && result.diff > BOOLEAN_BLIND_THRESHOLD) {
+          if (result && result.diff > result.effectiveThreshold) {
             findings.push({
               id: randomUUID(),
               category: 'sqli',

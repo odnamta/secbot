@@ -79,14 +79,77 @@ const DOM_XSS_INIT_SCRIPT = `
     return origSetInterval.call(window, fn, ...args);
   };
 
-  // Monitor innerHTML assignments via MutationObserver
+  // Monitor innerHTML property assignment directly (catches el.innerHTML = tainted)
+  try {
+    const origInnerHTMLDesc = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+    if (origInnerHTMLDesc && origInnerHTMLDesc.set) {
+      const origSet = origInnerHTMLDesc.set;
+      Object.defineProperty(Element.prototype, 'innerHTML', {
+        set(value) {
+          window.__secbot_dom_xss.push({ sink: 'innerHTML-set', value: String(value) });
+          return origSet.call(this, value);
+        },
+        get: origInnerHTMLDesc.get,
+        configurable: true,
+      });
+    }
+  } catch (e) { /* Property descriptor override may fail in some environments */ }
+
+  // Monitor outerHTML property assignment
+  try {
+    const origOuterHTMLDesc = Object.getOwnPropertyDescriptor(Element.prototype, 'outerHTML');
+    if (origOuterHTMLDesc && origOuterHTMLDesc.set) {
+      const origOuterSet = origOuterHTMLDesc.set;
+      Object.defineProperty(Element.prototype, 'outerHTML', {
+        set(value) {
+          window.__secbot_dom_xss.push({ sink: 'outerHTML-set', value: String(value) });
+          return origOuterSet.call(this, value);
+        },
+        get: origOuterHTMLDesc.get,
+        configurable: true,
+      });
+    }
+  } catch (e) { /* ignore */ }
+
+  // Monitor insertAdjacentHTML
+  const origInsertAdjacentHTML = Element.prototype.insertAdjacentHTML;
+  Element.prototype.insertAdjacentHTML = function(pos, html) {
+    window.__secbot_dom_xss.push({ sink: 'insertAdjacentHTML', value: String(html) });
+    return origInsertAdjacentHTML.call(this, pos, html);
+  };
+
+  // Monitor document.location and window.location reads (sources)
+  // Track when location.hash or location.search is read and later used in a sink
+  try {
+    window.__secbot_location_reads = [];
+    const locationProps = ['hash', 'search', 'href'];
+    for (const prop of locationProps) {
+      const origDesc = Object.getOwnPropertyDescriptor(window.location, prop) ||
+                       Object.getOwnPropertyDescriptor(Location.prototype, prop);
+      if (origDesc && origDesc.get) {
+        const origGet = origDesc.get;
+        Object.defineProperty(window.location, prop, {
+          get() {
+            const val = origGet.call(this);
+            window.__secbot_location_reads.push({ source: 'location.' + prop, value: val });
+            return val;
+          },
+          set: origDesc.set,
+          configurable: true,
+        });
+      }
+    }
+  } catch (e) { /* location property override may fail */ }
+
+  // Monitor innerHTML assignments via MutationObserver (backup for cases where
+  // property descriptor override fails)
   const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       for (const node of mutation.addedNodes) {
         if (node.nodeType === Node.ELEMENT_NODE) {
           const el = node;
           if (el.innerHTML) {
-            window.__secbot_dom_xss.push({ sink: 'innerHTML', value: el.innerHTML });
+            window.__secbot_dom_xss.push({ sink: 'innerHTML-mutation', value: el.innerHTML });
           }
         }
       }
@@ -891,12 +954,14 @@ async function testDomXss(
           phase: 'active-xss-dom',
         });
 
-        // Check if any sink received a value containing our marker
+        // Check if any sink received a value containing our marker (or URL-decoded variant)
         const sinkHits = await page.evaluate((marker: string) => {
           const hits = (window as any).__secbot_dom_xss || [];
-          return hits.filter((h: { sink: string; value: string }) =>
-            h.value.includes(marker)
-          );
+          return hits.filter((h: { sink: string; value: string }) => {
+            if (h.value.includes(marker)) return true;
+            try { if (decodeURIComponent(h.value).includes(marker)) return true; } catch {}
+            return false;
+          });
         }, xssPayload.marker);
 
         if (sinkHits.length > 0) {

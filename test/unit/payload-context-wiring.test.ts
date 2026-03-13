@@ -37,8 +37,8 @@ describe('SQLi payload context wiring', () => {
   it('handles multiple database types', async () => {
     const { prioritizeTimedPayloads } = await import('../../src/scanner/active/sqli.js');
     const result = prioritizeTimedPayloads(['postgres', 'sqlite']);
-    // Postgres and sqlite payloads should come first
-    const prioritizedTypes = result.slice(0, 2).map((p) => p.dbType);
+    // Postgres and sqlite payloads should come before other DB types
+    const prioritizedTypes = result.slice(0, 4).map((p) => p.dbType);
     expect(prioritizedTypes).toContain('postgres');
     expect(prioritizedTypes).toContain('sqlite');
   });
