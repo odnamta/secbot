@@ -247,7 +247,7 @@ secbot scan <url>
 ## Environment Variables
 ```
 ANTHROPIC_API_KEY=            # Required for AI features (optional — fallback works without)
-SECBOT_MODEL=                 # AI model override (default: claude-sonnet-4-6-latest)
+SECBOT_MODEL=                 # AI model override (default: claude-sonnet-4-6)
 SECBOT_CREDENTIALS=           # Credentials (user:pass) — secure alternative to --credentials
 SECBOT_MAX_PAGES=50           # Max pages to crawl
 SECBOT_TIMEOUT=30000          # Per-page timeout (ms)

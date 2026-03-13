@@ -8,11 +8,41 @@ const FRAMEWORKS_REQUIRING_UNSAFE_INLINE = ['Next.js', 'Nuxt'];
 
 // Cookies that don't need HttpOnly — they're intentionally JS-readable
 const SKIP_HTTPONLY_PATTERNS = [
-  /^_ga/i, /^_gid/i, /^_gat/i, /^_fbp/i, /^_gcl/i,  // analytics
-  /^csrf/i, /^xsrf/i, /^_csrf/i,                        // CSRF tokens
-  /^locale$/i, /^lang$/i, /^theme$/i, /^i18n/i,         // preferences
-  /^__utm/i,                                              // UTM tracking
+  /^_ga/i, /^_gid/i, /^_gat/i, /^_fbp/i, /^_gcl/i,    // Google Analytics / FB Pixel
+  /^csrf/i, /^xsrf/i, /^_csrf/i,                          // CSRF tokens
+  /^locale$/i, /^lang$/i, /^theme$/i, /^i18n/i,           // preferences
+  /^__utm/i,                                                // UTM tracking
 ];
+
+// Third-party analytics/marketing cookies — lower severity, group instead of individual findings
+const THIRD_PARTY_COOKIE_PATTERNS = [
+  /^_ga/i, /^_gid/i, /^_gat/i, /^_gcl/i,                 // Google Analytics
+  /^_fbp$/i, /^_fbc$/i,                                    // Facebook Pixel
+  /^__utm/i,                                                // Google UTM
+  /^_mkto_/i, /^_biz/i,                                    // Marketo
+  /^_vwo/i, /^_vis_opt/i,                                  // VWO (Visual Website Optimizer)
+  /^__adroll/i, /^__ar_v/i,                                // AdRoll
+  /^_rdt_uuid/i,                                            // Reddit Pixel
+  /^_uet/i,                                                 // Microsoft UET
+  /^_twpid/i,                                               // Twitter Pixel
+  /^ajs_/i, /^analytics/i,                                  // Segment
+  /^cb_/i,                                                   // Chartbeat
+  /^sa-user-id/i,                                            // StackAdapt
+  /^signals-sdk/i,                                           // Signals
+  /^_pf_/i,                                                  // Pathfactory
+  /^__q_state/i,                                             // Qualified
+  /^vid$/i,                                                   // Various video trackers
+  /^_zitok/i,                                                // ZoomInfo
+  /^datagrail/i,                                             // DataGrail consent
+  /^hubspot/i, /^__hs/i, /^__hstc/i,                        // HubSpot
+  /^_clck$/i, /^_clsk$/i,                                   // Microsoft Clarity
+  /^intercom/i,                                              // Intercom
+  /^optimizely/i,                                            // Optimizely
+];
+
+function isThirdPartyCookie(name: string): boolean {
+  return THIRD_PARTY_COOKIE_PATTERNS.some(p => p.test(name));
+}
 
 export function shouldCheckHttpOnly(cookieName: string): boolean {
   return !SKIP_HTTPONLY_PATTERNS.some(p => p.test(cookieName));
@@ -300,7 +330,12 @@ function checkSecurityHeaders(
 function checkCookieFlags(page: CrawledPage): RawFinding[] {
   const findings: RawFinding[] = [];
 
-  for (const cookie of page.cookies) {
+  // Separate first-party (app) cookies from third-party (analytics/marketing) cookies
+  const appCookies = page.cookies.filter(c => !isThirdPartyCookie(c.name));
+  const thirdPartyCookies = page.cookies.filter(c => isThirdPartyCookie(c.name));
+
+  // Report individual findings for first-party app cookies (these matter for security)
+  for (const cookie of appCookies) {
     if (!cookie.httpOnly && shouldCheckHttpOnly(cookie.name)) {
       findings.push({
         id: randomUUID(),
@@ -339,6 +374,42 @@ function checkCookieFlags(page: CrawledPage): RawFinding[] {
         description: `The cookie "${cookie.name}" has SameSite=${cookie.sameSite || 'not set'}, allowing cross-site usage.`,
         url: page.url,
         evidence: `Cookie: ${cookie.name}; SameSite=${cookie.sameSite || 'not set'}`,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  // Group third-party analytics cookies into a SINGLE low-severity finding per issue type
+  if (thirdPartyCookies.length > 0) {
+    const missingHttpOnly = thirdPartyCookies.filter(c => !c.httpOnly && shouldCheckHttpOnly(c.name));
+    const missingSecure = thirdPartyCookies.filter(c => !c.secure && page.url.startsWith('https://'));
+
+    if (missingHttpOnly.length > 0) {
+      const names = missingHttpOnly.map(c => c.name).join(', ');
+      findings.push({
+        id: randomUUID(),
+        category: 'cookie-flags',
+        severity: 'low',
+        confidence: 'low',
+        title: `${missingHttpOnly.length} Third-Party Cookies Missing HttpOnly`,
+        description: `${missingHttpOnly.length} analytics/marketing cookies are accessible via JavaScript. These are third-party tracking cookies with limited security impact.`,
+        url: page.url,
+        evidence: `Cookies: ${names}`,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    if (missingSecure.length > 0) {
+      const names = missingSecure.map(c => c.name).join(', ');
+      findings.push({
+        id: randomUUID(),
+        category: 'cookie-flags',
+        severity: 'low',
+        confidence: 'low',
+        title: `${missingSecure.length} Third-Party Cookies Missing Secure Flag`,
+        description: `${missingSecure.length} analytics/marketing cookies can be transmitted over unencrypted connections. These are third-party tracking cookies with limited security impact.`,
+        url: page.url,
+        evidence: `Cookies: ${names}`,
         timestamp: new Date().toISOString(),
       });
     }

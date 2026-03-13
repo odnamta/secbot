@@ -79,7 +79,7 @@ export async function generateReport(
 
     log.warn('AI reporter retry also failed — using fallback');
   } else {
-    log.info('AI unavailable — using rule-based report generation');
+    log.warn('AI unavailable — using rule-based report generation (set ANTHROPIC_API_KEY for AI-powered reports)');
   }
 
   return fallbackInterpretation(validFindings, passedChecks);

@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { log } from '../utils/logger.js';
 
-const MODEL = process.env.SECBOT_MODEL || 'claude-sonnet-4-6-latest';
+const MODEL = process.env.SECBOT_MODEL || 'claude-sonnet-4-6';
 let cachedClient: Anthropic | null = null;
 
 // ─── Token Tracking ───────────────────────────────────────────────

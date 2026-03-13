@@ -245,7 +245,7 @@ export async function planAttack(
     }
     log.warn('AI planner returned invalid JSON — using default plan');
   } else {
-    log.info('AI unavailable — using default attack plan');
+    log.warn('AI unavailable — using rule-based attack plan (set ANTHROPIC_API_KEY for AI-powered planning)');
   }
 
   return buildDefaultPlan(recon, pages, profile, learningContext);

@@ -281,10 +281,27 @@ async function crawlPage(
   });
 
   try {
-    const gotoResponse = await page.goto(url, {
-      waitUntil: 'networkidle',
-      timeout: config.timeout,
-    });
+    // Try networkidle first (waits for all requests to finish).
+    // If it times out (common on marketing-heavy sites with persistent trackers),
+    // fall back to domcontentloaded which only waits for HTML parsing.
+    let gotoResponse;
+    try {
+      gotoResponse = await page.goto(url, {
+        waitUntil: 'networkidle',
+        timeout: config.timeout,
+      });
+    } catch (err) {
+      const msg = (err as Error).message ?? '';
+      if (msg.includes('Timeout') || msg.includes('timeout')) {
+        log.info(`networkidle timeout for ${url}, retrying with domcontentloaded`);
+        gotoResponse = await page.goto(url, {
+          waitUntil: 'domcontentloaded',
+          timeout: config.timeout,
+        });
+      } else {
+        throw err;
+      }
+    }
 
     // Capture document headers IMMEDIATELY from the goto response,
     // BEFORE awaiting the response handlers. The handlers call response.text()
