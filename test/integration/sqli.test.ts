@@ -301,6 +301,50 @@ describe('SQLi Integration Tests', () => {
     expect(jsonSqliFinding).toBeUndefined();
   }, 60000);
 
+  // ─── Time-based Blind SQLi Tests ──────────────────────────────────
+
+  it('detects time-based blind SQLi on /api/v1/blind-search?q=', async () => {
+    const targets: ScanTargets = {
+      pages: [`${baseUrl}/api/v1/blind-search?q=test`],
+      forms: [],
+      urlsWithParams: [`${baseUrl}/api/v1/blind-search?q=test`],
+      apiEndpoints: [],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await sqliCheck.run(context, targets, defaultConfig);
+
+    const blindFinding = findings.find(
+      (f) => f.category === 'sqli' && f.title.toLowerCase().includes('blind'),
+    );
+    expect(blindFinding).toBeDefined();
+    // Blind SQLi is high severity (suspected, not confirmed like error-based)
+    expect(['high', 'critical']).toContain(blindFinding!.severity);
+    expect(blindFinding!.evidence).toMatch(/sleep|delay|time/i);
+  }, 120000);
+
+  it('time-based blind SQLi finding has correct structure', async () => {
+    const targets: ScanTargets = {
+      pages: [`${baseUrl}/api/v1/blind-search?q=test`],
+      forms: [],
+      urlsWithParams: [`${baseUrl}/api/v1/blind-search?q=test`],
+      apiEndpoints: [],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await sqliCheck.run(context, targets, defaultConfig);
+
+    const blindFinding = findings.find(
+      (f) => f.category === 'sqli' && f.title.toLowerCase().includes('blind'),
+    );
+    expect(blindFinding).toBeDefined();
+    expect(blindFinding!.url).toContain('/api/v1/blind-search');
+    expect(blindFinding!.request).toBeDefined();
+    expect(blindFinding!.request!.method).toBe('GET');
+  }, 120000);
+
   it('skips destructive-looking JSON API endpoints', async () => {
     // JSON API test should skip endpoints with delete/destroy in the path
     const targets: ScanTargets = {

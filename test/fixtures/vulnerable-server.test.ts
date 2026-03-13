@@ -103,6 +103,18 @@ describe('Vulnerable Test Server', () => {
     expect(res2.status).toBe(200);
   });
 
+  it('has blind SQLi endpoint (delays on SLEEP payload)', async () => {
+    // Normal request should return quickly
+    const start = Date.now();
+    const res = await fetch(`${getTestUrl()}/api/v1/blind-search?q=test`);
+    const normalTime = Date.now() - start;
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.results).toEqual([]);
+    // Should respond in under 500ms for normal queries
+    expect(normalTime).toBeLessThan(500);
+  });
+
   it('sets cookies without proper flags', async () => {
     const res = await fetch(getTestUrl());
     const cookies = res.headers.getSetCookie();

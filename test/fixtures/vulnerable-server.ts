@@ -48,6 +48,7 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
     <li><a href="/api/v1/comments">Comments API (JSON XSS)</a></li>
     <li><a href="/login-vuln">Login (POST SQLi)</a></li>
     <li><a href="/api/v1/search">Search API (JSON SQLi)</a></li>
+    <li><a href="/api/v1/blind-search?q=test">Blind Search (time-based SQLi)</a></li>
     <li><a href="/api/crlf-redirect?url=https://example.com">CRLF Redirect</a></li>
     <li><a href="/api/crlf-header?name=test">CRLF Header</a></li>
     <li><a href="/safe">Safe Page</a></li>
@@ -452,6 +453,29 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
 <h1>Safe Page</h1>
 <p>Hello, ${encoded}</p>
 </body></html>`);
+  });
+
+  // ─── Time-based blind SQLi ─────────────────────────────────────────
+  // Simulates a real blind SQLi: no error messages, but SLEEP() payloads
+  // cause actual server-side delays. The endpoint always returns the same
+  // safe-looking response — the only signal is response timing.
+  app.get('/api/v1/blind-search', (req, res) => {
+    const query = req.query.q as string || '';
+    // Simulate time-based blind SQLi: if input contains SLEEP(N), delay N seconds
+    const sleepMatch = query.match(/SLEEP\((\d+)\)/i);
+    const pgSleepMatch = query.match(/pg_sleep\((\d+)\)/i);
+    const waitforMatch = query.match(/WAITFOR\s+DELAY\s+'0:0:(\d+)'/i);
+    const delaySec = sleepMatch ? parseInt(sleepMatch[1], 10)
+      : pgSleepMatch ? parseInt(pgSleepMatch[1], 10)
+      : waitforMatch ? parseInt(waitforMatch[1], 10)
+      : 0;
+    // Cap at 10s to prevent test hangs
+    const delayMs = Math.min(delaySec, 10) * 1000;
+
+    setTimeout(() => {
+      // Always return the same generic response — no SQL errors leaked
+      res.json({ results: [], total: 0, page: 1 });
+    }, delayMs);
   });
 
   // ─── CRLF Injection Endpoints ───────────────────────────────────────
