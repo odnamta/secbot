@@ -1065,14 +1065,75 @@ program
     log.info(`Hunt mode: registry at ${registryPath}`);
 
     const summary = await orch.hunt(async (prog) => {
-      // Placeholder — in a full implementation this would run a full scan
-      // and return findings. For now, log and return empty results.
-      log.info(`Would scan: ${prog.name} (${prog.platform})`);
+      const startMs = Date.now();
+      log.info(`Scanning: ${prog.name} (${prog.platform}, profile: ${prog.profile})`);
+
+      // Build scan command args
+      const args: string[] = [];
+      if (prog.scopeFile) {
+        // Use first in-scope domain as target URL
+        const { readFileSync } = await import('node:fs');
+        const scopeContent = readFileSync(resolve(prog.scopeFile), 'utf-8');
+        const { parseScopeFile: parseSF } = await import('./utils/scope-parser.js');
+        const scope = parseSF(scopeContent);
+        if (scope.inScope.length === 0) {
+          log.warn(`No in-scope targets for ${prog.name}`);
+          return { program: prog.name, findings: { high: 0, medium: 0, low: 0 }, escalations: 0, duration: 0 };
+        }
+        // Resolve first in-scope entry to a URL
+        const firstTarget = scope.inScope[0].startsWith('http') ? scope.inScope[0] : `https://${scope.inScope[0]}`;
+        args.push(firstTarget);
+        args.push('--scope-file', resolve(prog.scopeFile));
+      }
+      args.push('-p', prog.profile);
+      args.push('-f', 'json');
+      args.push('-o', join(homedir(), '.secbot', 'results', prog.name));
+      args.push('-y'); // auto-consent for non-interactive
+      if (prog.auth) args.push('-a', resolve(prog.auth));
+
+      // Run scan as child process
+      const { execFile } = await import('node:child_process');
+      const { promisify } = await import('node:util');
+      const execFileAsync = promisify(execFile);
+
+      try {
+        await execFileAsync('npx', ['tsx', resolve(join(import.meta.dirname ?? '.', '..', 'src', 'index.ts')), 'scan', ...args], {
+          timeout: 30 * 60 * 1000, // 30 min max per program
+          env: { ...process.env },
+          cwd: resolve(join(import.meta.dirname ?? '.', '..')),
+        });
+      } catch (err) {
+        const exitCode = (err as { code?: number }).code;
+        // Exit code 1 = findings found (expected), 2 = error
+        if (exitCode === 2) {
+          throw new Error(`Scan failed for ${prog.name}: ${(err as Error).message}`);
+        }
+      }
+
+      // Read JSON report to count findings
+      const { readdir } = await import('node:fs/promises');
+      const resultsDir = join(homedir(), '.secbot', 'results', prog.name);
+      let findings = { high: 0, medium: 0, low: 0 };
+      try {
+        const files = await readdir(resultsDir);
+        const jsonFiles = files.filter(f => f.endsWith('.json') && f !== 'escalation.json').sort().reverse();
+        if (jsonFiles.length > 0) {
+          const report = JSON.parse(readFileSync(join(resultsDir, jsonFiles[0]), 'utf-8'));
+          const interpreted = report.interpretedFindings ?? report.findings ?? [];
+          for (const f of interpreted) {
+            const sev = (f.severity || '').toLowerCase();
+            if (sev === 'critical' || sev === 'high') findings.high++;
+            else if (sev === 'medium') findings.medium++;
+            else findings.low++;
+          }
+        }
+      } catch { /* no report yet */ }
+
       return {
         program: prog.name,
-        findings: { high: 0, medium: 0, low: 0 },
+        findings,
         escalations: 0,
-        duration: 0,
+        duration: Date.now() - startMs,
       };
     });
 
