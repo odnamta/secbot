@@ -1097,10 +1097,12 @@ program
       const execFileAsync = promisify(execFile);
 
       try {
-        await execFileAsync('npx', ['tsx', resolve(join(import.meta.dirname ?? '.', '..', 'src', 'index.ts')), 'scan', ...args], {
+        const thisDir = new URL('.', import.meta.url).pathname;
+        const projectRoot = resolve(thisDir, '..');
+        await execFileAsync('npx', ['tsx', join(projectRoot, 'src', 'index.ts'), 'scan', ...args], {
           timeout: 30 * 60 * 1000, // 30 min max per program
           env: { ...process.env },
-          cwd: resolve(join(import.meta.dirname ?? '.', '..')),
+          cwd: projectRoot,
         });
       } catch (err) {
         const exitCode = (err as { code?: number }).code;
@@ -1116,7 +1118,7 @@ program
       let findings = { high: 0, medium: 0, low: 0 };
       try {
         const files = await readdir(resultsDir);
-        const jsonFiles = files.filter(f => f.endsWith('.json') && f !== 'escalation.json').sort().reverse();
+        const jsonFiles = files.filter(f => f.startsWith('secbot-20') && f.endsWith('.json')).sort().reverse();
         if (jsonFiles.length > 0) {
           const report = JSON.parse(readFileSync(join(resultsDir, jsonFiles[0]), 'utf-8'));
           const interpreted = report.interpretedFindings ?? report.findings ?? [];
