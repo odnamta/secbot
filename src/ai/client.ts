@@ -48,7 +48,7 @@ export function getClient(): Anthropic | null {
 export interface AskClaudeOptions {
   maxTokens?: number;
   temperature?: number;
-  /** Timeout in ms — defaults to 30s */
+  /** Timeout in ms — defaults to 60s */
   timeout?: number;
 }
 
@@ -72,7 +72,7 @@ export async function askClaude(
   const client = getClient();
   if (!client) return null;
 
-  const { maxTokens = 4096, temperature = 0.1, timeout = 30000 } = options;
+  const { maxTokens = 4096, temperature = 0.1, timeout = 60000 } = options;
 
   try {
     const controller = new AbortController();
