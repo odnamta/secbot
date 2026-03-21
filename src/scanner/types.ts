@@ -70,6 +70,8 @@ export interface EvidencePack {
   reproductionUrl?: string;
   /** Detection method that flagged this (e.g. "error-pattern", "timing", "reflection") */
   detectionMethod?: string;
+  /** Absolute path to a screenshot captured during auto-verify (visual evidence) */
+  screenshotPath?: string;
 }
 
 export interface RawFinding {

@@ -253,6 +253,7 @@ function buildFinding(
     evidencePack: {
       payloadUsed: payload.payload,
       responseIndicators: [detectionDetail],
+      detectionMethod: 'deserialization-indicator',
     },
   };
 }

@@ -78,8 +78,8 @@ export const tlsCheck: ActiveCheck = {
             evidence: `Negotiated protocol: ${tlsInfo.protocol}`,
             timestamp: new Date().toISOString(),
             confidence: 'high',
+            evidencePack: { detectionMethod: 'tls-probe' },
           });
-        } else {
           log.debug(`TLS version: ${tlsInfo.protocol} (OK)`);
         }
       }
@@ -103,8 +103,8 @@ export const tlsCheck: ActiveCheck = {
             evidence: `Certificate valid to: ${tlsInfo.validTo}\nExpired ${Math.abs(daysUntilExpiry)} days ago`,
             timestamp: new Date().toISOString(),
             confidence: 'high',
+            evidencePack: { detectionMethod: 'tls-probe' },
           });
-        } else if (daysUntilExpiry <= CERT_EXPIRY_WARNING_DAYS) {
           findings.push({
             id: randomUUID(),
             category: 'tls',
@@ -115,8 +115,8 @@ export const tlsCheck: ActiveCheck = {
             evidence: `Certificate valid to: ${tlsInfo.validTo}\nExpires in ${daysUntilExpiry} days`,
             timestamp: new Date().toISOString(),
             confidence: 'high',
+            evidencePack: { detectionMethod: 'tls-probe' },
           });
-        } else {
           log.debug(`Certificate expires in ${daysUntilExpiry} days (OK)`);
         }
       }
@@ -134,6 +134,7 @@ export const tlsCheck: ActiveCheck = {
           evidence: `Issuer: ${tlsInfo.issuer ?? 'unknown'}\nSubject: ${tlsInfo.subject ?? 'unknown'}`,
           timestamp: new Date().toISOString(),
           confidence: 'medium',
+          evidencePack: { detectionMethod: 'tls-probe' },
         });
       }
 
@@ -160,6 +161,7 @@ export const tlsCheck: ActiveCheck = {
             evidence: `Strict-Transport-Security: ${hstsInfo}`,
             timestamp: new Date().toISOString(),
             confidence: 'low',
+            evidencePack: { detectionMethod: 'tls-probe' },
           });
         }
       } else {
@@ -204,8 +206,10 @@ export function getTlsInfo(host: string, port: number): Promise<TlsInfo> {
         const cert = socket.getPeerCertificate();
         const protocol = socket.getProtocol();
 
-        const issuerCN = cert.issuer?.CN ?? cert.issuer?.O ?? null;
-        const subjectCN = cert.subject?.CN ?? cert.subject?.O ?? null;
+        const rawIssuerCN = cert.issuer?.CN ?? cert.issuer?.O ?? null;
+        const issuerCN = Array.isArray(rawIssuerCN) ? rawIssuerCN[0] : rawIssuerCN;
+        const rawSubjectCN = cert.subject?.CN ?? cert.subject?.O ?? null;
+        const subjectCN = Array.isArray(rawSubjectCN) ? rawSubjectCN[0] : rawSubjectCN;
 
         // Self-signed: issuer matches subject
         const selfSigned = !!(

@@ -337,6 +337,7 @@ async function testSqliOnForms(
                 body: textInputs.map((i) => `${i.name}=${payload}`).join('&'),
               },
               timestamp: new Date().toISOString(),
+              evidencePack: { detectionMethod: 'error-pattern' },
             });
             break;
           }
@@ -407,6 +408,7 @@ async function testSqliOnForms(
                   body: payloadBody,
                 },
                 timestamp: new Date().toISOString(),
+                evidencePack: { detectionMethod: 'error-pattern' },
               });
               break;
             }
@@ -464,6 +466,7 @@ async function testSqliOnForms(
               body: trueBody,
             },
             timestamp: new Date().toISOString(),
+            evidencePack: { detectionMethod: 'error-pattern' },
           });
           break;
         }
@@ -519,6 +522,7 @@ async function testSqliOnForms(
                 },
                 response: { status: resp.status(), bodySnippet: body.slice(0, 300) },
                 timestamp: new Date().toISOString(),
+                evidencePack: { detectionMethod: 'nosql-injection' },
               });
               break;
             }
@@ -603,6 +607,7 @@ async function testSqliOnUrls(
                   request: { method: 'GET', url: testUrl.href },
                   response: { status: response.status(), bodySnippet: body.slice(0, 300) },
                   timestamp: new Date().toISOString(),
+                  evidencePack: { detectionMethod: 'error-pattern' },
                 });
                 foundForParam = true;
                 break;
@@ -652,6 +657,7 @@ async function testSqliOnUrls(
                     request: { method: 'GET', url: hppUrl },
                     response: { status: response.status(), bodySnippet: body.slice(0, 300) },
                     timestamp: new Date().toISOString(),
+                    evidencePack: { detectionMethod: 'error-pattern' },
                   });
                   foundForParam = true;
                   break;
@@ -702,6 +708,7 @@ async function testSqliOnUrls(
                   evidence: `Payload: ${payload}\nBaseline median: ${Math.round(baselineMedian)}ms\nWith payload median: ${payloadMedian}ms\nDifference: ${Math.round(diff)}ms (threshold: ${BLIND_SQLI_THRESHOLD_MS}ms)`,
                   request: { method: 'GET', url: testUrl.href },
                   timestamp: new Date().toISOString(),
+                  evidencePack: { detectionMethod: 'error-pattern' },
                 });
                 foundForParam = true;
               }
@@ -748,6 +755,7 @@ async function testSqliOnUrls(
               evidence: `True payload: ${truePayload} (lengths: ${result.trueLen}, ${result.trueLen2})\nFalse payload: ${falsePayload} (lengths: ${result.falseLen}, ${result.falseLen2})\nDifference: ${(result.diff * 100).toFixed(1)}% (threshold: ${BOOLEAN_BLIND_THRESHOLD * 100}%)`,
               request: { method: 'GET', url: trueUrl.href },
               timestamp: new Date().toISOString(),
+              evidencePack: { detectionMethod: 'error-pattern' },
             });
             foundForParam = true;
           }
@@ -822,6 +830,7 @@ async function testSqliOnUrls(
                 request: { method: 'GET', url: testUrl.href },
                 response: { status: resp.status(), bodySnippet: body.slice(0, 300) },
                 timestamp: new Date().toISOString(),
+                evidencePack: { detectionMethod: 'error-pattern' },
               });
               foundForParam = true;
             }
@@ -872,6 +881,7 @@ async function testSqliOnUrls(
                   request: { method: 'GET', url: testUrl.href },
                   response: { status: response.status(), bodySnippet: body.slice(0, 300) },
                   timestamp: new Date().toISOString(),
+                  evidencePack: { detectionMethod: 'nosql-injection' },
                 });
                 foundForParam = true;
                 break;
@@ -916,6 +926,7 @@ async function testSqliOnUrls(
                   evidence: `Payload: ${payload}\nBaseline median: ${Math.round(baselineMedian)}ms\nWith payload median: ${payloadMedian}ms\nDifference: ${Math.round(diff)}ms`,
                   request: { method: 'GET', url: testUrl.href },
                   timestamp: new Date().toISOString(),
+                  evidencePack: { detectionMethod: 'time-based-blind' },
                 });
                 foundForParam = true;
               }
@@ -1008,6 +1019,7 @@ async function testPostFormSqli(
                 },
                 response: { status: resp.status(), bodySnippet: body.slice(0, 300) },
                 timestamp: new Date().toISOString(),
+                evidencePack: { detectionMethod: 'error-pattern' },
               });
               foundForForm = true;
               break;
@@ -1083,6 +1095,7 @@ async function testPostFormSqli(
                   body: payloadBody,
                 },
                 timestamp: new Date().toISOString(),
+                evidencePack: { detectionMethod: 'error-pattern' },
               });
               foundForForm = true;
             }
@@ -1197,6 +1210,7 @@ async function testJsonApiSqli(
                   },
                   response: { status: resp.status(), bodySnippet: body.slice(0, 300) },
                   timestamp: new Date().toISOString(),
+                  evidencePack: { detectionMethod: 'error-pattern' },
                 });
                 foundForEndpoint = true;
                 break;
@@ -1263,6 +1277,7 @@ async function testJsonApiSqli(
                     body: jsonBody,
                   },
                   timestamp: new Date().toISOString(),
+                  evidencePack: { detectionMethod: 'error-pattern' },
                 });
                 foundForEndpoint = true;
               }
@@ -1486,6 +1501,7 @@ async function testNoSqlJsonApi(
                   request: { method, url: endpoint, body: jsonBody },
                   response: { status, bodySnippet: body.slice(0, 300) },
                   timestamp: new Date().toISOString(),
+                  evidencePack: { detectionMethod: 'nosql-injection' },
                 });
                 foundForEndpoint = true;
                 break;
@@ -1509,6 +1525,7 @@ async function testNoSqlJsonApi(
                   request: { method, url: endpoint, body: jsonBody },
                   response: { status, bodySnippet: body.slice(0, 300) },
                   timestamp: new Date().toISOString(),
+                  evidencePack: { detectionMethod: 'nosql-injection' },
                 });
                 foundForEndpoint = true;
               }
@@ -1531,6 +1548,7 @@ async function testNoSqlJsonApi(
                   request: { method, url: endpoint, body: jsonBody },
                   response: { status, bodySnippet: body.slice(0, 300) },
                   timestamp: new Date().toISOString(),
+                  evidencePack: { detectionMethod: 'nosql-injection' },
                 });
                 foundForEndpoint = true;
               }
@@ -1648,6 +1666,7 @@ async function testStackedQuerySqli(
             response: { status: 0, bodySnippet: '' },
             timestamp: new Date().toISOString(),
             confidence: 'high',
+            evidencePack: { detectionMethod: 'time-based-blind' },
           });
           foundForUrl = true;
         }

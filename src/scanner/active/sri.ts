@@ -96,6 +96,7 @@ export const sriCheck: ActiveCheck = {
             timestamp: new Date().toISOString(),
             affectedUrls: missingIntegrity.map((r) => r.url),
             confidence: 'medium',
+            evidencePack: { detectionMethod: 'integrity-check' },
           });
         }
       } catch (err) {

@@ -299,6 +299,7 @@ export const timingAttackCheck: ActiveCheck = {
               },
             }),
             timestamp: new Date().toISOString(),
+            evidencePack: { detectionMethod: 'timing-analysis' },
           });
 
           log.info(

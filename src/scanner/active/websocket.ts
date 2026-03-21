@@ -227,6 +227,7 @@ async function testAuthBypass(
         response: { status: 101, bodySnippet: 'WebSocket connected + data received' },
         timestamp: new Date().toISOString(),
         confidence: 'medium',
+        evidencePack: { detectionMethod: 'websocket-probe' },
       };
     }
   } catch (err) {
@@ -315,6 +316,7 @@ async function testOriginValidation(
         response: { status: 101, bodySnippet: 'WebSocket accepted from null origin' },
         timestamp: new Date().toISOString(),
         confidence: 'low',
+        evidencePack: { detectionMethod: 'websocket-probe' },
       };
     }
   } catch (err) {
@@ -406,6 +408,7 @@ async function testMessageInjection(
         response: { status: 101, bodySnippet: (result.response || '').slice(0, 200) },
         timestamp: new Date().toISOString(),
         confidence: 'high',
+        evidencePack: { detectionMethod: 'websocket-probe' },
       };
     }
   } catch (err) {

@@ -284,6 +284,7 @@ function detectUuidV1Usage(urls: string[]): RawFinding[] {
         timestamp: new Date().toISOString(),
         affectedUrls: [url],
         confidence: 'medium',
+        evidencePack: { detectionMethod: 'response-comparison' },
       });
     }
 
@@ -317,6 +318,7 @@ function detectUuidV1Usage(urls: string[]): RawFinding[] {
         timestamp: new Date().toISOString(),
         affectedUrls: [url],
         confidence: 'medium',
+        evidencePack: { detectionMethod: 'response-comparison' },
       });
     }
   }
@@ -417,6 +419,7 @@ async function testIdor(
               timestamp: new Date().toISOString(),
               affectedUrls: [pattern.url],
               confidence: 'high',
+              evidencePack: { detectionMethod: 'response-comparison' },
             });
           }
         } catch (err) {
@@ -528,6 +531,7 @@ async function testQueryParamIdor(
                 timestamp: new Date().toISOString(),
                 affectedUrls: [qp.url, probeHref],
                 confidence: 'high',
+                evidencePack: { detectionMethod: 'response-comparison' },
               });
             }
           } catch (err) {

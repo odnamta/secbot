@@ -222,6 +222,7 @@ async function testIntrospection(
               response: { status, bodySnippet: body.slice(0, 300) },
               timestamp: new Date().toISOString(),
               confidence: 'high',
+              evidencePack: { detectionMethod: 'introspection' },
             },
             schema,
           };
@@ -272,6 +273,7 @@ function analyzeMutations(
       evidence: `Sensitive mutations found:\n${sensitiveMutations.map((m) => `  - ${m.name}`).join('\n')}`,
       timestamp: new Date().toISOString(),
       confidence: 'medium',
+      evidencePack: { detectionMethod: 'introspection' },
     });
   }
 
@@ -324,6 +326,7 @@ async function testDepthLimit(
             response: { status, bodySnippet: body.slice(0, 200) },
             timestamp: new Date().toISOString(),
             confidence: 'medium',
+            evidencePack: { detectionMethod: 'depth-probe' },
           };
         }
       } catch {
@@ -385,6 +388,7 @@ async function testBatchQueries(
             response: { status, bodySnippet: body.slice(0, 200) },
             timestamp: new Date().toISOString(),
             confidence: 'low',
+            evidencePack: { detectionMethod: 'depth-probe' },
           };
         }
       } catch {
@@ -504,6 +508,7 @@ async function testFieldSuggestions(
         request: { method: 'POST', url: endpoint },
         timestamp: new Date().toISOString(),
         confidence: 'high',
+        evidencePack: { detectionMethod: 'introspection' },
       });
     }
   } finally {
@@ -565,6 +570,7 @@ async function testAliasAmplification(
             response: { status, bodySnippet: body.slice(0, 200) },
             timestamp: new Date().toISOString(),
             confidence: 'medium',
+            evidencePack: { detectionMethod: 'depth-probe' },
           };
         }
       } catch { /* not valid JSON */ }

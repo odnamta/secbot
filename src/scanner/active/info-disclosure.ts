@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import type { RawFinding } from '../types.js';
+import type { BrowserContext } from 'playwright';
+import type { RawFinding, ScanConfig } from '../types.js';
 import { log } from '../../utils/logger.js';
-import type { ActiveCheck } from './index.js';
+import type { ActiveCheck, ScanTargets } from './index.js';
+import type { RequestLogger } from '../../utils/request-logger.js';
 
 /**
  * Patterns that indicate a sensitive path in robots.txt Disallow directives.
@@ -555,6 +557,70 @@ export function isValidSourceMap(body: string): boolean {
 }
 
 /**
+ * Extract sourceMappingURL references from JavaScript content.
+ * Handles both relative and absolute URLs, inline data URIs are skipped.
+ * Exported for testing.
+ */
+export function extractSourceMappingURLs(jsContent: string, baseUrl: string): string[] {
+  const urls: string[] = [];
+  // Match //# sourceMappingURL=<url> or //@ sourceMappingURL=<url> (legacy)
+  const re = /\/\/[#@]\s*sourceMappingURL\s*=\s*(\S+)/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(jsContent)) !== null) {
+    const raw = match[1];
+    // Skip inline data URIs — they don't expose a fetchable file
+    if (raw.startsWith('data:')) continue;
+    try {
+      const resolved = new URL(raw, baseUrl).href;
+      urls.push(resolved);
+    } catch {
+      // Malformed URL — skip
+    }
+  }
+  return urls;
+}
+
+/**
+ * Analyze source map JSON for severity-relevant content.
+ * Returns metadata about the source map: source count, whether sourcesContent is present,
+ * and whether any secrets were found inside sourcesContent.
+ * Exported for testing.
+ */
+export function analyzeSourceMapContent(body: string): {
+  valid: boolean;
+  sourceCount: number;
+  hasSourcesContent: boolean;
+  secretsFound: string[];
+} {
+  try {
+    const parsed = JSON.parse(body);
+    if (typeof parsed !== 'object' || parsed === null || !('sources' in parsed)) {
+      return { valid: false, sourceCount: 0, hasSourcesContent: false, secretsFound: [] };
+    }
+    const sources: string[] = Array.isArray(parsed.sources) ? parsed.sources : [];
+    const sourcesContent: string[] = Array.isArray(parsed.sourcesContent) ? parsed.sourcesContent : [];
+    const hasSourcesContent = sourcesContent.some((s) => typeof s === 'string' && s.length > 0);
+
+    // Scan sourcesContent for secrets
+    const secretsFound: string[] = [];
+    if (hasSourcesContent) {
+      const combined = sourcesContent.filter((s) => typeof s === 'string').join('\n').slice(0, 500_000);
+      for (const pattern of JS_SECRET_PATTERNS) {
+        pattern.re.lastIndex = 0;
+        if (pattern.re.test(combined)) {
+          secretsFound.push(pattern.name);
+          pattern.re.lastIndex = 0; // reset after test
+        }
+      }
+    }
+
+    return { valid: true, sourceCount: sources.length, hasSourcesContent, secretsFound };
+  } catch {
+    return { valid: false, sourceCount: 0, hasSourcesContent: false, secretsFound: [] };
+  }
+}
+
+/**
  * Check if a response matches SQL dump patterns.
  * Exported for testing.
  */
@@ -712,13 +778,268 @@ export function matchesActuatorEndpoint(body: string): boolean {
   return false;
 }
 
+/** Max source map URLs to probe per scan */
+const SOURCE_MAP_LIMIT = 10;
+
+/**
+ * Detect exposed source maps by:
+ * 1. Fetching JS files and extracting //# sourceMappingURL= references
+ * 2. Falling back to .js.map suffix probing for JS files without an explicit reference
+ * 3. Analyzing source map content for severity (sourcesContent presence, embedded secrets)
+ */
+async function checkSourceMapExposure(
+  context: BrowserContext,
+  targets: ScanTargets,
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+  const seenMapUrls = new Set<string>();
+
+  // Collect candidate source map URLs from up to 3 pages
+  const pagesToScan = targets.pages.slice(0, 3);
+  for (const pageUrl of pagesToScan) {
+    if (seenMapUrls.size >= SOURCE_MAP_LIMIT) break;
+    try {
+      const page = await context.newPage();
+      try {
+        await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: config.timeout });
+
+        // Gather JS script URLs from the page
+        const jsUrls: string[] = await page.evaluate(() => {
+          const urls: string[] = [];
+          const scripts = document.querySelectorAll('script[src]');
+          for (const el of scripts) {
+            const src = el.getAttribute('src');
+            if (src) {
+              try {
+                const resolved = new URL(src, window.location.href);
+                if (resolved.pathname.endsWith('.js')) {
+                  urls.push(resolved.href);
+                }
+              } catch {
+                // skip invalid
+              }
+            }
+          }
+          return urls;
+        });
+
+        // For each JS file, fetch the last 500 bytes (where sourceMappingURL lives) or full content
+        // Then extract sourceMappingURL or fall back to .js.map
+        for (const jsUrl of jsUrls.slice(0, 20)) {
+          if (seenMapUrls.size >= SOURCE_MAP_LIMIT) break;
+
+          try {
+            // Fetch the JS file content (last portion where sourceMappingURL typically appears)
+            const jsContent: string | null = await page.evaluate(async (url: string) => {
+              try {
+                const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
+                if (!resp.ok) return null;
+                const text = await resp.text();
+                // sourceMappingURL is always at the end of the file — only need last 500 chars
+                return text.slice(-500);
+              } catch {
+                return null;
+              }
+            }, jsUrl);
+
+            if (jsContent) {
+              const mappingUrls = extractSourceMappingURLs(jsContent, jsUrl);
+              if (mappingUrls.length > 0) {
+                for (const mapUrl of mappingUrls) {
+                  if (!seenMapUrls.has(mapUrl) && seenMapUrls.size < SOURCE_MAP_LIMIT) {
+                    seenMapUrls.add(mapUrl);
+                  }
+                }
+              } else {
+                // No explicit sourceMappingURL — try .js.map suffix
+                const fallbackMapUrl = `${jsUrl}.map`;
+                if (!seenMapUrls.has(fallbackMapUrl) && seenMapUrls.size < SOURCE_MAP_LIMIT) {
+                  seenMapUrls.add(fallbackMapUrl);
+                }
+              }
+            }
+          } catch (err) {
+            log.debug(`Source map discovery: failed to fetch JS ${jsUrl}: ${(err as Error).message}`);
+          }
+        }
+
+        // Also check inline scripts for sourceMappingURL references
+        const inlineMappings: string[] = await page.evaluate(() => {
+          const results: string[] = [];
+          const scripts = document.querySelectorAll('script:not([src])');
+          const re = /\/\/[#@]\s*sourceMappingURL\s*=\s*(\S+)/g;
+          for (const el of scripts) {
+            const text = el.textContent ?? '';
+            // Only check end of inline scripts
+            const tail = text.slice(-500);
+            let m: RegExpExecArray | null;
+            re.lastIndex = 0;
+            while ((m = re.exec(tail)) !== null) {
+              const raw = m[1];
+              if (raw.startsWith('data:')) continue;
+              try {
+                results.push(new URL(raw, window.location.href).href);
+              } catch {
+                // skip
+              }
+            }
+          }
+          return results;
+        });
+
+        for (const mapUrl of inlineMappings) {
+          if (!seenMapUrls.has(mapUrl) && seenMapUrls.size < SOURCE_MAP_LIMIT) {
+            seenMapUrls.add(mapUrl);
+          }
+        }
+      } finally {
+        await page.close();
+      }
+    } catch (err) {
+      log.debug(`Source map discovery: failed to scan page ${pageUrl}: ${(err as Error).message}`);
+    }
+  }
+
+  if (seenMapUrls.size === 0) return findings;
+
+  log.info(`Source map exposure: probing ${seenMapUrls.size} candidate source map URL(s)...`);
+
+  // Probe each candidate source map URL
+  try {
+    const page = await context.newPage();
+    try {
+      for (const mapUrl of seenMapUrls) {
+        try {
+          // HEAD request first for efficiency — check if the resource exists
+          const headResult = await page.evaluate(async (url: string) => {
+            try {
+              const resp = await fetch(url, { method: 'HEAD', redirect: 'follow' });
+              const ct = resp.headers.get('content-type') ?? '';
+              return { status: resp.status, contentType: ct };
+            } catch {
+              return null;
+            }
+          }, mapUrl);
+
+          requestLogger?.log({
+            timestamp: new Date().toISOString(),
+            method: 'HEAD',
+            url: mapUrl,
+            responseStatus: headResult?.status ?? 0,
+            phase: 'active-info-disclosure',
+          });
+
+          if (!headResult || headResult.status !== 200) continue;
+
+          // HEAD succeeded with 200 — now GET the content to validate
+          const getResult = await page.evaluate(async (url: string) => {
+            try {
+              const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
+              if (!resp.ok) return null;
+              const text = await resp.text();
+              // Cap at 100KB for analysis (source maps can be huge)
+              return { status: resp.status, body: text.slice(0, 100_000), contentType: resp.headers.get('content-type') ?? '' };
+            } catch {
+              return null;
+            }
+          }, mapUrl);
+
+          requestLogger?.log({
+            timestamp: new Date().toISOString(),
+            method: 'GET',
+            url: mapUrl,
+            responseStatus: getResult?.status ?? 0,
+            phase: 'active-info-disclosure',
+          });
+
+          if (!getResult) continue;
+
+          // Validate: must be JSON with "sources" key, OR content-type application/json + starts with {"version":
+          const isJsonCt = getResult.contentType.includes('application/json') || getResult.contentType.includes('application/octet-stream');
+          const startsLikeSourceMap = getResult.body.trimStart().startsWith('{"version":');
+          if (!isValidSourceMap(getResult.body) && !(isJsonCt && startsLikeSourceMap)) continue;
+
+          // Analyze source map content
+          const analysis = analyzeSourceMapContent(getResult.body);
+          if (!analysis.valid) continue;
+
+          // Determine severity: high if secrets found in sourcesContent, medium otherwise
+          const hasSecrets = analysis.secretsFound.length > 0;
+          const severity = hasSecrets ? 'high' as const : 'medium' as const;
+
+          // Build evidence details
+          const evidenceParts: string[] = [
+            `Source map URL: ${mapUrl}`,
+            `Source files exposed: ${analysis.sourceCount}`,
+            `sourcesContent present: ${analysis.hasSourcesContent ? 'YES — full original source code accessible' : 'no (mappings only)'}`,
+          ];
+          if (hasSecrets) {
+            evidenceParts.push(`Secrets found in source: ${analysis.secretsFound.join(', ')}`);
+          }
+
+          const title = analysis.hasSourcesContent
+            ? 'Source Map Exposure — Original Source Code Accessible'
+            : 'Source Map Exposure — File Structure Revealed';
+
+          const description = analysis.hasSourcesContent
+            ? `A JavaScript source map at ${mapUrl} is publicly accessible and contains the original source code of ${analysis.sourceCount} file(s) via the sourcesContent field. ` +
+              'Attackers can reconstruct the entire application source, review business logic, find hardcoded secrets, and identify vulnerabilities without needing to deobfuscate minified code.' +
+              (hasSecrets ? ` Additionally, embedded secrets were detected: ${analysis.secretsFound.join(', ')}.` : '')
+            : `A JavaScript source map at ${mapUrl} is publicly accessible and reveals the file structure of ${analysis.sourceCount} source file(s). ` +
+              'While the original source code is not directly included, the file paths expose internal architecture, technology choices, and potential attack vectors.';
+
+          findings.push({
+            id: randomUUID(),
+            category: 'info-disclosure',
+            severity,
+            title,
+            description,
+            url: mapUrl,
+            evidence: evidenceParts.join('\n'),
+            response: {
+              status: getResult.status,
+              headers: { 'content-type': getResult.contentType },
+              bodySnippet: getResult.body.slice(0, 200),
+            },
+            timestamp: new Date().toISOString(),
+            confidence: analysis.hasSourcesContent ? 'high' : 'medium',
+            evidencePack: {
+              curlCommand: `curl -s '${mapUrl}' | head -c 500`,
+              detectionMethod: 'source-map-probe',
+              responseIndicators: [
+                ...(analysis.hasSourcesContent ? ['"sourcesContent" field present'] : []),
+                `${analysis.sourceCount} source files listed`,
+                ...(hasSecrets ? analysis.secretsFound.map((s) => `Secret: ${s}`) : []),
+              ],
+            },
+          });
+        } catch (err) {
+          log.debug(`Source map probe: failed for ${mapUrl}: ${(err as Error).message}`);
+        }
+      }
+    } finally {
+      await page.close();
+    }
+  } catch (err) {
+    log.debug(`Source map exposure check: page context error: ${(err as Error).message}`);
+  }
+
+  if (findings.length > 0) {
+    log.info(`Source map exposure: ${findings.length} exposed source map(s) found`);
+  }
+
+  return findings;
+}
+
 /**
  * Information Disclosure check.
  *
  * Scans for exposed sensitive files and paths that should never be publicly accessible:
  * - .git/config, .git/HEAD — repository exposure
  * - .env, .env.local, .env.production, .env.development — environment variable files
- * - Source maps (.js.map) — full source code exposure
+ * - Source maps (.js.map) — full source code exposure via sourceMappingURL + suffix probing
  * - robots.txt — sensitive disallowed paths
  * - Common backup/config files — database dumps, config backups
  */
@@ -779,6 +1100,7 @@ export const infoDisclosureCheck: ActiveCheck = {
               },
               timestamp: new Date().toISOString(),
               confidence: probe.severity === 'high' ? 'high' : probe.severity === 'medium' ? 'medium' : 'low',
+              evidencePack: { detectionMethod: 'file-probe' },
             });
           }
         } finally {
@@ -789,90 +1111,12 @@ export const infoDisclosureCheck: ActiveCheck = {
       }
     }
 
-    // ── 2. Source map probes ──
-    // Find all JS URLs from the first page and try .js.map
+    // ── 2. Source map exposure detection ──
+    // Discovers source maps via sourceMappingURL comments in JS files AND .js.map suffix probing.
+    // Analyzes source map content for severity (sourcesContent, embedded secrets).
     if (targets.pages.length > 0) {
-      const firstPage = targets.pages[0];
-      try {
-        const page = await context.newPage();
-        try {
-          await page.goto(firstPage, {
-            waitUntil: 'domcontentloaded',
-            timeout: config.timeout,
-          });
-
-          const jsUrls = await page.evaluate(() => {
-            const urls: string[] = [];
-            const scripts = document.querySelectorAll('script[src]');
-            for (const el of scripts) {
-              const src = el.getAttribute('src');
-              if (src) {
-                try {
-                  const resolved = new URL(src, window.location.href);
-                  if (resolved.pathname.endsWith('.js')) {
-                    urls.push(resolved.href);
-                  }
-                } catch {
-                  // skip invalid
-                }
-              }
-            }
-            return urls;
-          });
-
-          // Probe each .js URL for a corresponding .map file
-          for (const jsUrl of jsUrls.slice(0, 20)) {
-            // Cap to 20 to avoid excessive probing
-            const mapUrl = `${jsUrl}.map`;
-            try {
-              const mapResult = await page.evaluate(async (url: string) => {
-                try {
-                  const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
-                  if (!resp.ok) return null;
-                  const text = await resp.text();
-                  return { status: resp.status, body: text.slice(0, 5000) };
-                } catch {
-                  return null;
-                }
-              }, mapUrl);
-
-              requestLogger?.log({
-                timestamp: new Date().toISOString(),
-                method: 'GET',
-                url: mapUrl,
-                responseStatus: mapResult?.status ?? 0,
-                phase: 'active-info-disclosure',
-              });
-
-              if (mapResult && isValidSourceMap(mapResult.body)) {
-                findings.push({
-                  id: randomUUID(),
-                  category: 'info-disclosure',
-                  severity: 'medium',
-                  title: 'Exposed Source Map',
-                  description:
-                    `A JavaScript source map is publicly accessible at ${mapUrl}. ` +
-                    'Source maps contain the original source code, making it trivial for attackers to review application logic, find hardcoded secrets, and identify vulnerabilities.',
-                  url: mapUrl,
-                  evidence: `Source map found for ${jsUrl}`,
-                  response: {
-                    status: mapResult.status,
-                    bodySnippet: mapResult.body.slice(0, 200),
-                  },
-                  timestamp: new Date().toISOString(),
-                  confidence: 'medium',
-                });
-              }
-            } catch (err) {
-              log.debug(`Info disclosure: failed to probe source map ${mapUrl}: ${(err as Error).message}`);
-            }
-          }
-        } finally {
-          await page.close();
-        }
-      } catch (err) {
-        log.debug(`Info disclosure: failed to scan for source maps: ${(err as Error).message}`);
-      }
+      const sourceMapFindings = await checkSourceMapExposure(context, targets, config, requestLogger);
+      findings.push(...sourceMapFindings);
     }
 
     // ── 3. robots.txt sensitive paths ──
@@ -919,6 +1163,7 @@ export const infoDisclosureCheck: ActiveCheck = {
               timestamp: new Date().toISOString(),
               affectedUrls: sensitivePaths.map((p) => `${origin}${p}`),
               confidence: 'low',
+              evidencePack: { detectionMethod: 'file-probe' },
             });
           }
         }
@@ -983,6 +1228,7 @@ export const infoDisclosureCheck: ActiveCheck = {
                 evidence: `Pattern: ${secret.name}\nMatch: ${secret.match}\nContext: ...${secret.context}...`,
                 timestamp: new Date().toISOString(),
                 confidence: 'high',
+                evidencePack: { detectionMethod: 'js-secret-scan' },
               });
             }
           }
@@ -1019,6 +1265,7 @@ export const infoDisclosureCheck: ActiveCheck = {
                     evidence: `Pattern: ${secret.name}\nMatch: ${secret.match}\nContext: ...${secret.context}...`,
                     timestamp: new Date().toISOString(),
                     confidence: 'high',
+                    evidencePack: { detectionMethod: 'js-secret-scan' },
                   });
                 }
               }

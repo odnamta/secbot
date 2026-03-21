@@ -340,6 +340,7 @@ export const jwtCheck: ActiveCheck = {
           evidence: `Token source: ${source}\nHeader: ${JSON.stringify(parsed.header)}\nPayload keys: ${Object.keys(parsed.payload).join(', ')}\nAlgorithm: ${parsed.header.alg}`,
           timestamp: new Date().toISOString(),
           confidence: issueConfidence,
+          evidencePack: { detectionMethod: /weak.*secret|weak.*key/i.test(issue.issue) ? 'weak-secret' : /expiry|exp/i.test(issue.issue) ? 'missing-expiry' : 'none-algorithm' },
         });
       }
 
@@ -516,6 +517,7 @@ async function testNoneAlgorithm(
               response: { status },
               timestamp: new Date().toISOString(),
               confidence: 'high',
+              evidencePack: { detectionMethod: 'none-algorithm' },
             });
             return findings; // One proof is enough
           }

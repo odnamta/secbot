@@ -284,7 +284,7 @@ async function testSmugglingProbe(
         evidencePack: {
           payloadUsed: probe.body,
           responseIndicators: [`${elapsed}ms delay (baseline: ${baselineMs}ms)`],
-
+          detectionMethod: 'timing-desync',
         },
       };
     }
@@ -336,7 +336,7 @@ async function testSmugglingProbe(
         evidencePack: {
           payloadUsed: probe.body,
           responseIndicators: [`Timeout after ${elapsed}ms (baseline: ${baselineMs}ms)`],
-
+          detectionMethod: 'timing-desync',
         },
       };
     }

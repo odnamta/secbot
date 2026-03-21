@@ -194,8 +194,8 @@ export const fileUploadCheck: ActiveCheck = {
                 response: { status, bodySnippet: body.slice(0, 200) },
                 timestamp: new Date().toISOString(),
                 confidence: uploadConfidence,
+                evidencePack: { detectionMethod: 'upload-probe' },
               });
-
               // One finding per payload type per form is enough — move to next payload
               log.debug(`File upload accepted: ${payload.label} on ${actionUrl}`);
             }

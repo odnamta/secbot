@@ -93,6 +93,7 @@ export const cachePoisoningCheck: ActiveCheck = {
                 response: { status: poisonResp.status, headers: poisonHeaders, bodySnippet: poisonBody.slice(0, 500) },
                 timestamp: new Date().toISOString(),
                 confidence: poisonCached ? 'high' : 'medium',
+                evidencePack: { detectionMethod: 'header-injection' },
               });
 
               break; // Found poisoning on this URL, move to next
@@ -233,6 +234,7 @@ async function testWebCacheDeception(
               response: { status, headers: wcdHeaders, bodySnippet: wcdBody.slice(0, 300) },
               timestamp: new Date().toISOString(),
               confidence: confirmedCached ? 'high' : 'medium',
+              evidencePack: { detectionMethod: 'header-injection' },
             });
 
             break; // One WCD finding per URL is enough

@@ -621,6 +621,7 @@ async function testXssOnForms(
             },
             timestamp: new Date().toISOString(),
             confidence: 'medium',
+            evidencePack: { detectionMethod: 'form-injection' },
           });
           break;
         }
@@ -731,6 +732,7 @@ async function testPostFormXss(
                 body: urlEncodedBody,
               },
               timestamp: new Date().toISOString(),
+              evidencePack: { detectionMethod: 'form-injection' },
             });
             foundForInput = true;
           }
@@ -866,6 +868,7 @@ async function testJsonApiXss(
               },
               timestamp: new Date().toISOString(),
               confidence: 'medium',
+              evidencePack: { detectionMethod: 'json-response' },
             });
             break; // One finding per endpoint is enough
           }
@@ -892,6 +895,7 @@ async function testJsonApiXss(
               },
               timestamp: new Date().toISOString(),
               confidence: 'medium',
+              evidencePack: { detectionMethod: 'json-response' },
             });
             break;
           }
@@ -973,6 +977,7 @@ async function testXssOnUrls(
                 request: { method: 'GET', url: testUrl.href },
                 timestamp: new Date().toISOString(),
                 confidence: 'medium',
+                evidencePack: { detectionMethod: 'reflection' },
               });
               foundForParam = true;
             }
@@ -1020,6 +1025,7 @@ async function testXssOnUrls(
                   request: { method: 'GET', url: hppUrl },
                   timestamp: new Date().toISOString(),
                   confidence: 'medium',
+                  evidencePack: { detectionMethod: 'reflection' },
                 });
                 foundForParam = true;
               }
@@ -1109,6 +1115,7 @@ async function testDomXss(
             request: { method: 'GET', url: `${pageUrl}#${fragmentPayload}` },
             timestamp: new Date().toISOString(),
             confidence: 'medium',
+            evidencePack: { detectionMethod: 'dom-sink' },
           });
           break; // One finding per page is enough
         }
@@ -1172,6 +1179,7 @@ async function testDomXss(
                   request: { method: 'GET', url: queryTestUrl },
                   timestamp: new Date().toISOString(),
                   confidence: 'medium',
+                  evidencePack: { detectionMethod: 'dom-sink' },
                 });
                 break;
               }
@@ -1270,6 +1278,7 @@ async function testPostMessageXss(
             request: { method: 'GET', url: pageUrl },
             timestamp: new Date().toISOString(),
             confidence: 'high',
+            evidencePack: { detectionMethod: 'dom-sink' },
           });
         } else {
           // Even if payload didn't reach a sink, report the unsafe listener as informational
@@ -1283,6 +1292,7 @@ async function testPostMessageXss(
             evidence: `Listeners: ${listeners.length} total, ${unsafeListeners.length} without origin check\nHandler snippet: ${unsafeListeners[0].handlerSnippet}`,
             timestamp: new Date().toISOString(),
             confidence: 'medium',
+            evidencePack: { detectionMethod: 'dom-sink' },
           });
         }
       }
@@ -1533,6 +1543,7 @@ export async function testSearchParamXss(
               request: { method: 'GET', url: testUrl.href },
               timestamp: new Date().toISOString(),
               confidence: 'medium',
+              evidencePack: { detectionMethod: 'dom-sink' },
             });
             foundForParam = true;
             continue;
@@ -1562,6 +1573,7 @@ export async function testSearchParamXss(
             request: { method: 'GET', url: testUrl.href },
             timestamp: new Date().toISOString(),
             confidence: 'medium',
+            evidencePack: { detectionMethod: 'dom-sink' },
           });
           foundForParam = true;
           continue;
@@ -1631,6 +1643,7 @@ export async function testSearchParamXss(
             request: { method: 'GET', url: testUrl.href },
             timestamp: new Date().toISOString(),
             confidence: 'medium',
+            evidencePack: { detectionMethod: 'dom-sink' },
           });
           foundForParam = true;
         }
@@ -1689,6 +1702,7 @@ async function testStoredXss(
             request: { method: 'GET', url: pageUrl },
             timestamp: new Date().toISOString(),
             confidence: 'medium',
+            evidencePack: { detectionMethod: 'reflection' },
           });
           break; // One stored XSS finding per page is enough
         }
@@ -1913,6 +1927,7 @@ async function testMutationXss(
             request: { method: 'GET', url: `${pageUrl}#${fragmentPayload}` },
             timestamp: new Date().toISOString(),
             confidence: 'medium',
+            evidencePack: { detectionMethod: 'dom-sink' },
           });
           break; // One finding per page is enough
         }
@@ -1933,6 +1948,7 @@ async function testMutationXss(
             request: { method: 'GET', url: `${pageUrl}#${fragmentPayload}` },
             timestamp: new Date().toISOString(),
             confidence: 'medium',
+            evidencePack: { detectionMethod: 'dom-sink' },
           });
           break;
         }
@@ -2018,6 +2034,7 @@ async function testCspBypassXss(
               request: { method: 'GET', url: testUrl.href },
               timestamp: new Date().toISOString(),
               confidence: 'low',
+              evidencePack: { detectionMethod: 'reflection' },
             });
             foundForUrl = true;
           }
@@ -2106,6 +2123,7 @@ async function testCspBypassXss(
             },
             timestamp: new Date().toISOString(),
             confidence: 'low',
+            evidencePack: { detectionMethod: 'reflection' },
           });
           break;
         }
@@ -2183,6 +2201,7 @@ async function testDanglingMarkupXss(
               request: { method: 'GET', url: testUrl.href },
               timestamp: new Date().toISOString(),
               confidence: 'medium',
+              evidencePack: { detectionMethod: 'reflection' },
             });
             foundForUrl = true;
           }

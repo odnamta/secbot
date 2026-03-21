@@ -238,6 +238,7 @@ async function testUrlQueryPP(
           },
           timestamp: new Date().toISOString(),
           confidence: body.includes(PP_CANARY) ? 'high' : 'medium',
+          evidencePack: { detectionMethod: 'property-injection' },
         });
         break;
       }
@@ -326,6 +327,7 @@ async function testJsonBodyPP(
             },
             timestamp: new Date().toISOString(),
             confidence: body.includes(PP_CANARY) ? 'high' : 'medium',
+            evidencePack: { detectionMethod: 'property-injection' },
           });
           break;
         }
@@ -416,6 +418,7 @@ async function testClientSidePP(
               response: { status: 200 },
               timestamp: new Date().toISOString(),
               confidence: 'high',
+              evidencePack: { detectionMethod: 'property-injection' },
             });
             break; // One finding per page
           }

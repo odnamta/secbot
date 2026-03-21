@@ -202,6 +202,7 @@ async function testEndpoint(
           evidencePack: {
             payloadUsed: payload.payload,
             responseIndicators: [errorCheck.pattern],
+            detectionMethod: 'error-pattern',
           },
         });
         break;
@@ -241,6 +242,7 @@ async function testEndpoint(
             evidencePack: {
               payloadUsed: payload.payload,
               responseIndicators: hasAuthToken ? ['Auth token in response'] : ['Status change from non-200 to 200'],
+              detectionMethod: 'blind-auth-bypass',
             },
           });
           break;

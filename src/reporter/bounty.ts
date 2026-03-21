@@ -268,6 +268,12 @@ function renderBountyFinding(
     lines.push('');
   }
 
+  // Screenshot evidence
+  if (bestPack?.screenshotPath) {
+    lines.push(`**Screenshot Evidence:** See ${bestPack.screenshotPath}`);
+    lines.push('');
+  }
+
   // Reproduction URL
   const reproductionUrl = bestPack?.reproductionUrl
     ?? (rawFindings.length > 0 ? generateReproductionUrl(rawFindings[0]) : undefined);

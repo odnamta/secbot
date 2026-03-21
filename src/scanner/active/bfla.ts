@@ -176,6 +176,7 @@ export const bflaCheck: ActiveCheck = {
                 response: { status, bodySnippet: body.slice(0, 200) },
                 timestamp: new Date().toISOString(),
                 confidence: isJson ? 'high' : 'medium',
+                evidencePack: { detectionMethod: 'endpoint-probe' },
               });
             }
           }
@@ -245,6 +246,7 @@ export const bflaCheck: ActiveCheck = {
                 response: { status, bodySnippet: body.slice(0, 200) },
                 timestamp: new Date().toISOString(),
                 confidence: 'high',
+                evidencePack: { detectionMethod: 'endpoint-probe' },
               });
               break; // One admin prefix finding per resource is enough
             }
@@ -309,6 +311,7 @@ export const bflaCheck: ActiveCheck = {
                 response: { status, bodySnippet: '' },
                 timestamp: new Date().toISOString(),
                 confidence: 'medium',
+                evidencePack: { detectionMethod: 'method-probe' },
               });
               break; // One method finding per endpoint
             }
@@ -387,6 +390,7 @@ export const bflaCheck: ActiveCheck = {
                 response: { status: privStatus, bodySnippet: privBody.slice(0, 200) },
                 timestamp: new Date().toISOString(),
                 confidence: 'medium',
+                evidencePack: { detectionMethod: 'parameter-injection' },
               });
               break; // One priv-esc finding per endpoint
             }

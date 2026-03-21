@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import type { EvidencePack } from '../../src/scanner/types.js';
 
 describe('Auto-verify module', () => {
   it('exports verifyFinding function', async () => {
@@ -60,5 +61,50 @@ describe('Auto-verify module', () => {
     const stubContext = {} as import('playwright').BrowserContext;
     const result = await verifyFinding(finding, stubContext);
     expect(result).toEqual(finding);
+  });
+
+  it('EvidencePack type includes screenshotPath field', () => {
+    // Type-level test: construct an EvidencePack with screenshotPath
+    const pack: EvidencePack = {
+      payloadUsed: '<script>alert(1)</script>',
+      detectionMethod: 'reflection',
+      screenshotPath: '/tmp/secbot-evidence/xss-1.png',
+    };
+    expect(pack.screenshotPath).toBe('/tmp/secbot-evidence/xss-1.png');
+  });
+
+  it('EvidencePack screenshotPath is optional', () => {
+    const pack: EvidencePack = {
+      payloadUsed: 'test',
+    };
+    expect(pack.screenshotPath).toBeUndefined();
+  });
+
+  it('exports verifyClickjacking function', async () => {
+    const mod = await import('../../src/scanner/auto-verify.js');
+    expect(typeof mod.verifyClickjacking).toBe('function');
+  });
+
+  it('exports VerifyResultWithScreenshot type via verifyXss return', async () => {
+    const { verifyXss } = await import('../../src/scanner/auto-verify.js');
+    // verifyXss now returns { verified: boolean; screenshotPath?: string }
+    // Call with a fake finding and stub context to confirm return shape
+    const finding = {
+      id: 'xss-type-test',
+      category: 'xss' as const,
+      severity: 'high' as const,
+      title: 'XSS test',
+      description: '',
+      url: 'https://nonexistent.invalid',
+      evidence: '',
+      timestamp: new Date().toISOString(),
+      confidence: 'high' as const,
+    };
+    const stubContext = {
+      newPage: () => { throw new Error('stub'); },
+    } as unknown as import('playwright').BrowserContext;
+    const result = await verifyXss(finding, stubContext);
+    expect(result).toHaveProperty('verified');
+    expect(result.verified).toBe(false);
   });
 });

@@ -309,6 +309,7 @@ export const clickjackingCheck: ActiveCheck = {
                   'CSP frame-ancestors takes precedence over X-Frame-Options in modern browsers.',
               }),
               timestamp: new Date().toISOString(),
+              evidencePack: { detectionMethod: 'iframe-framing' },
             });
 
             log.info(`[clickjacking] FOUND: ${url} is frameable (severity: ${severity})`);

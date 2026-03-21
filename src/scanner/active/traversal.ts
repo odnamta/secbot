@@ -113,6 +113,7 @@ async function testTraversalUrl(
           response: { status: response.status(), bodySnippet: body.slice(0, 200) },
           timestamp: new Date().toISOString(),
           confidence: 'high',
+          evidencePack: { detectionMethod: 'path-traversal-response' },
         };
       }
     }

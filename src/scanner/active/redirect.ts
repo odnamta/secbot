@@ -226,6 +226,7 @@ async function testPayloadForParam(
           response: { status: fetchResponse.status(), headers: fetchResponse.headers() },
           timestamp: new Date().toISOString(),
           confidence: 'high',
+          evidencePack: { detectionMethod: 'location-header' },
         };
       }
     } catch (err) {
@@ -263,6 +264,7 @@ async function testPayloadForParam(
             request: { method: 'GET', url: testUrl.href },
             timestamp: new Date().toISOString(),
             confidence: 'high',
+            evidencePack: { detectionMethod: 'redirect-follow' },
           };
         }
 
@@ -286,6 +288,7 @@ async function testPayloadForParam(
             request: { method: 'GET', url: testUrl.href },
             timestamp: new Date().toISOString(),
             confidence: 'high',
+            evidencePack: { detectionMethod: 'redirect-follow' },
           };
         }
 
@@ -311,6 +314,7 @@ async function testPayloadForParam(
             request: { method: 'GET', url: testUrl.href },
             timestamp: new Date().toISOString(),
             confidence: 'high',
+            evidencePack: { detectionMethod: 'redirect-follow' },
           };
         }
       } catch (err) {
@@ -328,6 +332,7 @@ async function testPayloadForParam(
             request: { method: 'GET', url: testUrl.href },
             timestamp: new Date().toISOString(),
             confidence: 'medium',
+            evidencePack: { detectionMethod: 'redirect-follow' },
           };
         }
         log.debug(`Redirect browser check: ${errMsg}`);

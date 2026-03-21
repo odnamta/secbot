@@ -793,6 +793,7 @@ program
               url: targetUrl,
               evidence: `Components: ${chain.components.join(', ')}. Impact: ${chain.impact}`,
               timestamp: new Date().toISOString(),
+              evidencePack: { detectionMethod: 'chain-analysis' },
             };
             findingsForValidation = [...findingsForValidation, chainFinding];
           }

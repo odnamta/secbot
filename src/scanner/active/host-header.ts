@@ -150,6 +150,7 @@ async function testHostOverride(
         },
         timestamp: new Date().toISOString(),
         confidence: reflection.location === 'header' ? 'high' : 'medium',
+        evidencePack: { detectionMethod: 'header-injection' },
       });
     }
   } catch (err) {
@@ -222,6 +223,7 @@ async function testForwardedHeaders(
           },
           timestamp: new Date().toISOString(),
           confidence: reflection.location === 'header' ? 'high' : 'medium',
+          evidencePack: { detectionMethod: 'header-injection' },
         });
         // One finding per URL per header is enough
         break;
@@ -334,6 +336,7 @@ async function testCachePoisoning(
             },
             timestamp: new Date().toISOString(),
             confidence: 'high',
+            evidencePack: { detectionMethod: 'header-injection' },
           });
         }
       } finally {

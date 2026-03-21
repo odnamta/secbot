@@ -48,6 +48,7 @@ async function testMissingState(url: string, config: ScanConfig): Promise<RawFin
         response: { status: resp.status, headers: Object.fromEntries(resp.headers) },
         timestamp: new Date().toISOString(),
         confidence: resp.status === 302 ? 'high' : 'medium',
+        evidencePack: { detectionMethod: 'flow-analysis' },
       };
     }
   } catch { /* endpoint not reachable */ }
@@ -83,6 +84,7 @@ async function testRedirectUriManipulation(url: string, config: ScanConfig): Pro
         response: { status: resp.status, headers: Object.fromEntries(resp.headers) },
         timestamp: new Date().toISOString(),
         confidence: 'high',
+        evidencePack: { detectionMethod: 'flow-analysis' },
       };
     }
   } catch { /* endpoint not reachable */ }
@@ -108,6 +110,7 @@ async function testTokenInFragment(pages: string[]): Promise<RawFinding | null> 
           evidence: 'access_token found in URL',
           timestamp: new Date().toISOString(),
           confidence: 'high',
+          evidencePack: { detectionMethod: 'flow-analysis' },
         };
       }
     } catch { continue; }
@@ -160,6 +163,7 @@ async function testRedirectUriBypass(url: string, config: ScanConfig): Promise<R
             response: { status: resp.status, headers: Object.fromEntries(resp.headers) },
             timestamp: new Date().toISOString(),
             confidence: 'high',
+            evidencePack: { detectionMethod: 'flow-analysis' },
           });
           break; // One bypass finding per endpoint
         }
@@ -193,6 +197,7 @@ async function testRedirectUriBypass(url: string, config: ScanConfig): Promise<R
           response: { status: resp.status, headers: Object.fromEntries(resp.headers) },
           timestamp: new Date().toISOString(),
           confidence: 'high',
+          evidencePack: { detectionMethod: 'flow-analysis' },
         });
       }
     } catch { /* subdomain bypass test failed */ }
@@ -233,6 +238,7 @@ async function testPkceEnforcement(url: string, config: ScanConfig): Promise<Raw
         response: { status: resp.status, headers: Object.fromEntries(resp.headers) },
         timestamp: new Date().toISOString(),
         confidence: 'medium',
+        evidencePack: { detectionMethod: 'flow-analysis' },
       };
     }
   } catch { /* endpoint not reachable */ }

@@ -177,6 +177,7 @@ async function testCmdiParams(
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
               confidence,
+              evidencePack: { detectionMethod: 'output-detection' },
             });
             foundForUrl = true;
             break;
@@ -224,6 +225,7 @@ async function testCmdiParams(
                   request: { method: 'GET', url: testUrl.href },
                   timestamp: new Date().toISOString(),
                   confidence: 'medium',
+                  evidencePack: { detectionMethod: 'time-based-blind' },
                 });
                 foundForUrl = true;
               }
@@ -333,6 +335,7 @@ async function testCmdiForms(
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
               confidence,
+              evidencePack: { detectionMethod: 'output-detection' },
             });
             foundForForm = true;
             break;
@@ -439,6 +442,7 @@ async function testCmdiForms(
                   request: { method: fetchMethod, url: actionUrl, body: payloadFormData },
                   timestamp: new Date().toISOString(),
                   confidence: 'medium',
+                  evidencePack: { detectionMethod: 'time-based-blind' },
                 });
                 foundForForm = true;
               }

@@ -249,8 +249,8 @@ async function testPriceQuantityManipulation(
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
               confidence: 'high',
+              evidencePack: { detectionMethod: 'logic-probe' },
             });
-            // One finding per field is enough
             break;
           }
         } catch (err) {
@@ -310,8 +310,8 @@ async function testPriceQuantityManipulation(
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
               confidence: 'high',
+              evidencePack: { detectionMethod: 'logic-probe' },
             });
-            break;
           }
         } catch (err) {
           log.debug(`Business logic quantity test: ${(err as Error).message}`);
@@ -415,8 +415,8 @@ async function testApiPriceManipulation(
                 response: { status: putStatus, bodySnippet: putBody.slice(0, 200) },
                 timestamp: new Date().toISOString(),
                 confidence: 'medium',
+                evidencePack: { detectionMethod: 'logic-probe' },
               });
-              break; // One finding per field
             }
           } catch (err) {
             log.debug(`Business logic API test: ${(err as Error).message}`);
@@ -483,8 +483,8 @@ async function testWorkflowBypass(
             response: { status, bodySnippet: body.slice(0, 200) },
             timestamp: new Date().toISOString(),
             confidence: 'medium',
+            evidencePack: { detectionMethod: 'logic-probe' },
           });
-          // One finding per URL is enough
           break;
         }
       } catch (err) {

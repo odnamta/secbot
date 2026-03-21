@@ -168,6 +168,7 @@ async function probeUnauthenticatedAdminPaths(
           response: { status, bodySnippet: body.slice(0, 200) },
           timestamp: new Date().toISOString(),
           confidence: 'high',
+          evidencePack: { detectionMethod: 'endpoint-replay' },
         });
       }
     } catch (err) {
@@ -266,6 +267,7 @@ async function testPathNormalizationBypass(
             response: { status, bodySnippet: body.slice(0, 200) },
             timestamp: new Date().toISOString(),
             confidence: 'high',
+            evidencePack: { detectionMethod: 'endpoint-replay' },
           });
           break; // One bypass per path is enough
         }
@@ -373,6 +375,7 @@ export const accessControlCheck: ActiveCheck = {
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
               confidence: 'high',
+              evidencePack: { detectionMethod: 'endpoint-replay' },
             });
           }
         } catch (err) {
@@ -421,6 +424,7 @@ export const accessControlCheck: ActiveCheck = {
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
               confidence: 'medium',
+              evidencePack: { detectionMethod: 'method-override' },
             });
             break; // One finding per endpoint is enough
           }
@@ -473,6 +477,7 @@ export const accessControlCheck: ActiveCheck = {
                 response: { status, bodySnippet: body.slice(0, 200) },
                 timestamp: new Date().toISOString(),
                 confidence: 'medium',
+                evidencePack: { detectionMethod: 'header-bypass' },
               });
               break;
             }
@@ -588,6 +593,7 @@ async function testDefaultCredentials(
               response: { status, bodySnippet: body.slice(0, 300) },
               timestamp: new Date().toISOString(),
               confidence: 'high',
+              evidencePack: { detectionMethod: 'endpoint-replay' },
             });
             found = true;
           }
@@ -687,6 +693,7 @@ async function testSessionFixation(
             response: { status: response.status(), bodySnippet: '' },
             timestamp: new Date().toISOString(),
             confidence: isSequential ? 'high' : 'medium',
+            evidencePack: { detectionMethod: 'endpoint-replay' },
           });
         }
       }
@@ -743,6 +750,7 @@ async function testSessionFixation(
                   response: { status: 200, bodySnippet: '' },
                   timestamp: new Date().toISOString(),
                   confidence: 'medium',
+                  evidencePack: { detectionMethod: 'endpoint-replay' },
                 });
               }
             }

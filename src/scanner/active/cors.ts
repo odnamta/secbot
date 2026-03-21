@@ -133,6 +133,7 @@ async function testCorsMisconfiguration(
             },
             timestamp: new Date().toISOString(),
             confidence: hasMitigations ? 'low' : 'low',
+            evidencePack: { detectionMethod: 'wildcard-detection' },
           });
         } else if (acao === '*' && !isApiEndpoint(url, contentType)) {
           // Wildcard on static assets is normal — skip
@@ -166,6 +167,7 @@ async function testCorsMisconfiguration(
             },
             timestamp: new Date().toISOString(),
             confidence: (sameSiteProtected || isEmptyResponse) ? 'low' : (isNonFunctional ? 'low' : (acac === 'true' ? 'high' : 'medium')),
+            evidencePack: { detectionMethod: 'origin-reflection' },
           });
         } else if (acao === 'null') {
           findings.push({
@@ -183,6 +185,7 @@ async function testCorsMisconfiguration(
             },
             timestamp: new Date().toISOString(),
             confidence: 'medium',
+            evidencePack: { detectionMethod: 'origin-reflection' },
           });
         }
 
@@ -234,6 +237,7 @@ async function testCorsMisconfiguration(
                   },
                   timestamp: new Date().toISOString(),
                   confidence: 'high',
+                  evidencePack: { detectionMethod: 'origin-reflection' },
                 });
                 break; // One bypass finding per URL is enough
               }
@@ -277,6 +281,7 @@ async function testCorsMisconfiguration(
               },
               timestamp: new Date().toISOString(),
               confidence: 'medium',
+              evidencePack: { detectionMethod: 'origin-reflection' },
             });
           }
         } catch {
@@ -334,6 +339,7 @@ async function testCorsMisconfiguration(
                   },
                   timestamp: new Date().toISOString(),
                   confidence: hasCredentials ? 'high' : 'medium',
+                  evidencePack: { detectionMethod: 'origin-reflection' },
                 });
               } else {
                 log.debug(`CORS preflight: ${url} allows * with methods but no credentials — safe per spec`);

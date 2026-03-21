@@ -1,3 +1,6 @@
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, Confidence } from './types.js';
 import { log } from '../utils/logger.js';
@@ -11,8 +14,14 @@ export function upgradeConfidence(current: Confidence, verified: boolean): Confi
 export async function verifyFinding(finding: RawFinding, context: BrowserContext): Promise<RawFinding> {
   try {
     switch (finding.category) {
-      case 'xss':
-        return { ...finding, confidence: (await verifyXss(finding, context)) ? 'high' : 'low' };
+      case 'xss': {
+        const xssResult = await verifyXss(finding, context);
+        const updated = { ...finding, confidence: (xssResult.verified ? 'high' : 'low') as Confidence };
+        if (xssResult.screenshotPath) {
+          updated.evidencePack = { ...updated.evidencePack, screenshotPath: xssResult.screenshotPath };
+        }
+        return updated;
+      }
       case 'sqli':
         return { ...finding, confidence: (await verifySqli(finding)) ? 'high' : 'low' };
       case 'subdomain-takeover':
@@ -35,6 +44,14 @@ export async function verifyFinding(finding: RawFinding, context: BrowserContext
         return { ...finding, confidence: (await verifyCookieFlags(finding)) ? 'high' : 'medium' };
       case 'info-disclosure':
         return { ...finding, confidence: (await verifyInfoDisclosure(finding)) ? 'high' : 'medium' };
+      case 'clickjacking': {
+        const cjResult = await verifyClickjacking(finding, context);
+        const updated = { ...finding, confidence: (cjResult.verified ? 'high' : 'low') as Confidence };
+        if (cjResult.screenshotPath) {
+          updated.evidencePack = { ...updated.evidencePack, screenshotPath: cjResult.screenshotPath };
+        }
+        return updated;
+      }
       default:
         return finding;
     }
@@ -44,16 +61,35 @@ export async function verifyFinding(finding: RawFinding, context: BrowserContext
   }
 }
 
-export async function verifyXss(finding: RawFinding, context: BrowserContext): Promise<boolean> {
+export interface VerifyResultWithScreenshot {
+  verified: boolean;
+  screenshotPath?: string;
+}
+
+export async function verifyXss(finding: RawFinding, context: BrowserContext): Promise<VerifyResultWithScreenshot> {
   try {
     const page = await context.newPage();
     let dialogFired = false;
     page.on('dialog', async d => { dialogFired = true; await d.dismiss(); });
     await page.goto(finding.url, { timeout: 10000, waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2000);
+
+    let screenshotPath: string | undefined;
+    if (dialogFired) {
+      try {
+        const screenshotDir = join(tmpdir(), 'secbot-evidence');
+        mkdirSync(screenshotDir, { recursive: true });
+        screenshotPath = join(screenshotDir, `${finding.id}.png`);
+        await page.screenshot({ path: screenshotPath, fullPage: false });
+        log.info(`XSS evidence screenshot saved: ${screenshotPath}`);
+      } catch (err) {
+        log.debug(`XSS screenshot capture failed: ${(err as Error).message}`);
+      }
+    }
+
     await page.close();
-    return dialogFired;
-  } catch { return false; }
+    return { verified: dialogFired, screenshotPath };
+  } catch { return { verified: false }; }
 }
 
 export async function verifySqli(finding: RawFinding): Promise<boolean> {
@@ -306,6 +342,53 @@ export async function verifyInfoDisclosure(finding: RawFinding): Promise<boolean
     });
     return resp.ok;
   } catch { return false; }
+}
+
+/**
+ * Verify clickjacking by attempting to frame the target page in an iframe.
+ * Captures a screenshot of the framed page as visual evidence.
+ */
+export async function verifyClickjacking(finding: RawFinding, context: BrowserContext): Promise<VerifyResultWithScreenshot> {
+  try {
+    const page = await context.newPage();
+    // Build a minimal HTML page that iframes the target
+    const html = `<!DOCTYPE html><html><body style="margin:0">
+      <iframe src="${finding.url.replace(/"/g, '&quot;')}" style="width:100%;height:100vh;border:none"></iframe>
+    </body></html>`;
+    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 10000 });
+    await page.waitForTimeout(3000);
+
+    // Check if the iframe actually loaded (not blocked by X-Frame-Options/CSP)
+    const frameLoaded = await page.evaluate(() => {
+      const iframe = document.querySelector('iframe');
+      if (!iframe?.contentWindow) return false;
+      try {
+        // Cross-origin frames block DOM access; if we can't access, the frame loaded (from another origin)
+        // If the frame document has a body with content, it loaded
+        const doc = iframe.contentDocument;
+        return doc ? doc.body?.innerHTML.length > 0 : true;
+      } catch {
+        // Cross-origin — the frame did load
+        return true;
+      }
+    });
+
+    let screenshotPath: string | undefined;
+    if (frameLoaded) {
+      try {
+        const screenshotDir = join(tmpdir(), 'secbot-evidence');
+        mkdirSync(screenshotDir, { recursive: true });
+        screenshotPath = join(screenshotDir, `${finding.id}.png`);
+        await page.screenshot({ path: screenshotPath, fullPage: false });
+        log.info(`Clickjacking evidence screenshot saved: ${screenshotPath}`);
+      } catch (err) {
+        log.debug(`Clickjacking screenshot capture failed: ${(err as Error).message}`);
+      }
+    }
+
+    await page.close();
+    return { verified: frameLoaded, screenshotPath };
+  } catch { return { verified: false }; }
 }
 
 export async function verifyFindings(findings: RawFinding[], context: BrowserContext): Promise<RawFinding[]> {

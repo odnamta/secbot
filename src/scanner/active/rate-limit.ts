@@ -180,6 +180,7 @@ async function testRateLimit(
     response: { status: statuses[statuses.length - 1] },
     timestamp: new Date().toISOString(),
     confidence: 'high',
+    evidencePack: { detectionMethod: 'brute-force-probe' },
   };
 }
 
@@ -261,5 +262,6 @@ async function testFormRateLimit(
     response: { status: statuses[statuses.length - 1] },
     timestamp: new Date().toISOString(),
     confidence: 'high',
+    evidencePack: { detectionMethod: 'brute-force-probe' },
   };
 }

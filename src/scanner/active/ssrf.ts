@@ -175,6 +175,7 @@ async function testSsrf(
                   response: { status, bodySnippet: body.slice(0, 200) },
                   timestamp: new Date().toISOString(),
                   confidence: 'high',
+                  evidencePack: { detectionMethod: 'callback-detection' },
                 });
                 foundForUrl = true;
                 break;
@@ -203,6 +204,7 @@ async function testSsrf(
                     response: { status, bodySnippet: body.slice(0, 200) },
                     timestamp: new Date().toISOString(),
                     confidence: 'medium',
+                    evidencePack: { detectionMethod: 'callback-detection' },
                   });
                   foundForUrl = true;
                 }
@@ -252,6 +254,7 @@ async function testSsrf(
                 response: { status: response.status(), bodySnippet: body.slice(0, 300) },
                 timestamp: new Date().toISOString(),
                 confidence: 'high',
+                evidencePack: { detectionMethod: 'metadata-probe' },
               });
               foundForUrl = true;
               break;
@@ -302,6 +305,7 @@ async function testSsrf(
                 response: { status: response.status(), bodySnippet: body.slice(0, 300) },
                 timestamp: new Date().toISOString(),
                 confidence: 'high',
+                evidencePack: { detectionMethod: 'callback-detection' },
               });
               foundForUrl = true;
               break;
@@ -394,6 +398,7 @@ async function testTimeSsrf(
         request: { method: 'GET', url: testUrl.href },
         timestamp: new Date().toISOString(),
         confidence: 'low',
+        evidencePack: { detectionMethod: 'callback-detection' },
       };
     }
 
@@ -468,6 +473,7 @@ async function testSsrfJsonBody(
                 response: { status, bodySnippet: responseBody.slice(0, 200) },
                 timestamp: new Date().toISOString(),
                 confidence: 'high',
+                evidencePack: { detectionMethod: 'callback-detection' },
               });
               found = true;
               break;

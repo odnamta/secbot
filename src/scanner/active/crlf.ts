@@ -258,6 +258,7 @@ async function testCrlfParams(
               },
               timestamp: new Date().toISOString(),
               confidence: 'high',
+              evidencePack: { detectionMethod: 'header-injection' },
             });
             foundForUrl = true;
           }

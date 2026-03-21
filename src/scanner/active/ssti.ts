@@ -203,6 +203,7 @@ async function testSstiParams(
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
               confidence: 'high',
+              evidencePack: { detectionMethod: 'expression-evaluation' },
             });
             foundForUrl = true;
             break;
@@ -301,6 +302,7 @@ async function testSstiForms(
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),
               confidence: 'high',
+              evidencePack: { detectionMethod: 'expression-evaluation' },
             });
             foundForForm = true;
             break;

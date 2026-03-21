@@ -186,6 +186,7 @@ export const verboseErrorsCheck: ActiveCheck = {
                     },
                   }),
                   timestamp: new Date().toISOString(),
+                  evidencePack: { detectionMethod: 'error-pattern' },
                 });
                 break;
               }
@@ -221,6 +222,7 @@ export const verboseErrorsCheck: ActiveCheck = {
                     },
                   }),
                   timestamp: new Date().toISOString(),
+                  evidencePack: { detectionMethod: 'error-pattern' },
                 });
                 break;
               }
@@ -258,6 +260,7 @@ export const verboseErrorsCheck: ActiveCheck = {
                       },
                     }),
                     timestamp: new Date().toISOString(),
+                    evidencePack: { detectionMethod: 'error-pattern' },
                   });
                 }
               }

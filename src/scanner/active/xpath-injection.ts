@@ -162,6 +162,7 @@ export const xpathInjectionCheck: ActiveCheck = {
                       },
                     }),
                     timestamp: new Date().toISOString(),
+                    evidencePack: { detectionMethod: 'error-pattern' },
                   });
                   break;
                 }
@@ -239,6 +240,7 @@ export const xpathInjectionCheck: ActiveCheck = {
                           },
                         }),
                         timestamp: new Date().toISOString(),
+                        evidencePack: { detectionMethod: 'boolean-based' },
                       });
                     }
                   }

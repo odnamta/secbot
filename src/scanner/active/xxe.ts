@@ -295,6 +295,7 @@ async function testXxeOnEndpoint(
           },
           timestamp: new Date().toISOString(),
           confidence: isFileRead ? 'high' : 'medium',
+          evidencePack: { detectionMethod: 'entity-expansion' },
         });
         break;
       }
@@ -328,6 +329,7 @@ async function testXxeOnEndpoint(
             },
             timestamp: new Date().toISOString(),
             confidence: 'low',
+            evidencePack: { detectionMethod: 'entity-expansion' },
           });
         }
       }

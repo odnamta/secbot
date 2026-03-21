@@ -15,6 +15,8 @@ import {
   matchesDebugEndpoint,
   matchesActuatorEndpoint,
   scanJsForSecrets,
+  extractSourceMappingURLs,
+  analyzeSourceMapContent,
 } from '../../src/scanner/active/info-disclosure.js';
 
 describe('Info disclosure check: metadata', () => {
@@ -566,5 +568,139 @@ describe('scanJsForSecrets', () => {
     const content = 'stripe.init("pk_live_abcdefghijklmnopqrstuvwx");';
     const results = scanJsForSecrets(content, URL);
     expect(results).toEqual([]);
+  });
+});
+
+describe('extractSourceMappingURLs', () => {
+  const BASE = 'https://example.com/assets/app.js';
+
+  it('extracts relative sourceMappingURL', () => {
+    const js = 'var x=1;\n//# sourceMappingURL=app.js.map';
+    const urls = extractSourceMappingURLs(js, BASE);
+    expect(urls).toEqual(['https://example.com/assets/app.js.map']);
+  });
+
+  it('extracts absolute sourceMappingURL', () => {
+    const js = 'var x=1;\n//# sourceMappingURL=https://cdn.example.com/maps/app.js.map';
+    const urls = extractSourceMappingURLs(js, BASE);
+    expect(urls).toEqual(['https://cdn.example.com/maps/app.js.map']);
+  });
+
+  it('extracts legacy //@ sourceMappingURL', () => {
+    const js = 'var x=1;\n//@ sourceMappingURL=legacy.map';
+    const urls = extractSourceMappingURLs(js, BASE);
+    expect(urls).toEqual(['https://example.com/assets/legacy.map']);
+  });
+
+  it('skips data: URI source maps', () => {
+    const js = 'var x=1;\n//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozfQ==';
+    const urls = extractSourceMappingURLs(js, BASE);
+    expect(urls).toEqual([]);
+  });
+
+  it('extracts multiple sourceMappingURL references', () => {
+    // Unusual but possible if multiple scripts are concatenated
+    const js = '//# sourceMappingURL=a.map\n//# sourceMappingURL=b.map';
+    const urls = extractSourceMappingURLs(js, BASE);
+    expect(urls).toEqual([
+      'https://example.com/assets/a.map',
+      'https://example.com/assets/b.map',
+    ]);
+  });
+
+  it('returns empty array for JS without sourceMappingURL', () => {
+    const js = 'function add(a,b){return a+b}';
+    const urls = extractSourceMappingURLs(js, BASE);
+    expect(urls).toEqual([]);
+  });
+
+  it('handles sourceMappingURL with path traversal', () => {
+    const js = '//# sourceMappingURL=../maps/app.js.map';
+    const urls = extractSourceMappingURLs(js, BASE);
+    expect(urls).toEqual(['https://example.com/maps/app.js.map']);
+  });
+});
+
+describe('analyzeSourceMapContent', () => {
+  it('returns valid=true for source map with sources', () => {
+    const body = JSON.stringify({
+      version: 3,
+      sources: ['src/index.ts', 'src/utils.ts'],
+      mappings: 'AAAA',
+    });
+    const result = analyzeSourceMapContent(body);
+    expect(result.valid).toBe(true);
+    expect(result.sourceCount).toBe(2);
+    expect(result.hasSourcesContent).toBe(false);
+    expect(result.secretsFound).toEqual([]);
+  });
+
+  it('detects sourcesContent presence', () => {
+    const body = JSON.stringify({
+      version: 3,
+      sources: ['src/app.ts'],
+      sourcesContent: ['export function main() { return 42; }'],
+      mappings: 'AAAA',
+    });
+    const result = analyzeSourceMapContent(body);
+    expect(result.valid).toBe(true);
+    expect(result.sourceCount).toBe(1);
+    expect(result.hasSourcesContent).toBe(true);
+    expect(result.secretsFound).toEqual([]);
+  });
+
+  it('detects secrets in sourcesContent', () => {
+    const body = JSON.stringify({
+      version: 3,
+      sources: ['src/config.ts'],
+      sourcesContent: ['const key = "AKIAIOSFODNN7EXAMPLE1";'],
+      mappings: 'AAAA',
+    });
+    const result = analyzeSourceMapContent(body);
+    expect(result.valid).toBe(true);
+    expect(result.hasSourcesContent).toBe(true);
+    expect(result.secretsFound).toContain('AWS Access Key');
+  });
+
+  it('detects multiple secret types in sourcesContent', () => {
+    const body = JSON.stringify({
+      version: 3,
+      sources: ['src/config.ts'],
+      sourcesContent: [
+        'const aws = "AKIAIOSFODNN7EXAMPLE1";\nconst gh = "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij";',
+      ],
+      mappings: 'AAAA',
+    });
+    const result = analyzeSourceMapContent(body);
+    expect(result.secretsFound).toContain('AWS Access Key');
+    expect(result.secretsFound).toContain('GitHub Token');
+  });
+
+  it('ignores empty sourcesContent entries', () => {
+    const body = JSON.stringify({
+      version: 3,
+      sources: ['src/a.ts', 'src/b.ts'],
+      sourcesContent: [null, ''],
+      mappings: 'AAAA',
+    });
+    const result = analyzeSourceMapContent(body);
+    expect(result.valid).toBe(true);
+    expect(result.hasSourcesContent).toBe(false);
+  });
+
+  it('returns valid=false for non-JSON content', () => {
+    const result = analyzeSourceMapContent('<html>Not Found</html>');
+    expect(result.valid).toBe(false);
+  });
+
+  it('returns valid=false for JSON without sources key', () => {
+    const body = JSON.stringify({ version: 3, mappings: 'AAAA' });
+    const result = analyzeSourceMapContent(body);
+    expect(result.valid).toBe(false);
+  });
+
+  it('returns valid=false for empty string', () => {
+    const result = analyzeSourceMapContent('');
+    expect(result.valid).toBe(false);
   });
 });
