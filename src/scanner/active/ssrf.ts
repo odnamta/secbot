@@ -7,6 +7,26 @@ import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck } from './index.js';
 import { delay } from '../../utils/shared.js';
+import { DnsPinner, isPrivateIP } from '../../utils/dns-pin.js';
+
+/** Shared DNS pinner instance for SSRF self-defense.
+ *  Validates that callback/canary URLs don't resolve to private IPs,
+ *  preventing the scanner from accidentally targeting internal infrastructure. */
+const dnsPinner = new DnsPinner();
+
+/** Check whether a URL's hostname resolves to a private/internal IP.
+ *  Returns true if the URL should be skipped (resolves to private IP). */
+async function resolvesToPrivateIP(url: string): Promise<boolean> {
+  try {
+    const hostname = new URL(url).hostname;
+    // Skip validation for intentional internal payloads (localhost, metadata IPs, etc.)
+    if (isPrivateIP(hostname) || hostname === 'localhost') return false;
+    const allowed = await dnsPinner.isAllowed(hostname);
+    return !allowed;
+  } catch {
+    return false;
+  }
+}
 
 export const ssrfCheck: ActiveCheck = {
   name: 'ssrf',
@@ -65,9 +85,16 @@ async function testSsrf(
   const basePayloads = config.profile === 'deep' ? SSRF_PAYLOADS : SSRF_PAYLOADS.slice(0, 4);
 
   // Get callback payloads if callback URL is configured
-  const callbackPayloads = config.callbackUrl
-    ? getSSRFPayloads(config.callbackUrl).filter((p) => !SSRF_PAYLOADS.includes(p))
-    : [];
+  // DNS pinning: validate callback URL doesn't resolve to a private IP
+  let callbackPayloads: string[] = [];
+  if (config.callbackUrl) {
+    const callbackResolvesPrivate = await resolvesToPrivateIP(config.callbackUrl);
+    if (callbackResolvesPrivate) {
+      log.debug(`SSRF: skipping callback URL ${config.callbackUrl} — resolves to private IP (DNS pinning)`);
+    } else {
+      callbackPayloads = getSSRFPayloads(config.callbackUrl).filter((p) => !SSRF_PAYLOADS.includes(p));
+    }
+  }
 
   if (callbackPayloads.length > 0) {
     log.info(`Including ${callbackPayloads.length} callback-based SSRF payloads for blind detection`);
@@ -80,17 +107,24 @@ async function testSsrf(
   if (config.callbackUrl) {
     try {
       const callbackDomain = new URL(config.callbackUrl).hostname;
-      // Generate several DNS canary subdomains for different SSRF vectors
-      const canaryPrefixes = ['ssrf-http', 'ssrf-dns', 'ssrf-redirect', 'ssrf-file'];
-      for (const prefix of canaryPrefixes) {
-        const canaryId = `${prefix}-${randomUUID().slice(0, 8)}`;
-        const canaryDomain = generateDnsCanary(canaryId, callbackDomain);
-        // HTTP URL pointing to DNS canary subdomain
-        dnsCanaryPayloads.push(`http://${canaryDomain}/`);
-        // DNS-only: just the domain (useful for DNS rebinding / resolution-only vectors)
-        dnsCanaryPayloads.push(`https://${canaryDomain}/`);
+
+      // DNS pinning: validate callback domain doesn't resolve to private IP
+      const callbackDomainPrivate = await resolvesToPrivateIP(config.callbackUrl);
+      if (callbackDomainPrivate) {
+        log.debug(`SSRF: skipping DNS canary generation — callback domain resolves to private IP (DNS pinning)`);
+      } else {
+        // Generate several DNS canary subdomains for different SSRF vectors
+        const canaryPrefixes = ['ssrf-http', 'ssrf-dns', 'ssrf-redirect', 'ssrf-file'];
+        for (const prefix of canaryPrefixes) {
+          const canaryId = `${prefix}-${randomUUID().slice(0, 8)}`;
+          const canaryDomain = generateDnsCanary(canaryId, callbackDomain);
+          // HTTP URL pointing to DNS canary subdomain
+          dnsCanaryPayloads.push(`http://${canaryDomain}/`);
+          // DNS-only: just the domain (useful for DNS rebinding / resolution-only vectors)
+          dnsCanaryPayloads.push(`https://${canaryDomain}/`);
+        }
+        log.info(`Including ${dnsCanaryPayloads.length} DNS canary payloads for OOB SSRF detection`);
       }
-      log.info(`Including ${dnsCanaryPayloads.length} DNS canary payloads for OOB SSRF detection`);
     } catch (err) {
       log.debug(`DNS canary generation failed: ${(err as Error).message}`);
     }

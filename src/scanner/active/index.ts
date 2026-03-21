@@ -58,6 +58,9 @@ import { verboseErrorsCheck } from './verbose-errors.js';
 import { xpathInjectionCheck } from './xpath-injection.js';
 import { log } from '../../utils/logger.js';
 
+/** Per-check timeout — generous enough for timing-attack (10 samples) but prevents infinite stalls */
+const CHECK_TIMEOUT_MS = 120_000; // 2 minutes default
+
 export interface ScanTargets {
   pages: string[];
   forms: FormInfo[];
@@ -411,11 +414,23 @@ export async function runActiveChecks(
     return { ...config, aiFocusAreas: areas };
   };
 
-  // Helper: run a single check with audit tracking
+  // Helper: run a single check with audit tracking + per-check timeout
   const runWithAudit = async (check: ActiveCheck): Promise<RawFinding[]> => {
     const startMs = Date.now();
     try {
-      const result = await check.run(context, targets, configForCheck(check.name), requestLogger);
+      // Race the check against a timeout to prevent infinite stalls
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`Check "${check.name}" timed out after ${CHECK_TIMEOUT_MS / 1000}s`)),
+          CHECK_TIMEOUT_MS,
+        ),
+      );
+
+      const result = await Promise.race([
+        check.run(context, targets, configForCheck(check.name), requestLogger),
+        timeoutPromise,
+      ]);
+
       audit.push({
         name: check.name,
         status: 'completed',
@@ -425,7 +440,8 @@ export async function runActiveChecks(
       return result;
     } catch (err) {
       const errorMsg = (err as Error).message;
-      log.warn(`Active check "${check.name}" failed: ${errorMsg}`);
+      const isTimeout = errorMsg.includes('timed out');
+      log.warn(`Active check "${check.name}" ${isTimeout ? 'timed out' : 'failed'}: ${errorMsg}`);
       audit.push({
         name: check.name,
         status: 'failed',

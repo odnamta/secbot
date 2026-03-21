@@ -832,17 +832,17 @@ async function checkSourceMapExposure(
 
           try {
             // Fetch the JS file content (last portion where sourceMappingURL typically appears)
-            const jsContent: string | null = await page.evaluate(async (url: string) => {
-              try {
-                const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
-                if (!resp.ok) return null;
-                const text = await resp.text();
+            let jsContent: string | null = null;
+            try {
+              const jsResp = await page.request.fetch(jsUrl, { timeout: 10000 });
+              if (jsResp.status() >= 200 && jsResp.status() < 300) {
+                const text = await jsResp.text();
                 // sourceMappingURL is always at the end of the file — only need last 500 chars
-                return text.slice(-500);
-              } catch {
-                return null;
+                jsContent = text.slice(-500);
               }
-            }, jsUrl);
+            } catch {
+              jsContent = null;
+            }
 
             if (jsContent) {
               const mappingUrls = extractSourceMappingURLs(jsContent, jsUrl);
@@ -913,44 +913,33 @@ async function checkSourceMapExposure(
       for (const mapUrl of seenMapUrls) {
         try {
           // HEAD request first for efficiency — check if the resource exists
-          const headResult = await page.evaluate(async (url: string) => {
-            try {
-              const resp = await fetch(url, { method: 'HEAD', redirect: 'follow' });
-              const ct = resp.headers.get('content-type') ?? '';
-              return { status: resp.status, contentType: ct };
-            } catch {
-              return null;
-            }
-          }, mapUrl);
+          const headResp = await page.request.fetch(mapUrl, { method: 'HEAD', timeout: 10000 });
+          const headStatus = headResp.status();
+          const headCt = headResp.headers()['content-type'] ?? '';
 
           requestLogger?.log({
             timestamp: new Date().toISOString(),
             method: 'HEAD',
             url: mapUrl,
-            responseStatus: headResult?.status ?? 0,
+            responseStatus: headStatus,
             phase: 'active-info-disclosure',
           });
 
-          if (!headResult || headResult.status !== 200) continue;
+          if (headStatus !== 200) continue;
 
           // HEAD succeeded with 200 — now GET the content to validate
-          const getResult = await page.evaluate(async (url: string) => {
-            try {
-              const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
-              if (!resp.ok) return null;
-              const text = await resp.text();
-              // Cap at 100KB for analysis (source maps can be huge)
-              return { status: resp.status, body: text.slice(0, 100_000), contentType: resp.headers.get('content-type') ?? '' };
-            } catch {
-              return null;
-            }
-          }, mapUrl);
+          const getResp = await page.request.fetch(mapUrl, { timeout: 10000 });
+          const getStatus = getResp.status();
+          if (getStatus < 200 || getStatus >= 300) continue;
+          const getBody = (await getResp.text()).slice(0, 100_000);
+          const getCt = getResp.headers()['content-type'] ?? '';
+          const getResult = { status: getStatus, body: getBody, contentType: getCt };
 
           requestLogger?.log({
             timestamp: new Date().toISOString(),
             method: 'GET',
             url: mapUrl,
-            responseStatus: getResult?.status ?? 0,
+            responseStatus: getStatus,
             phase: 'active-info-disclosure',
           });
 
@@ -1061,27 +1050,22 @@ export const infoDisclosureCheck: ActiveCheck = {
       try {
         const page = await context.newPage();
         try {
-          const result = await page.evaluate(async ({ url, method, body }: { url: string; method: string; body: string | null }) => {
-            try {
-              const init: RequestInit = { method, redirect: 'follow' };
-              if (body) {
-                init.headers = { 'Content-Type': 'application/json' };
-                init.body = body;
-              }
-              const resp = await fetch(url, init);
-              if (!resp.ok) return null;
-              const text = await resp.text();
-              return { status: resp.status, body: text.slice(0, 5000) };
-            } catch {
-              return null;
-            }
-          }, { url: probeUrl, method: probeMethod, body: probeBody });
+          const fetchOpts: Record<string, unknown> = { timeout: 10000 };
+          if (probeMethod !== 'GET') fetchOpts.method = probeMethod;
+          if (probeBody) {
+            fetchOpts.headers = { 'Content-Type': 'application/json' };
+            fetchOpts.data = probeBody;
+          }
+          const resp = await page.request.fetch(probeUrl, fetchOpts);
+          const status = resp.status();
+          const body = status >= 200 && status < 300 ? (await resp.text()).slice(0, 5000) : '';
+          const result = status >= 200 && status < 300 ? { status, body } : null;
 
           requestLogger?.log({
             timestamp: new Date().toISOString(),
             method: probeMethod,
             url: probeUrl,
-            responseStatus: result?.status ?? 0,
+            responseStatus: status,
             phase: 'active-info-disclosure',
           });
 
@@ -1124,22 +1108,17 @@ export const infoDisclosureCheck: ActiveCheck = {
     try {
       const page = await context.newPage();
       try {
-        const robotsResult = await page.evaluate(async (url: string) => {
-          try {
-            const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
-            if (!resp.ok) return null;
-            const text = await resp.text();
-            return { status: resp.status, body: text };
-          } catch {
-            return null;
-          }
-        }, robotsUrl);
+        const robotsResp = await page.request.fetch(robotsUrl, { timeout: 10000 });
+        const robotsStatus = robotsResp.status();
+        const robotsResult = robotsStatus >= 200 && robotsStatus < 300
+          ? { status: robotsStatus, body: await robotsResp.text() }
+          : null;
 
         requestLogger?.log({
           timestamp: new Date().toISOString(),
           method: 'GET',
           url: robotsUrl,
-          responseStatus: robotsResult?.status ?? 0,
+          responseStatus: robotsStatus,
           phase: 'active-info-disclosure',
         });
 
@@ -1237,17 +1216,17 @@ export const infoDisclosureCheck: ActiveCheck = {
           let jsSecretsFound = 0;
           for (const jsUrl of jsUrls.slice(0, 15)) {
             try {
-              const jsResult = await page.evaluate(async (url: string) => {
-                try {
-                  const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
-                  if (!resp.ok) return null;
-                  const text = await resp.text();
+              let jsResult: string | null = null;
+              try {
+                const jsResp = await page.request.fetch(jsUrl, { timeout: 10000 });
+                if (jsResp.status() >= 200 && jsResp.status() < 300) {
+                  const text = await jsResp.text();
                   // Cap at 1MB to avoid scanning massive bundles
-                  return text.slice(0, 1_000_000);
-                } catch {
-                  return null;
+                  jsResult = text.slice(0, 1_000_000);
                 }
-              }, jsUrl);
+              } catch {
+                jsResult = null;
+              }
 
               if (jsResult) {
                 const secrets = scanJsForSecrets(jsResult, jsUrl);
