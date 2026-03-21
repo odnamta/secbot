@@ -308,10 +308,16 @@ export const xssCheck: ActiveCheck = {
       await runDomPhases();
     }
 
-    // Stored XSS detection: re-visit pages to check for previously injected markers
+    // Stored XSS detection: inject unique markers into forms, then re-visit pages
     if (targets.forms.length > 0 && targets.pages.length > 0) {
-      log.info('Checking for stored XSS...');
-      findings.push(...(await testStoredXss(context, targets.pages, config)));
+      log.info('Injecting stored XSS markers into forms...');
+      const injectedMarkers = await injectStoredXssMarkers(context, targets.forms, config, requestLogger);
+      if (injectedMarkers.length > 0) {
+        // Wait briefly for server-side persistence/propagation
+        await delay(2000);
+        log.info(`Checking ${targets.pages.length} pages for ${injectedMarkers.length} stored XSS markers...`);
+        findings.push(...(await testStoredXss(context, targets.pages, config, injectedMarkers)));
+      }
     }
 
     // Blind XSS: inject callback payloads for out-of-band detection
@@ -1661,17 +1667,159 @@ export async function testSearchParamXss(
 }
 
 /**
- * Basic stored XSS detection: after form payloads were injected,
- * re-visit a subset of crawled pages and check if any markers appear.
- * If a marker from a form submission shows up on a different page, flag as stored XSS.
+ * Stored XSS marker injection: submit unique markers into text input forms.
+ * These markers are designed to be persisted by the server and rendered on
+ * subsequent page loads. Each marker is unique per form to trace the injection path.
+ *
+ * Returns array of { marker, formAction, fieldName } for cross-page checking.
+ */
+interface StoredXssMarker {
+  marker: string;
+  payload: string;
+  formAction: string;
+  fieldName: string;
+}
+
+async function injectStoredXssMarkers(
+  context: BrowserContext,
+  forms: FormInfo[],
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<StoredXssMarker[]> {
+  const injectedMarkers: StoredXssMarker[] = [];
+  const seen = new Set<string>();
+
+  // Find forms with text inputs that could store user data
+  const candidateForms = forms.filter(f => {
+    const method = (f.method ?? 'get').toUpperCase();
+    if (method !== 'POST') return false;
+    // Must have at least one text-like input
+    return f.inputs.some(i =>
+      !i.type || i.type === 'text' || i.type === 'textarea' || i.type === 'email' ||
+      i.type === 'search' || i.type === 'url',
+    );
+  });
+
+  // Limit: max 3 forms in standard, 5 in deep
+  const limit = config.profile === 'deep' ? 5 : 3;
+
+  for (const form of candidateForms.slice(0, limit)) {
+    const actionUrl = form.action || form.pageUrl;
+    const key = `${actionUrl}:${form.inputs.map(i => i.name).join(',')}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    // Build form data with unique markers in text fields
+    const formData: Record<string, string> = {};
+    let targetField = '';
+    const markerBase = `secbot-sxss-${randomUUID().slice(0, 8)}`;
+
+    for (const input of form.inputs) {
+      if (!input.name) continue;
+      if (input.type === 'hidden' && input.value) {
+        formData[input.name] = input.value;
+      } else if (input.type === 'submit') {
+        continue;
+      } else if (
+        !input.type || input.type === 'text' || input.type === 'textarea' ||
+        input.type === 'search'
+      ) {
+        // Inject XSS marker payload into the first text-like field
+        if (!targetField) {
+          targetField = input.name;
+          // Use a simple script payload with unique marker
+          const payload = `<img src=x onerror=alert('${markerBase}')>`;
+          formData[input.name] = payload;
+        } else {
+          formData[input.name] = 'secbot test';
+        }
+      } else if (input.type === 'email') {
+        formData[input.name] = 'test@secbot.dev';
+      } else if (input.type === 'password') {
+        formData[input.name] = 'SecbotTest123!';
+      } else {
+        formData[input.name] = 'test';
+      }
+    }
+
+    if (!targetField) continue;
+
+    // Submit the form via HTTP POST
+    const page = await context.newPage();
+    try {
+      const resp = await page.request.fetch(actionUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        data: Object.entries(formData)
+          .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+          .join('&'),
+        timeout: config.timeout,
+      });
+
+      requestLogger?.log({
+        timestamp: new Date().toISOString(),
+        method: 'POST',
+        url: actionUrl,
+        responseStatus: resp.status(),
+        phase: 'active-xss-stored-inject',
+      });
+
+      // If the server accepted the submission (2xx or 3xx), record the marker
+      if (resp.status() < 400) {
+        injectedMarkers.push({
+          marker: markerBase,
+          payload: formData[targetField],
+          formAction: actionUrl,
+          fieldName: targetField,
+        });
+        log.debug(`Stored XSS: injected marker ${markerBase} into ${targetField} at ${actionUrl}`);
+      }
+    } catch (err) {
+      log.debug(`Stored XSS injection: ${(err as Error).message}`);
+    } finally {
+      await page.close();
+    }
+
+    await delay(config.requestDelay);
+  }
+
+  log.info(`Stored XSS: injected ${injectedMarkers.length} markers into ${candidateForms.length} candidate forms`);
+  return injectedMarkers;
+}
+
+/**
+ * Stored XSS detection: re-visit pages and check if injected markers appear.
+ * If a marker submitted to one form shows up on a different page, flag as stored XSS.
+ * Also checks for markers from previous reflected XSS tests (XSS_PAYLOADS).
  */
 async function testStoredXss(
   context: BrowserContext,
   pageUrls: string[],
   config: ScanConfig,
+  injectedMarkers: StoredXssMarker[] = [],
 ): Promise<RawFinding[]> {
   const findings: RawFinding[] = [];
-  const markers = XSS_PAYLOADS.map(p => p.marker);
+
+  // Combine injected stored markers with reflected XSS payload markers
+  const allMarkers: Array<{
+    marker: string;
+    payload: string;
+    source: string;
+    severity: 'critical' | 'high';
+  }> = [
+    ...injectedMarkers.map(m => ({
+      marker: m.marker,
+      payload: m.payload,
+      source: `form ${m.fieldName} at ${m.formAction}`,
+      severity: 'critical' as const,
+    })),
+    ...XSS_PAYLOADS.map(p => ({
+      marker: p.marker,
+      payload: p.payload,
+      source: 'reflected XSS test',
+      severity: 'high' as const,
+    })),
+  ];
 
   // Only check a subset of pages (max 5) to avoid excessive requests
   const pagesToCheck = pageUrls.slice(0, 5);
@@ -1682,27 +1830,23 @@ async function testStoredXss(
       await page.goto(pageUrl, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
       const content = await page.content();
 
-      for (const marker of markers) {
+      for (const { marker, payload, source, severity } of allMarkers) {
         if (content.includes(marker)) {
-          // Found a marker on a page — check if it's in a dangerous context
-          const xssPayload = XSS_PAYLOADS.find(p => p.marker === marker);
-          if (!xssPayload) continue;
-
           // Verify it's not just HTML-encoded text
           if (isHtmlEncoded(content, marker)) continue;
 
           findings.push({
             id: randomUUID(),
             category: 'xss',
-            severity: 'critical',
-            title: `Potential Stored XSS`,
-            description: `Marker "${marker}" from a previously injected XSS payload was found on page ${pageUrl}. This may indicate stored XSS where user input is persisted and rendered without encoding.`,
+            severity,
+            title: `Stored XSS — Injected Marker Persisted`,
+            description: `A unique XSS marker ("${marker}") injected via ${source} was found persisted on page ${pageUrl}. The server stored the payload without sanitization and renders it in an executable context. This is stored/persistent XSS.`,
             url: pageUrl,
-            evidence: `Marker found: ${marker}\nOriginal payload: ${xssPayload.payload}\nType: ${xssPayload.type}`,
+            evidence: `Marker: ${marker}\nInjected payload: ${payload}\nInjection source: ${source}\nFound on page: ${pageUrl}`,
             request: { method: 'GET', url: pageUrl },
             timestamp: new Date().toISOString(),
-            confidence: 'medium',
-            evidencePack: { detectionMethod: 'reflection' },
+            confidence: 'high',
+            evidencePack: { detectionMethod: 'stored-xss-marker' },
           });
           break; // One stored XSS finding per page is enough
         }

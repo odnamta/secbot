@@ -6,10 +6,14 @@
 Developer-friendly tool that scans web apps for OWASP Top 10 vulnerabilities with a single command. Claude AI drives the entire pipeline — planning attacks, validating findings, and writing reports.
 
 ## Status
-- Version: v1.0.0 "Bounty Ready"
+- Version: v1.1.0 "Enterprise Grade"
 - 43 active check types + 6 passive check categories + 7 chain rules
-- 2412 tests (unit + integration + false-positive regression), 133 files
-- Auto-verify: 12 check types (XSS, SQLi, subdomain-takeover, CORS, open-redirect, CRLF, host-header, security-headers, CSRF, SRI, cookie-flags, info-disclosure)
+- 2396+ tests (unit + integration + false-positive regression), 118+ files
+- Auto-verify: 13 check types (XSS, SQLi, subdomain-takeover, CORS, open-redirect, CRLF, host-header, security-headers, CSRF, SRI, cookie-flags, info-disclosure, clickjacking)
+- CVSS 3.1 scoring: all findings include CVSS vector + base score
+- Evidence: auto curl commands, detectionMethod on all 43 checks, screenshot capture (XSS + clickjacking)
+- Source map exposure detection: JS sourceMappingURL extraction + secret scanning in sourcesContent
+- Stored XSS: active marker injection into forms + cross-page persistence detection
 - Pre-filter heuristics: cross-origin isolation, same-org SRI, third-party cookies (70+ patterns), CORS on 4xx/5xx, locale page CSP, GDPR/Drift/analytics cookies
 - CORS detection: wildcard-without-credentials, SameSite awareness (explicit Lax/Strict → downgrade), empty response body detection (Content-Length: 0 → downgrade)
 - XSS form filling: skips hidden/disabled inputs to avoid 30s timeouts on custom dropdowns
