@@ -550,10 +550,10 @@ describe('determineRelevantChecks', () => {
     const checks = determineRelevantChecks(
       'https://example.com',
       makeRecon({
-        techStack: { languages: ['Python'], detected: ['Flask', 'Jinja2'] },
+        techStack: { languages: ['Python'], detected: ['Flask', 'Jinja2', 'PHP'] },
         endpoints: {
           pages: ['https://example.com', 'https://example.com/admin/panel'],
-          apiRoutes: ['/api/v2/users/123'],
+          apiRoutes: ['/api/v2/users/123', '/api/data.xml'],
           forms: [],
           staticAssets: [],
           graphql: ['/graphql'],

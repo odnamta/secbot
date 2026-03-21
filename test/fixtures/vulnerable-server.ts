@@ -53,6 +53,12 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
     <li><a href="/api/crlf-redirect?url=https://example.com">CRLF Redirect</a></li>
     <li><a href="/api/crlf-header?name=test">CRLF Header</a></li>
     <li><a href="/transfer">Transfer (CSRF)</a></li>
+    <li><a href="/clickjack-me">Clickjack Me (Clickjacking)</a></li>
+    <li><a href="/error-debug?id={bad">Error Debug (Verbose Errors)</a></li>
+    <li><a href="/api/v1/admin/users">Admin Users (BFLA)</a></li>
+    <li><a href="/xml-parse">XML Parse (XXE)</a></li>
+    <li><a href="/api/v1/prototype">Prototype Pollution</a></li>
+    <li><a href="/rate-test/login">Rate Test Login</a></li>
     <li><a href="/safe">Safe Page</a></li>
   </ul>
 </body>
@@ -590,6 +596,59 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
     }
     res.type('html').send(`<!DOCTYPE html>
 <html><body><p>Transfer complete (CSRF protected)</p></body></html>`);
+  });
+
+  // ─── Clickjacking — no X-Frame-Options or CSP frame-ancestors ─────
+  app.get('/clickjack-me', (_req, res) => {
+    res.type('html').send(`<!DOCTYPE html>
+<html><body>
+<h1>Sensitive Action</h1>
+<button>Transfer Money</button>
+</body></html>`);
+  });
+
+  // ─── Verbose Errors — exposes stack trace on bad input ─────────────
+  app.get('/error-debug', (req, res) => {
+    const input = req.query.id as string;
+    try {
+      JSON.parse(input);
+    } catch (err) {
+      res.status(500).type('html').send(`<!DOCTYPE html>
+<html><body>
+<h1>Internal Server Error</h1>
+<pre>Error: ${(err as Error).message}\n${(err as Error).stack}</pre>
+</body></html>`);
+      return;
+    }
+    res.json({ id: input });
+  });
+
+  // ─── BFLA — admin endpoints with no auth check ────────────────────
+  app.get('/api/v1/admin/users', (_req, res) => {
+    res.json({ users: [{ id: 1, name: 'admin', role: 'superadmin' }] });
+  });
+
+  app.delete('/api/v1/admin/users/:id', (req, res) => {
+    res.json({ deleted: true, id: req.params.id });
+  });
+
+  // ─── XXE — accepts XML body and reflects it back ──────────────────
+  app.post('/xml-parse', express.text({ type: 'application/xml' }), (req, res) => {
+    // Reflect the XML content back (simulates XML processing)
+    res.type('xml').send(req.body);
+  });
+
+  // ─── Prototype Pollution — vulnerable merge via Object.assign ─────
+  app.post('/api/v1/prototype', (req, res) => {
+    const obj: Record<string, unknown> = {};
+    // Vulnerable merge — copies __proto__ keys from user input
+    Object.assign(obj, req.body);
+    res.json({ status: 'ok', polluted: (({} as Record<string, unknown>).polluted as string) ?? 'no' });
+  });
+
+  // ─── Rate Limit Test — no rate limiting on login endpoint ─────────
+  app.post('/rate-test/login', (_req, res) => {
+    res.json({ error: 'Invalid credentials' });
   });
 
   return new Promise((resolve) => {

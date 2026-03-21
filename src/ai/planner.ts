@@ -314,24 +314,35 @@ export function determineRelevantChecks(
     relevant.push('clickjacking');
   }
 
-  // Timing attack — relevant when login forms or auth endpoints exist
-  const hasAuthEndpoints = pages.some((p) =>
-    /\/(login|signin|auth|authenticate|forgot|reset|recover|password)/i.test(p.url),
-  );
-  const hasPasswordFields = pages.some((p) =>
-    p.forms.some((f) => f.inputs.some((i) => i.type === 'password')),
+  // Timing attack — relevant when auth/login endpoints exist (password fields or auth URL patterns)
+  const authUrlRe = /\/(login|signin|sign-in|auth|authenticate|forgot|reset|recover|password|register|signup|sign-up)/i;
+  const hasAuthEndpoints = pages.some((p) => authUrlRe.test(p.url)) ||
+    apiEndpoints.some((u) => authUrlRe.test(u)) ||
+    recon.endpoints.apiRoutes.some((r) => authUrlRe.test(r));
+  const hasPasswordFields = allForms.some((f) =>
+    f.inputs.some((i) => i.type === 'password'),
   );
   if (hasAuthEndpoints || hasPasswordFields) {
     relevant.push('timing-attack');
   }
 
-  // Verbose errors — always relevant (every app can have error handling issues)
-  if (pages.length > 0) {
+  // Verbose errors — relevant when non-static targets found (API endpoints, forms, or dynamic pages)
+  const hasDynamicContent = apiEndpoints.length > 0 || allForms.length > 0 ||
+    urlsWithParams.length > 0 || recon.endpoints.apiRoutes.length > 0;
+  if (hasDynamicContent) {
     relevant.push('verbose-errors');
   }
 
-  // XPath injection — relevant when parameterized URLs or forms exist
-  if (urlsWithParams.length > 0 || allForms.length > 0) {
+  // XPath injection — relevant when parameterized URLs exist AND tech stack suggests XML processing
+  const xmlTechRe = /java|spring|tomcat|php|laravel|symfony|\.net|asp\.net|coldfusion|xml|xslt|xpath|soap|wsdl/i;
+  const hasXmlTech = recon.techStack.detected.some((t: string) => xmlTechRe.test(t));
+  const hasXmlEndpoints = [...apiEndpoints, ...recon.endpoints.apiRoutes, ...urlsWithParams].some(
+    (u) => /\.xml|\.soap|\.wsdl|\/xml|\/soap/i.test(u),
+  );
+  const hasXmlContentType = interceptedResponses?.some((r) =>
+    /application\/xml|text\/xml/i.test(r.headers['content-type'] ?? ''),
+  ) ?? false;
+  if ((urlsWithParams.length > 0 || allForms.length > 0) && (hasXmlTech || hasXmlEndpoints || hasXmlContentType)) {
     relevant.push('xpath-injection');
   }
 
