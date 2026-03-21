@@ -414,7 +414,11 @@ export async function runActiveChecks(
     return { ...config, aiFocusAreas: areas };
   };
 
-  // Helper: run a single check with audit tracking + per-check timeout
+  // Progress tracking across parallel + sequential phases
+  const totalChecks = checksToRun.length;
+  let completedChecks = 0;
+
+  // Helper: run a single check with audit tracking + per-check timeout + progress logging
   const runWithAudit = async (check: ActiveCheck): Promise<RawFinding[]> => {
     const startMs = Date.now();
     try {
@@ -431,24 +435,34 @@ export async function runActiveChecks(
         timeoutPromise,
       ]);
 
-      audit.push({
+      const entry: CheckAuditEntry = {
         name: check.name,
         status: 'completed',
         findingsCount: result.length,
         durationMs: Date.now() - startMs,
-      });
+      };
+      audit.push(entry);
+      completedChecks++;
+      const findingsNote = entry.findingsCount > 0 ? ` (${entry.findingsCount} finding${entry.findingsCount > 1 ? 's' : ''})` : '';
+      const timeNote = `[${(entry.durationMs / 1000).toFixed(1)}s]`;
+      log.info(`  \u2713 ${check.name}${findingsNote} ${timeNote} [${completedChecks}/${totalChecks}]`);
       return result;
     } catch (err) {
       const errorMsg = (err as Error).message;
       const isTimeout = errorMsg.includes('timed out');
       log.warn(`Active check "${check.name}" ${isTimeout ? 'timed out' : 'failed'}: ${errorMsg}`);
-      audit.push({
+      const entry: CheckAuditEntry = {
         name: check.name,
         status: 'failed',
         findingsCount: 0,
         durationMs: Date.now() - startMs,
         error: errorMsg,
-      });
+      };
+      audit.push(entry);
+      completedChecks++;
+      const reason = isTimeout ? '(timed out)' : '(failed)';
+      const timeNote = `[${(entry.durationMs / 1000).toFixed(1)}s]`;
+      log.info(`  \u2717 ${check.name} ${reason} ${timeNote} [${completedChecks}/${totalChecks}]`);
       return [];
     }
   };

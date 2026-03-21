@@ -94,25 +94,46 @@ describe('loadConfigFile', () => {
     expect(result).toBeNull();
   });
 
-  it('returns null and warns on invalid JSON in .secbotrc.json', () => {
+  it('exits with code 2 on invalid JSON in .secbotrc.json', () => {
     writeFileSync(join(tmpDir, '.secbotrc.json'), '{ invalid json !!!');
 
-    const result = loadConfigFile(tmpDir);
-    expect(result).toBeNull();
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => { throw new Error('process.exit'); }) as never);
+    const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => loadConfigFile(tmpDir)).toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(2);
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('.secbotrc.json is invalid JSON'));
+
+    exitSpy.mockRestore();
+    stderrSpy.mockRestore();
   });
 
-  it('returns null and warns on invalid JSON in secbot.config.json', () => {
+  it('exits with code 2 on invalid JSON in secbot.config.json', () => {
     writeFileSync(join(tmpDir, 'secbot.config.json'), 'not json at all');
 
-    const result = loadConfigFile(tmpDir);
-    expect(result).toBeNull();
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => { throw new Error('process.exit'); }) as never);
+    const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => loadConfigFile(tmpDir)).toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(2);
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('secbot.config.json is invalid JSON'));
+
+    exitSpy.mockRestore();
+    stderrSpy.mockRestore();
   });
 
-  it('returns null and warns on invalid JSON in package.json', () => {
+  it('exits with code 2 on invalid JSON in package.json', () => {
     writeFileSync(join(tmpDir, 'package.json'), '{{broken}}');
 
-    const result = loadConfigFile(tmpDir);
-    expect(result).toBeNull();
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => { throw new Error('process.exit'); }) as never);
+    const stderrSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => loadConfigFile(tmpDir)).toThrow('process.exit');
+    expect(exitSpy).toHaveBeenCalledWith(2);
+    expect(stderrSpy).toHaveBeenCalledWith(expect.stringContaining('package.json is invalid JSON'));
+
+    exitSpy.mockRestore();
+    stderrSpy.mockRestore();
   });
 
   it('handles partial config (only some fields set)', () => {

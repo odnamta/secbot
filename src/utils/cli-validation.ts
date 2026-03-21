@@ -1,10 +1,10 @@
 import { existsSync } from 'node:fs';
+import { CHECK_REGISTRY } from '../scanner/active/index.js';
 
 export const VALID_PROFILES = ['quick', 'standard', 'deep', 'stealth'] as const;
 
-export const VALID_CHECK_NAMES = [
-  'xss', 'sqli', 'cors', 'redirect', 'traversal', 'ssrf', 'ssti', 'cmdi', 'idor', 'tls', 'sri',
-] as const;
+/** Derived from CHECK_REGISTRY so it stays in sync automatically when checks are added/removed */
+export const VALID_CHECK_NAMES: readonly string[] = CHECK_REGISTRY.map(c => c.name);
 
 export interface CliValidationError {
   field: string;
@@ -91,7 +91,7 @@ export function validateCliOptions(
   // Validate --exclude-checks names
   if (options.excludeChecks !== undefined) {
     const names = options.excludeChecks.split(',').map((s) => s.trim()).filter(Boolean);
-    const unknown = names.filter((n) => !VALID_CHECK_NAMES.includes(n as typeof VALID_CHECK_NAMES[number]));
+    const unknown = names.filter((n) => !VALID_CHECK_NAMES.includes(n));
     if (unknown.length > 0) {
       errors.push({
         field: '--exclude-checks',

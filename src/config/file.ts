@@ -54,8 +54,9 @@ export function loadConfigFile(cwd?: string): SecbotConfig | null {
         log.info(`Loaded config from ${name}`);
         return parsed as SecbotConfig;
       } catch (err) {
-        log.warn(`Found ${name} but failed to parse it: ${(err as Error).message}`);
-        return null;
+        console.error(`Error: Config file ${name} is invalid JSON: ${(err as Error).message}`);
+        console.error('Fix the config file or delete it to use defaults.');
+        process.exit(2);
       }
     }
   }
@@ -71,8 +72,9 @@ export function loadConfigFile(cwd?: string): SecbotConfig | null {
         return pkg.secbot as SecbotConfig;
       }
     } catch (err) {
-      log.warn(`Found package.json but failed to parse it: ${(err as Error).message}`);
-      return null;
+      console.error(`Error: package.json is invalid JSON: ${(err as Error).message}`);
+      console.error('Fix the package.json or remove the "secbot" key to use defaults.');
+      process.exit(2);
     }
   }
 

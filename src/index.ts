@@ -565,10 +565,40 @@ program
 
       // ─── Phase 1: Crawl ────────────────────────────────────────
       log.info('Phase 1: Crawling target...');
-      const { pages, responses, browser, context } = await crawl(config, seedUrls);
+      let crawlResult: Awaited<ReturnType<typeof crawl>>;
+      try {
+        crawlResult = await crawl(config, seedUrls);
+      } catch (err) {
+        const msg = (err as Error).message;
+        if (msg.includes('net::ERR_NAME_NOT_RESOLVED')) {
+          log.error(`DNS resolution failed for target — domain may not exist.`);
+        } else if (msg.includes('net::ERR_CONNECTION_REFUSED')) {
+          log.error(`Connection refused — target server may be down or port is wrong.`);
+        } else if (msg.includes('CERT_')) {
+          log.error(`SSL/TLS certificate error — target has invalid certificate. Try with --proxy if applicable.`);
+        } else if (msg.includes('net::ERR_CONNECTION_TIMED_OUT') || msg.includes('Timeout')) {
+          log.error(`Connection timed out — target is not responding. Check URL and network connectivity.`);
+        } else {
+          log.error(`Crawl failed: ${msg}`);
+        }
+        try { await closeBrowser(); } catch { /* best effort */ }
+        process.exit(2);
+      }
+      const { pages, responses, browser, context } = crawlResult;
 
       if (pages.length === 0) {
-        console.log(chalk.yellow('No pages were successfully crawled. Check the URL and try again.'));
+        const statuses = responses.map(r => r.status);
+        if (statuses.some(s => s === 403)) {
+          log.error('Target returned 403 Forbidden — your IP or user-agent may be blocked. Try --proxy or stealth profile.');
+        } else if (statuses.some(s => s === 401)) {
+          log.error('Target returned 401 Unauthorized — authentication required. Use --auth, --auth-cookie, or --auth-supabase.');
+        } else if (statuses.some(s => s === 429)) {
+          log.error('Target returned 429 Too Many Requests — rate limited. Try stealth profile or increase --request-delay.');
+        } else if (responses.length === 0) {
+          log.error('Could not connect to target — check the URL, DNS, and network connectivity.');
+        } else {
+          log.error(`No pages crawled successfully (${responses.length} response(s), statuses: ${[...new Set(statuses)].join(', ')}). Check the URL and try again.`);
+        }
         await closeBrowser(browser);
         process.exit(1);
       }

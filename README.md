@@ -1,16 +1,18 @@
 # SecBot
 
-**AI-powered security testing CLI -- Playwright for security.**
+**AI-powered web security scanner. One command, 43 active checks, bounty-ready reports.**
 
-SecBot scans web applications for OWASP Top 10 vulnerabilities with a single command. It uses Playwright for browser automation, runs 33 check types (6 passive + 27 active), and optionally uses Claude AI to plan attacks, validate findings, and generate actionable reports. It works fully without an API key via rule-based fallback.
+SecBot is a DAST (Dynamic Application Security Testing) CLI that combines Playwright browser automation with Claude AI to scan web applications for OWASP Top 10 vulnerabilities. It produces findings with CVSS 3.1 scores, curl reproduction commands, and screenshot evidence -- ready for bug bounty submission or CI/CD gating.
 
-> **Status:** v1.0.0 -- AI-powered DAST scanner with bounty workflow foundations. Validated against 4 target tiers.
+Every AI call has a rule-based fallback. The scanner works fully without an API key.
+
+> **Version:** 1.0.0 -- Validated against 4 target tiers.
 
 ## Quick Start
 
 ```bash
-# Install globally
-npm install -g secbot
+# Install
+npm install -g secbot-cli
 
 # Scan a target you own
 secbot scan https://your-app.example.com
@@ -18,8 +20,20 @@ secbot scan https://your-app.example.com
 # Quick scan, no AI
 secbot scan https://your-app.example.com --profile quick --no-ai
 
-# Deep scan with JSON + HTML reports
-secbot scan https://your-app.example.com --profile deep -f terminal,json,html
+# Deep scan with all report formats
+secbot scan https://your-app.example.com --profile deep -f terminal,json,html,bounty,sarif
+
+# Stealth scan through a proxy
+secbot scan https://your-app.example.com --profile stealth --proxy http://127.0.0.1:8080
+
+# Authenticated scan with session cookies
+secbot scan https://your-app.example.com --auth-cookie "session=abc123"
+
+# Interactive mode
+secbot interactive https://your-app.example.com
+
+# Autonomous bounty hunting
+secbot hunt
 ```
 
 ## How It Works
@@ -27,19 +41,99 @@ secbot scan https://your-app.example.com --profile deep -f terminal,json,html
 SecBot runs a 9-phase pipeline:
 
 ```
-Phase 0: Discovery     Route discovery (Next.js manifests, --urls file)
-Phase 1: Crawl         Playwright browser crawl + HTTP interception
-Phase 2: Recon         Tech fingerprinting, WAF detection, endpoint mapping
-Phase 3: AI Plan       Claude analyzes recon, recommends checks to run
-Phase 4: Passive Scan  Headers, cookies, info leaks, mixed content, CORS policy
-Phase 5: Active Scan   AI-selected checks (27 types)
-  Pre-dedup            Deduplicate raw findings before AI validation (saves tokens)
-Phase 6: AI Validate   Claude validates each finding (real or false positive?)
-Phase 7: AI Report     Deduplicate, prioritize, explain, suggest fixes
-Phase 8: Output        Terminal + JSON + HTML + bug bounty markdown + SARIF + JUnit
+Phase 0: Discovery       Route discovery (Next.js manifests, --urls file, JS bundle endpoint extraction)
+Phase 1: Crawl            Playwright browser crawl + HTTP interception + SPA framework detection
+Phase 2: Recon            Tech fingerprinting, WAF detection, endpoint mapping, CT subdomain enumeration
+Phase 3: AI Plan          Claude analyzes recon, selects checks + payload context (tech-aware)
+Phase 4: Passive Scan     Headers, cookies, info leaks, mixed content, cross-origin policy, JS secrets
+Phase 5: Active Scan      Up to 43 checks, parallel where safe, 120s per-check timeout
+  5a: Pre-dedup           Deduplicate raw findings before AI validation (saves tokens)
+  5b: AI Response Analysis  Claude analyzes HTTP responses for subtle vulnerabilities
+Phase 6: AI Validate      Claude validates each finding (real vuln or false positive?)
+Phase 7: AI Report        Deduplicate, prioritize, CVSS score, explain, suggest fixes
+Phase 8: Output           Terminal + JSON + HTML + bounty markdown + SARIF + JUnit
 ```
 
-The browser is reused across crawl and active scan phases. Every AI call has a rule-based fallback, so the tool works fully without an Anthropic API key.
+The browser is reused across crawl and active scan phases. Browser crashes are detected and reported in the check audit trail without aborting the scan.
+
+## Feature Highlights
+
+- **CVSS 3.1 scoring** on every finding with vector string
+- **Auto-generated curl commands** for one-click reproduction
+- **Screenshot evidence** for XSS and clickjacking findings (via Playwright)
+- **15+ pre-filter heuristics** to eliminate false positives before AI validation (cross-origin isolation, same-org SRI, third-party cookies, CORS on error responses, framework-aware CSP, CDN header awareness, and more)
+- **Auto-verify** pipeline: Playwright re-confirms 12 check types (XSS, SQLi, CORS, CSRF, open-redirect, CRLF, host-header, security-headers, SRI, cookie-flags, clickjacking, info-disclosure)
+- **Stealth profile**: Gaussian-distributed delays, referrer chain simulation, UA rotation, human-like mouse/scroll behavior
+- **Self-learning loop**: outcome tracking, FP memory, tech stack effectiveness profiles, WAF bypass payload stats -- all fed back into the planner
+- **DNS pinning + private IP blocking** for SSRF self-defense
+- **Proxy-aware** throughout: `--proxy` is respected by all checks
+- **Per-check timeout** (120s) prevents stalls; check audit trail records status, duration, and errors
+- **Source map exposure detection** with content analysis (sourcesContent, embedded secrets)
+- **Adaptive payload encoding**: 8 WAF bypass strategies, context-aware payload prioritization from recon
+- **Scan history + trend tracking**: per-target history, new/resolved finding diffs
+
+## Security Checks
+
+### Active Checks (43)
+
+| # | Check | Category | Description |
+|---|-------|----------|-------------|
+| 1 | XSS | `xss` | Reflected (GET/POST/JSON), DOM-based, stored, blind, polyglot, HPP bypass |
+| 2 | SQLi | `sqli` | Error-based, time-based blind, boolean-blind, UNION, NoSQL (GET/POST/JSON) |
+| 3 | CORS | `cors-misconfiguration` | Origin reflection, null origin, wildcard-with-credentials, SameSite-aware |
+| 4 | Open Redirect | `open-redirect` | 16 bypass payloads (backslash, @-sign, whitespace, encoding tricks) |
+| 5 | Directory Traversal | `directory-traversal` | Path traversal via file-like parameters |
+| 6 | SSRF | `ssrf` | Internal IP, cloud metadata (AWS/GCP/Azure/DO/Alibaba), DNS rebinding, OOB |
+| 7 | SSTI | `ssti` | Server-side template injection (Jinja2, Twig, EJS, Freemarker, etc.) |
+| 8 | Command Injection | `command-injection` | OS command injection (Unix + Windows payloads) |
+| 9 | IDOR | `idor` | Insecure direct object reference (Jaccard + JSON key similarity, dual auth) |
+| 10 | TLS | `tls` | Certificate validation, protocol version, cipher strength |
+| 11 | SRI | `sri` | Missing Subresource Integrity on CDN scripts/styles |
+| 12 | Info Disclosure | `info-disclosure` | Exposed .git, .env, source maps, robots.txt, backups, JS secrets (14 patterns), HTML comments |
+| 13 | JS CVE | `js-cve` | Built-in vulnerability database (9 libraries, 16 CVEs) |
+| 14 | CRLF Injection | `crlf-injection` | HTTP response splitting via header injection |
+| 15 | Rate Limit | `rate-limit` | Brute-force protection testing on auth/API endpoints |
+| 16 | JWT | `jwt` | None-algorithm bypass, weak secret detection, missing expiry, sensitive data |
+| 17 | Race Condition | `race-condition` | TOCTOU concurrent request abuse on state-changing endpoints |
+| 18 | GraphQL | `graphql` | Introspection, depth limits, batch queries, sensitive mutation discovery |
+| 19 | Host Header | `host-header` | Direct Host, X-Forwarded-Host/Server/URL, cache poisoning |
+| 20 | API Versioning | `api-versioning` | Probe older /api/v1/ endpoints for version-specific vulns |
+| 21 | File Upload | `file-upload` | Shell/polyglot/MIME bypass |
+| 22 | Business Logic | `business-logic` | Price manipulation, workflow bypass |
+| 23 | WebSocket | `websocket` | Auth bypass, injection |
+| 24 | Access Control | `broken-access-control` | Admin endpoint replay, method override, header bypass |
+| 25 | Subdomain Takeover | `subdomain-takeover` | Dangling CNAME detection (14 service fingerprints) |
+| 26 | OAuth | `oauth` | OAuth flow testing |
+| 27 | Cache Poisoning | `cache-poisoning` | Web cache poisoning detection |
+| 28 | CSRF | `csrf` | Missing token detection, cross-origin POST verification |
+| 29 | Prototype Pollution | `prototype-pollution` | Query `__proto__`, JSON body, client-side |
+| 30 | XXE | `xxe` | File read, parameter entity, XInclude |
+| 31 | Insecure Deserialization | `insecure-deserialization` | Java, PHP, Python, Node, Ruby, .NET, YAML |
+| 32 | Request Smuggling | `request-smuggling` | CL.TE, TE.CL, TE.TE timing-based detection |
+| 33 | LDAP Injection | `ldap-injection` | Error-based + blind auth bypass (10 payloads, 17 error patterns) |
+| 34 | User Enumeration | `info-disclosure` | Response discrepancy analysis (CWE-204) |
+| 35 | Mass Assignment | `broken-access-control` | Over-posting probe (22 fields, CWE-915) |
+| 36 | Content-Type Confusion | `csrf` | CSRF bypass via content-type manipulation (CWE-436) |
+| 37 | Method Override | `broken-access-control` | HTTP method override ACL bypass (3 headers + 3 params) |
+| 38 | Email Injection | `crlf-injection` | SMTP header injection (5 CRLF payloads, CWE-93) |
+| 39 | BFLA | `broken-access-control` | Broken function-level authorization, 4-phase probing (API5:2023) |
+| 40 | Clickjacking | `clickjacking` | Active iframe framing test with Playwright + screenshot evidence |
+| 41 | Timing Attack | `info-disclosure` | Username enumeration via response timing side-channels (CWE-208) |
+| 42 | Verbose Errors | `info-disclosure` | Stack traces, framework debug pages (CWE-209/215) |
+| 43 | XPath Injection | `sqli` | Error-based + boolean-based (15 error patterns, CWE-643) |
+
+**Meta check:** Vulnerability chain detection (7 rules: redirect+SSRF, XSS+CSRF, info+IDOR, CORS+XSS, JWT+rate-limit, and more).
+
+### Passive Checks (6 categories)
+
+| Category | What It Checks |
+|----------|----------------|
+| `security-headers` | CSP, X-Frame-Options, HSTS, X-Content-Type-Options, Permissions-Policy, Referrer-Policy |
+| `cookie-flags` | HttpOnly, Secure, SameSite on session cookies (70+ third-party cookie patterns filtered) |
+| `info-leakage` | Server/X-Powered-By headers, HTML comments, source maps, JS secrets |
+| `mixed-content` | HTTP resources loaded on HTTPS pages |
+| `sensitive-url-data` | Tokens, keys, passwords in URL query strings |
+| `cross-origin-policy` | COOP, COEP, CORP headers |
 
 ## CLI Reference
 
@@ -55,88 +149,70 @@ Options:
   --max-pages <n>               Maximum pages to crawl
   --timeout <ms>                Per-page timeout in milliseconds
   --ignore-robots               Ignore robots.txt restrictions
-  --scope <patterns>            Scope: "*.example.com,-admin.example.com"
+  --scope <patterns>            Scope patterns: "*.example.com,-admin.example.com"
+  --scope-file <path>           Bug bounty scope file (HackerOne/Bugcrowd format)
   --urls <file>                 File with URLs to scan (one per line)
-  --log-requests                Log all HTTP requests (JSONL)
+  --subdomains                  Enable subdomain enumeration (DNS brute-force + CT logs)
+  --log-requests                Log all HTTP requests (JSONL audit trail)
   --callback-url <url>          Callback URL for blind SSRF/OOB detection
   --callback-server <port>      Auto-start built-in OOB callback server
   --oob-wait <seconds>          Wait time for delayed OOB callbacks (default: 30)
   --rate-limit <n>              Maximum requests per second
   --exclude-checks <checks>     Comma-separated check names to skip (e.g. "traversal,cmdi")
   --baseline <file>             Baseline JSON -- only report new findings
-  --proxy <url>                 HTTP or SOCKS5 proxy (e.g. socks5://host:1080)
+  --proxy <url>                 HTTP or SOCKS5 proxy (e.g. http://host:8080 or socks5://host:1080)
   --export-burp                 Export traffic as Burp Suite XML (requires --log-requests)
   --export-har                  Export traffic as HAR 1.2 (requires --log-requests)
   --login-url <url>             Login page URL for credential-based auth
-  --credentials-file <path>     File containing credentials (user:pass)
+  --credentials <user:pass>     Username:password pair for login
+  --credentials-file <path>     File containing credentials (user:pass on first line)
+  --auth-cookie <cookies>       Pre-set cookies (name1=value1;name2=value2)
+  --auth-header <header>        Inject auth header (e.g. "Authorization: Bearer token123")
+  --auth-supabase <email:pass>  Authenticate via Supabase password grant
+  -y, --yes                     Auto-confirm consent for CI/CD (required in non-TTY)
   --no-ai                       Skip AI, use rule-based fallback
   --verbose                     Debug logging
+
+secbot hunt                     Autonomous bounty hunting (YAML program registry)
+secbot outcome <id>             Record bounty outcome for self-learning
+secbot interactive <url>        Interactive REPL mode
 ```
-
-## Scan Profiles
-
-| Profile    | Max Pages | Timeout | Concurrency | Delay  | Use Case                        |
-|------------|-----------|---------|-------------|--------|---------------------------------|
-| `quick`    | 5         | 15s     | 3           | 50ms   | Fast smoke test, CI gate        |
-| `standard` | 25        | 30s     | 5           | 100ms  | Default, balanced               |
-| `deep`     | 100       | 60s     | 10          | 100ms  | Thorough scan, all checks       |
-| `stealth`  | 3         | 30s     | 1           | 500ms  | Low-noise, randomized delays    |
-
-## Security Checks
-
-### Active Checks (27)
-
-| Check | Category | Description |
-|-------|----------|-------------|
-| XSS | `xss` | Reflected, DOM-based, and stored cross-site scripting |
-| SQLi | `sqli` | Error-based, blind boolean, blind timing, UNION, NoSQL |
-| CORS | `cors-misconfiguration` | Origin reflection, null origin, wildcard with credentials |
-| Open Redirect | `open-redirect` | URL parameter redirect manipulation |
-| Directory Traversal | `directory-traversal` | Path traversal via file-like parameters |
-| SSRF | `ssrf` | Internal IP, cloud metadata, DNS rebinding, OOB detection |
-| SSTI | `ssti` | Server-side template injection (Jinja2, Twig, EJS, etc.) |
-| Command Injection | `command-injection` | OS command injection (Unix + Windows payloads) |
-| IDOR | `idor` | Insecure direct object reference (requires dual auth sessions) |
-| TLS | `tls` | Certificate validation, protocol version, cipher strength |
-| SRI | `sri` | Missing Subresource Integrity on CDN scripts/styles |
-
-### Passive Checks (6 categories)
-
-| Category | What it checks |
-|----------|----------------|
-| `security-headers` | CSP, X-Frame-Options, HSTS, X-Content-Type-Options, Permissions-Policy |
-| `cookie-flags` | HttpOnly, Secure, SameSite on session cookies |
-| `info-leakage` | Server/X-Powered-By headers, HTML comments, source maps |
-| `mixed-content` | HTTP resources loaded on HTTPS pages |
-| `sensitive-url-data` | Tokens, keys, passwords in URL query strings |
-| `cross-origin-policy` | COOP, COEP, CORP headers |
 
 ## Output Formats
 
-| Format     | Flag      | Description                                          |
-|------------|-----------|------------------------------------------------------|
-| Terminal   | `terminal`| Colored CLI output with severity breakdown           |
-| JSON       | `json`    | Machine-readable findings for CI/CD integration      |
-| HTML       | `html`    | Standalone HTML report                               |
-| Bug Bounty | `bounty`  | HackerOne/Bugcrowd markdown format                   |
-| SARIF      | `sarif`   | Static Analysis Results Interchange Format           |
-| JUnit      | `junit`   | JUnit XML for CI test runners                        |
+| Format | Flag | Description |
+|--------|------|-------------|
+| Terminal | `terminal` | Colored CLI output with severity breakdown and top priorities |
+| JSON | `json` | Machine-readable findings with CVSS scores, curl commands, evidence packs |
+| HTML | `html` | Standalone dark-theme report with inline evidence and screenshots |
+| Bug Bounty | `bounty` | HackerOne/Bugcrowd markdown with reproduction steps and impact analysis |
+| SARIF | `sarif` | Static Analysis Results Interchange Format for GitHub/Azure DevOps |
+| JUnit | `junit` | JUnit XML for CI test runners |
 
 Additional exports with `--log-requests`:
-- `--export-burp` -- Burp Suite XML for further manual testing
+- `--export-burp` -- Burp Suite XML for manual testing
 - `--export-har` -- HAR 1.2 archive
 
-## AI Features
+## Scan Profiles
 
-SecBot uses Claude AI for three stages:
+| Profile | Max Pages | Timeout | Concurrency | Delay | Use Case |
+|---------|-----------|---------|-------------|-------|----------|
+| `quick` | 5 | 15s | 3 | 50ms | Fast smoke test, CI gate |
+| `standard` | 25 | 30s | 5 | 100ms | Default balanced scan |
+| `deep` | 100 | 60s | 10 | 100ms | Thorough scan, all checks |
+| `stealth` | 3 | 30s | 1 | 200-800ms | Gaussian delays, referrer chains, UA rotation, human simulation |
 
-1. **Planner** -- Analyzes recon data and recommends which active checks to run and in what order, based on detected tech stack and attack surface.
-2. **Validator** -- Assesses each raw finding: real vulnerability or false positive? Processes in batches of 10.
-3. **Reporter** -- Deduplicates, prioritizes, explains impact, and suggests fixes with code examples.
+## AI Pipeline
 
-All three stages fall back to rule-based logic when `ANTHROPIC_API_KEY` is not set or when `--no-ai` is passed. The scanner produces useful results either way -- AI improves signal-to-noise ratio.
+SecBot uses Claude AI (Sonnet 4.6 by default) for three stages:
 
-## Configuration File
+1. **Planner** -- Analyzes recon data, selects which of the 43 checks to run, and generates payload context from detected tech stack (database engine, template language, OS).
+2. **Validator** -- Assesses each raw finding: real vulnerability or false positive? Processes in batches of 10 with tech-aware prompts.
+3. **Reporter** -- Deduplicates, assigns CVSS 3.1 scores, explains impact, and generates fix suggestions with code examples.
+
+All three stages fall back to rule-based logic when `ANTHROPIC_API_KEY` is not set or `--no-ai` is passed. The scanner produces useful results either way -- AI improves the signal-to-noise ratio.
+
+## Configuration
 
 SecBot looks for config in this order:
 1. `.secbotrc.json`
@@ -168,132 +244,63 @@ CLI arguments override config file values. Example `.secbotrc.json`:
 
 ```bash
 ANTHROPIC_API_KEY=             # Required for AI features (optional -- fallback works without)
-SECBOT_MODEL=                  # AI model override (default: claude-sonnet-4-5-20250929)
+SECBOT_MODEL=                  # AI model override (default: claude-sonnet-4-6)
+SECBOT_CREDENTIALS=            # Credentials (user:pass) -- secure alternative to --credentials
 SECBOT_MAX_PAGES=50            # Max pages to crawl
 SECBOT_TIMEOUT=30000           # Per-page timeout (ms)
+SECBOT_TOKEN_BUDGET=           # Max AI tokens per scan
 ```
+
+## Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| `0` | Scan complete, no high/critical findings |
+| `1` | Scan complete, high or critical findings found |
+| `2` | Scan error (crash, invalid config, etc.) |
+
+CI gate example: `secbot scan $URL --no-ai -f json -y && echo "Clean" || echo "Issues found"`
 
 ## Plugins
 
-SecBot supports custom check plugins. Place `.js`, `.mjs`, `.ts`, or `.mts` files in `~/.secbot/plugins/` (or set `pluginDir` in config). You can also install npm packages named `secbot-plugin-*`.
+Place `.js`, `.mjs`, `.ts`, or `.mts` files in `~/.secbot/plugins/` (or set `pluginDir` in config). You can also install npm packages named `secbot-plugin-*`.
 
 A plugin exports an object implementing the `ActiveCheck` interface:
 
 ```typescript
-// ~/.secbot/plugins/my-check.ts
 export default {
   name: 'my-custom-check',
   category: 'xss',
+  parallel: true, // safe to run concurrently?
   async run(context, targets, config) {
-    // Your check logic using Playwright BrowserContext
     return []; // Return RawFinding[]
   },
 };
 ```
 
-## Example Output
-
-```
-===============================================
-  SecBot Security Scan Report
-===============================================
-
-Summary
-  Target:     https://example.com
-  Profile:    standard
-  Pages:      12
-  Duration:   34s
-  Raw:        8 findings
-  Actionable: 3 findings
-
-Severity Breakdown
-  CRITICAL  1
-  HIGH      1
-  MEDIUM    1
-
-Findings
-
-  [1] CRITICAL -- SQL Injection in "query" parameter
-      URL:    https://example.com/api/v1/data?query=test
-      OWASP:  A03:2021 Injection
-      Impact: Attacker can read/modify/delete database contents.
-      Fix:    Use parameterized queries instead of string concatenation.
-
-  [2] HIGH -- Reflected XSS in "q" parameter
-      URL:    https://example.com/search?q=test
-      OWASP:  A03:2021 Injection
-      Impact: Attacker can execute JavaScript in victim's browser.
-      Fix:    HTML-encode all user input before rendering.
-
-  [3] MEDIUM -- Missing Content-Security-Policy header
-      URL:    https://example.com/
-      OWASP:  A05:2021 Security Misconfiguration
-      Impact: No CSP allows inline scripts and unrestricted resource loading.
-      Fix:    Add Content-Security-Policy header with restrictive policy.
-
-Top Priorities
-  -> Fix SQL injection in /api/v1/data -- exploitable now
-  -> Add output encoding for reflected XSS in /search
-  -> Deploy Content-Security-Policy header site-wide
-```
-
-## Real-World Scan Results
-
-SecBot was used to audit a Next.js + Supabase finance app across 4 iterative scans:
-
-| Scan | Profile | Raw | Actionable | Highest | What Changed |
-|------|---------|-----|------------|---------|--------------|
-| Initial | standard | 5 | 3 | HIGH | Missing CSP, X-Frame-Options, security headers |
-| After static headers | standard | 2 | 1 | MEDIUM | CSP had unsafe-inline/unsafe-eval |
-| After nonce CSP | deep | 1 | 1 | LOW | X-Powered-By leaking framework |
-| **Final** | **deep** | **0** | **0** | **Clean** | All checks passed |
-
-The AI planner correctly skipped XSS/SQLi on the initial scan -- no forms or parameterized URLs on a Next.js SPA.
-
-## Exit Codes
-
-| Code | Meaning                                    |
-|------|--------------------------------------------|
-| `0`  | Scan complete, no high/critical findings   |
-| `1`  | Scan complete, high or critical findings   |
-| `2`  | Scan error (crash, invalid config, etc.)   |
-
-Useful for CI gates: `secbot scan $URL --no-ai -f json && echo "Clean" || echo "Issues found"`
-
 ## Development
 
 ```bash
-# Install dependencies
-npm install
-
-# Run in development mode
-npm run dev -- scan http://localhost:3000
-
-# Build
-npm run build
-
-# Run tests
-npm run test
-
-# Watch mode
-npm run test:watch
-
-# Type check
-npx tsc --noEmit
+npm install               # Install dependencies
+npm run dev -- scan <url> # Run in dev mode (tsx)
+npm run build             # Build with tsc
+npm run test              # Run tests (vitest)
+npm run test:watch        # Watch mode
+npx tsc --noEmit          # Type check
 ```
 
 ### Testing
 
-Tests use Vitest with an Express-based vulnerable server fixture that has intentional security flaws for each check type. The test suite includes:
+Tests use Vitest with an Express-based vulnerable server fixture that has intentional security flaws for each check type:
 
-- **Unit tests** -- Deduplication, scope enforcement, payload structure, JSON parsing
+- **Unit tests** -- Payload structure, dedup, scope enforcement, pre-filter heuristics, encoding strategies
 - **Integration tests** -- Each active check against the vulnerable fixture server
-- **False-positive regression** -- Checks produce zero findings against a properly secured endpoint
+- **False-positive regression** -- Checks produce zero findings against properly secured endpoints
 
 ### Adding a New Check
 
 1. Create `src/scanner/active/your-check.ts` implementing the `ActiveCheck` interface
-2. Add payloads to `src/config/payloads/your-check.ts`
+2. Add payloads to `src/config/payloads/your-check.ts` (if applicable)
 3. Register in `CHECK_REGISTRY` in `src/scanner/active/index.ts`
 4. Add integration test in `test/integration/your-check.test.ts`
 
@@ -302,15 +309,18 @@ Tests use Vitest with an Express-based vulnerable server fixture that has intent
 SecBot is designed for authorized testing only:
 
 - **Non-destructive** -- No data modification, no denial of service
-- **Consent prompt** -- Warns before scanning external (non-localhost) targets
+- **Consent prompt** -- Warns before scanning external (non-localhost) targets; `--yes` required in non-TTY
 - **robots.txt** -- Respected by default (override with `--ignore-robots`)
 - **Rate limiting** -- Configurable per-domain rate limits with adaptive backoff
 - **Request logging** -- Full JSONL audit trail with `--log-requests`
+- **DNS pinning** -- Private IP blocking prevents SSRF against the scanner's own network
+- **Prompt injection sanitization** -- AI evidence fields are sanitized before prompt construction
+- **Auth credential safety** -- Temp files written with 0o600 permissions, cleaned up after scan
 
 ## Built With
 
-- [TypeScript](https://www.typescriptlang.org/) -- Strict mode
-- [Playwright](https://playwright.dev/) -- Browser automation + HTTP interception
+- [TypeScript](https://www.typescriptlang.org/) -- Strict mode, Node.js 20+
+- [Playwright](https://playwright.dev/) -- Browser automation, HTTP interception, screenshot evidence
 - [Anthropic SDK](https://docs.anthropic.com/) -- Claude AI for planning, validation, reporting
 - [Commander](https://github.com/tj/commander.js/) -- CLI framework
 - [Chalk](https://github.com/chalk/chalk) -- Terminal styling

@@ -1,8 +1,36 @@
 import { describe, it, expect } from 'vitest';
 import { validateCliOptions, VALID_PROFILES, VALID_CHECK_NAMES } from '../../src/utils/cli-validation.js';
+import { CHECK_REGISTRY } from '../../src/scanner/active/index.js';
 
 // Stub file existence checker for testing
 const fileExists = (path: string) => path === '/exists/auth.json' || path === '/exists/urls.txt';
+
+describe('VALID_CHECK_NAMES', () => {
+  it('matches CHECK_REGISTRY count (43 checks)', () => {
+    expect(VALID_CHECK_NAMES.length).toBe(CHECK_REGISTRY.length);
+    expect(VALID_CHECK_NAMES.length).toBeGreaterThanOrEqual(43);
+  });
+
+  it('includes all CHECK_REGISTRY names', () => {
+    const registryNames = CHECK_REGISTRY.map(c => c.name);
+    expect(VALID_CHECK_NAMES).toEqual(registryNames);
+  });
+
+  it('includes newer checks that were missing from the old hardcoded list', () => {
+    const newerChecks = [
+      'info-disclosure', 'js-cve', 'crlf', 'rate-limit', 'jwt', 'race',
+      'graphql', 'host-header', 'api-version', 'file-upload', 'business-logic',
+      'websocket', 'access-control', 'subdomain-takeover', 'oauth', 'cache-poisoning',
+      'csrf', 'prototype-pollution', 'xxe', 'insecure-deserialization',
+      'request-smuggling', 'ldap-injection', 'user-enum', 'mass-assignment',
+      'content-type-confusion', 'method-override', 'email-injection', 'bfla',
+      'clickjacking', 'timing-attack', 'verbose-errors', 'xpath-injection',
+    ];
+    for (const name of newerChecks) {
+      expect(VALID_CHECK_NAMES).toContain(name);
+    }
+  });
+});
 
 describe('validateCliOptions', () => {
   // ─── Profile validation ────────────────────────────────────────
