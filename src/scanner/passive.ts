@@ -6,6 +6,14 @@ import { normalizeUrl } from '../utils/shared.js';
 // Frameworks that require 'unsafe-inline' in CSP for their runtime to function
 const FRAMEWORKS_REQUIRING_UNSAFE_INLINE = ['Next.js', 'Nuxt'];
 
+// Headers that CDN platforms (Vercel, Cloudflare) typically inject at the edge,
+// even when the application code doesn't set them explicitly.
+const CDN_MANAGED_HEADERS = [
+  'x-frame-options',
+  'x-content-type-options',
+  'referrer-policy',
+];
+
 // Cookies that don't need HttpOnly — they're intentionally JS-readable
 const SKIP_HTTPONLY_PATTERNS = [
   /^_ga/i, /^_gid/i, /^_gat/i, /^_fbp/i, /^_gcl/i,    // Google Analytics / FB Pixel
@@ -156,7 +164,7 @@ export function runPassiveChecks(
         if (new URL(page.url).origin !== targetOrigin) continue;
       } catch { /* check anyway if URL parse fails */ }
     }
-    findings.push(...checkSecurityHeaders(page, reportedHeaders, detectedFramework));
+    findings.push(...checkSecurityHeaders(page, reportedHeaders, detectedFramework, recon));
     findings.push(...checkCookieFlags(page));
     findings.push(...checkInfoLeakage(page, responses));
     findings.push(...checkMixedContent(page, responses));
@@ -171,9 +179,20 @@ function checkSecurityHeaders(
   page: CrawledPage,
   reportedHeaders: Map<string, RawFinding>,
   detectedFramework?: string,
+  recon?: ReconResult,
 ): RawFinding[] {
   const findings: RawFinding[] = [];
   const headers = page.headers;
+
+  // Detect CDN platform from response headers or recon tech stack
+  const isVercel = headers['server']?.includes('Vercel') ||
+    headers['x-vercel-id'] !== undefined ||
+    recon?.techStack?.cdn?.toLowerCase().includes('vercel');
+  const isCloudflare = headers['server']?.includes('cloudflare') ||
+    headers['cf-ray'] !== undefined ||
+    recon?.techStack?.cdn?.toLowerCase().includes('cloudflare');
+  const isCdnManaged = isVercel || isCloudflare;
+  const cdnName = isVercel ? 'Vercel' : isCloudflare ? 'Cloudflare' : undefined;
 
   const requiredHeaders: {
     name: string;
@@ -244,13 +263,18 @@ function checkSecurityHeaders(
         continue;
       }
 
+      // For CDN-managed targets, downgrade headers that the platform injects at the edge
+      const cdnDowngrade = isCdnManaged && CDN_MANAGED_HEADERS.includes(req.name);
+
       const finding: RawFinding = {
         id: randomUUID(),
         category: 'security-headers',
-        severity: req.severity,
+        severity: cdnDowngrade ? 'info' : req.severity,
         confidence: req.confidence,
         title: req.title,
-        description: req.description,
+        description: cdnDowngrade
+          ? req.description + ` Note: Target uses ${cdnName} which may inject this header at the platform level.`
+          : req.description,
         url: page.url,
         evidence: `Header "${req.name}" not present in response`,
         response: {
@@ -281,8 +305,8 @@ function checkSecurityHeaders(
         : false;
 
       const description = frameworkRequiresUnsafeInline
-        ? "The Content-Security-Policy includes 'unsafe-inline' in script-src, which weakens XSS protection. " +
-          "Note: This framework requires 'unsafe-inline' for its runtime. Consider using nonces or hashes instead if your framework version supports it."
+        ? `Next.js uses 'unsafe-inline' alongside nonce-based CSP as its standard security model. ` +
+          `The nonce ensures only legitimate scripts execute. This is the correct pattern for ${detectedFramework} and is not an exploitable weakness.`
         : "The Content-Security-Policy includes 'unsafe-inline' in script-src, which weakens XSS protection.";
 
       findings.push({

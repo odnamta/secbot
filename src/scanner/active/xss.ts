@@ -473,6 +473,47 @@ function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/**
+ * Check whether the payload/marker appears in a DANGEROUS_CONTEXTS_ALWAYS context
+ * (event handler, script tag, unquoted attribute, javascript: URL, template expression).
+ * Returns true only for high-confidence exploitable contexts — NOT body-text-only reflection.
+ */
+function isInAlwaysDangerousContext(content: string, payload: string, marker: string): boolean {
+  const contentNoScripts = content.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+
+  // Check full payload against ALWAYS contexts
+  if (content.includes(payload)) {
+    const hasRawHtml = payload.includes('<');
+    const checkContent = hasRawHtml ? content : contentNoScripts;
+    if (checkContent.includes(payload)) {
+      for (const pattern of DANGEROUS_CONTEXTS_ALWAYS) {
+        const contextPattern = new RegExp(pattern.source.replace('PAYLOAD', escapeRegex(payload)), pattern.flags);
+        if (contextPattern.test(checkContent)) return true;
+      }
+    }
+    // JS string breakout is also a strong signal
+    if (checkJsStringBreakout(content, payload)) return true;
+  }
+
+  // Check marker against ALWAYS contexts (outside script blocks)
+  if (marker && contentNoScripts.includes(marker) && !isHtmlEncoded(content, marker)) {
+    for (const pattern of DANGEROUS_CONTEXTS_ALWAYS) {
+      const contextPattern = new RegExp(pattern.source.replace('PAYLOAD', escapeRegex(marker)), pattern.flags);
+      if (contextPattern.test(contentNoScripts)) return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Check if the target uses a SPA framework that auto-escapes output by default.
+ */
+function isSpaAutoEscaping(config: ScanConfig): boolean {
+  return !!config.detectedFramework?.name &&
+    /react|vue|angular|svelte|next|nuxt/i.test(config.detectedFramework.name);
+}
+
 /** Select payloads based on scan profile, excluding DOM-type payloads for non-DOM checks.
  *  Appends polyglot XSS and JS-context payloads when WAF is detected or profile is 'deep'. */
 function selectPayloads(config: ScanConfig, maxQuick: number): XSSPayload[] {
@@ -612,12 +653,23 @@ async function testXssOnForms(
         const dangerousContext = checkDangerousReflection(content, xssPayload.payload, xssPayload.marker);
 
         if (dangerousContext) {
+          // SPA framework downgrade: React/Vue/Angular/Svelte auto-escape output by default.
+          // If the reflection is only in body text (not in event handler, script, or unquoted attr),
+          // it's very likely not exploitable — downgrade confidence.
+          const inAlwaysCtx = isInAlwaysDangerousContext(content, xssPayload.payload, xssPayload.marker);
+          const spaDowngrade = isSpaAutoEscaping(config) && !inAlwaysCtx;
+
+          let description = `The form input "${textInputs[0].name}" reflects XSS payload (${xssPayload.type}) in a dangerous context without proper encoding. ${dangerousContext}.`;
+          if (spaDowngrade) {
+            description += ` Note: Target uses ${config.detectedFramework!.name} which auto-escapes output. This reflection is likely not exploitable.`;
+          }
+
           findings.push({
             id: randomUUID(),
             category: 'xss',
             severity: 'high',
             title: `Reflected XSS in Form Input "${textInputs[0].name}"`,
-            description: `The form input "${textInputs[0].name}" reflects XSS payload (${xssPayload.type}) in a dangerous context without proper encoding. ${dangerousContext}.`,
+            description,
             url: form.pageUrl,
             evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\n${dangerousContext}`,
             request: {
@@ -626,7 +678,7 @@ async function testXssOnForms(
               body: textInputs.map((i) => `${i.name}=${xssPayload.payload}`).join('&'),
             },
             timestamp: new Date().toISOString(),
-            confidence: 'medium',
+            confidence: spaDowngrade ? 'low' : 'medium',
             evidencePack: { detectionMethod: 'form-injection' },
           });
           break;
@@ -723,15 +775,24 @@ async function testPostFormXss(
           const dangerousContext = checkDangerousReflection(content, xssPayload.payload, xssPayload.marker);
 
           if (dangerousContext) {
+            // SPA framework downgrade: React/Vue/Angular/Svelte auto-escape output by default.
+            const inAlwaysCtx = isInAlwaysDangerousContext(content, xssPayload.payload, xssPayload.marker);
+            const spaDowngrade = isSpaAutoEscaping(config) && !inAlwaysCtx;
+
+            let description = `The POST body parameter "${input.name}" reflects XSS payload (${xssPayload.type}) in the response without proper encoding. ${dangerousContext}. This is exploitable via a crafted form that auto-submits via JavaScript.`;
+            if (spaDowngrade) {
+              description += ` Note: Target uses ${config.detectedFramework!.name} which auto-escapes output. This reflection is likely not exploitable.`;
+            }
+
             findings.push({
               id: randomUUID(),
               category: 'xss',
               severity: 'high',
               title: `Reflected XSS in POST Body Parameter "${input.name}"`,
-              description: `The POST body parameter "${input.name}" reflects XSS payload (${xssPayload.type}) in the response without proper encoding. ${dangerousContext}. This is exploitable via a crafted form that auto-submits via JavaScript.`,
+              description,
               url: form.pageUrl,
               evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nParameter: ${input.name}\nMethod: POST\nAction: ${actionUrl}\n${dangerousContext}`,
-              confidence: 'medium',
+              confidence: spaDowngrade ? 'low' : 'medium',
               request: {
                 method: 'POST',
                 url: actionUrl,
@@ -972,17 +1033,27 @@ async function testXssOnUrls(
 
             if (dangerousContext) {
               const isWafBypass = variant !== xssPayload.payload;
+              // SPA framework downgrade: React/Vue/Angular/Svelte auto-escape output by default.
+              const inAlwaysCtx = isInAlwaysDangerousContext(content, variant, xssPayload.marker)
+                || (variant !== xssPayload.payload ? isInAlwaysDangerousContext(content, xssPayload.payload, xssPayload.marker) : false);
+              const spaDowngrade = isSpaAutoEscaping(config) && !inAlwaysCtx;
+
+              let description = `The URL parameter "${param}" reflects XSS payload (${xssPayload.type}) in a dangerous context without proper encoding. ${dangerousContext}.${isWafBypass ? ' Payload was encoded to bypass WAF detection.' : ''}`;
+              if (spaDowngrade) {
+                description += ` Note: Target uses ${config.detectedFramework!.name} which auto-escapes output. This reflection is likely not exploitable.`;
+              }
+
               findings.push({
                 id: randomUUID(),
                 category: 'xss',
                 severity: 'high',
                 title: `Reflected XSS in URL Parameter "${param}"${isWafBypass ? ' (WAF bypass)' : ''}`,
-                description: `The URL parameter "${param}" reflects XSS payload (${xssPayload.type}) in a dangerous context without proper encoding. ${dangerousContext}.${isWafBypass ? ' Payload was encoded to bypass WAF detection.' : ''}`,
+                description,
                 url: originalUrl,
                 evidence: `Payload: ${variant}\nOriginal: ${xssPayload.payload}\nType: ${xssPayload.type}\nTest URL: ${testUrl.href}\n${dangerousContext}${isWafBypass ? '\nWAF bypass: yes' : ''}`,
                 request: { method: 'GET', url: testUrl.href },
                 timestamp: new Date().toISOString(),
-                confidence: 'medium',
+                confidence: spaDowngrade ? 'low' : 'medium',
                 evidencePack: { detectionMethod: 'reflection' },
               });
               foundForParam = true;
@@ -1020,17 +1091,26 @@ async function testXssOnUrls(
               const dangerousContext = checkDangerousReflection(content, xssPayload.payload, xssPayload.marker);
 
               if (dangerousContext) {
+                // SPA framework downgrade: React/Vue/Angular/Svelte auto-escape output by default.
+                const inAlwaysCtx = isInAlwaysDangerousContext(content, xssPayload.payload, xssPayload.marker);
+                const spaDowngrade = isSpaAutoEscaping(config) && !inAlwaysCtx;
+
+                let description = `The URL parameter "${param}" reflects XSS payload (${xssPayload.type}) via HTTP Parameter Pollution. ${dangerousContext}. WAF was bypassed by duplicating the parameter.`;
+                if (spaDowngrade) {
+                  description += ` Note: Target uses ${config.detectedFramework!.name} which auto-escapes output. This reflection is likely not exploitable.`;
+                }
+
                 findings.push({
                   id: randomUUID(),
                   category: 'xss',
                   severity: 'high',
                   title: `Reflected XSS in URL Parameter "${param}" (HPP bypass)`,
-                  description: `The URL parameter "${param}" reflects XSS payload (${xssPayload.type}) via HTTP Parameter Pollution. ${dangerousContext}. WAF was bypassed by duplicating the parameter.`,
+                  description,
                   url: originalUrl,
                   evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nHPP URL: ${hppUrl}\n${dangerousContext}\nWAF bypass: HPP`,
                   request: { method: 'GET', url: hppUrl },
                   timestamp: new Date().toISOString(),
-                  confidence: 'medium',
+                  confidence: spaDowngrade ? 'low' : 'medium',
                   evidencePack: { detectionMethod: 'reflection' },
                 });
                 foundForParam = true;

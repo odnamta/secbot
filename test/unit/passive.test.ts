@@ -401,7 +401,7 @@ describe('passive checks: framework-aware CSP unsafe-inline filtering', () => {
     expect(unsafeInline).toBeDefined();
     expect(unsafeInline!.severity).toBe('low');
     expect(unsafeInline!.description).toContain(
-      "Note: This framework requires 'unsafe-inline' for its runtime. Consider using nonces or hashes instead if your framework version supports it.",
+      "nonce ensures only legitimate scripts execute",
     );
   });
 
@@ -412,7 +412,7 @@ describe('passive checks: framework-aware CSP unsafe-inline filtering', () => {
     expect(unsafeInline).toBeDefined();
     expect(unsafeInline!.severity).toBe('low');
     expect(unsafeInline!.description).toContain(
-      "Note: This framework requires 'unsafe-inline' for its runtime.",
+      "This is the correct pattern for Nuxt and is not an exploitable weakness",
     );
   });
 

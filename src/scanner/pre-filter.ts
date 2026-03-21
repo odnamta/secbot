@@ -178,7 +178,25 @@ function applyHeuristicDowngrades(finding: RawFinding): { downgrade: boolean; re
     } catch { /* ignore URL parse errors */ }
   }
 
-  // 15. Rate-limit missing on non-auth endpoints — bounty programs only care about
+  // 15. Security-headers on CDN-managed targets (Vercel, Cloudflare) — these platforms
+  //     inject standard security headers at the edge; missing headers in app code
+  //     are covered by the CDN and bounty programs reject these as non-issues
+  if (category === 'security-headers') {
+    const responseHeaders = finding.response?.headers ?? {};
+    const evidenceLower = evidence;
+    const isVercelTarget = responseHeaders['server']?.includes('Vercel') ||
+      responseHeaders['x-vercel-id'] !== undefined ||
+      (finding.url && /\.vercel\.app\b/i.test(finding.url)) ||
+      evidenceLower.includes('vercel');
+    const isCloudflareTarget = responseHeaders['server']?.includes('cloudflare') ||
+      responseHeaders['cf-ray'] !== undefined ||
+      evidenceLower.includes('cloudflare');
+    if (isVercelTarget || isCloudflareTarget) {
+      return { downgrade: true, reason: `security-headers on CDN-managed target (${isVercelTarget ? 'Vercel' : 'Cloudflare'})` };
+    }
+  }
+
+  // 16. Rate-limit missing on non-auth endpoints — bounty programs only care about
   //     rate limiting on auth/login/registration flows to prevent brute-force
   if (category === 'rate-limit' && finding.url) {
     try {

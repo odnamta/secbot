@@ -8,6 +8,83 @@ import type { ActiveCheck } from './index.js';
 /** File extensions that are typically static assets (CDN-served) */
 const STATIC_ASSET_RE = /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot|map|webp|avif)(\?|$)/i;
 
+/** Content-Type patterns for static/non-sensitive assets */
+const STATIC_CONTENT_TYPE_RE = /image|font|css|javascript/i;
+
+/** Patterns indicating user-specific/sensitive data in response body */
+const USER_DATA_RE = /user|email|token|session|account|name|password|secret|api[_-]?key|authorization|credit|balance|private/i;
+
+interface CorsVerification {
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  confidence: 'high' | 'medium' | 'low';
+  reason: string;
+}
+
+/**
+ * Verify whether a CORS reflection is actually exploitable by making a
+ * credentialed request and inspecting the response.
+ */
+async function verifyCorsExploitability(
+  context: BrowserContext,
+  endpoint: string,
+  baseSeverity: 'critical' | 'high',
+  baseConfidence: 'high' | 'medium',
+): Promise<CorsVerification> {
+  const verifyPage = await context.newPage();
+  try {
+    const verifyResp = await verifyPage.request.fetch(endpoint, {
+      headers: { Origin: 'https://evil.example.com' },
+    });
+    const verifyStatus = verifyResp.status();
+    const verifyBody = await verifyResp.text();
+    const contentType = verifyResp.headers()['content-type'] ?? '';
+
+    // Static asset — CORS on images/fonts/css is not exploitable
+    if (STATIC_CONTENT_TYPE_RE.test(contentType)) {
+      return {
+        severity: 'low',
+        confidence: 'low',
+        reason: `Endpoint serves static content (${contentType.split(';')[0]}) — no sensitive data to steal.`,
+      };
+    }
+    // Auth required — not exploitable without existing session
+    if (verifyStatus === 401 || verifyStatus === 403) {
+      return {
+        severity: 'low',
+        confidence: 'low',
+        reason: `Endpoint returned ${verifyStatus} without credentials — no data theft possible.`,
+      };
+    }
+    // Empty response — nothing to steal
+    if (verifyBody.length < 20) {
+      return {
+        severity: 'low',
+        confidence: 'low',
+        reason: `Response body is effectively empty (${verifyBody.length} bytes) — no data to exfiltrate.`,
+      };
+    }
+    // Has user data indicators — confirmed high/critical severity
+    if (USER_DATA_RE.test(verifyBody)) {
+      return {
+        severity: baseSeverity,
+        confidence: 'high',
+        reason: 'Response contains user-specific data indicators — confirmed exploitable.',
+      };
+    }
+    // Generic response — downgrade to medium
+    return {
+      severity: 'medium',
+      confidence: 'medium',
+      reason: 'Response is non-empty but contains no obvious user-specific data — exploitability uncertain.',
+    };
+  } catch {
+    // Verification failed — keep original assessment
+    return { severity: baseSeverity, confidence: baseConfidence, reason: '' };
+  } finally {
+    await verifyPage.close();
+  }
+}
+
 /** Check if Set-Cookie headers all have SameSite=Lax or Strict (mitigates CORS credential theft) */
 function hasSameSiteProtection(headers: Record<string, string>): boolean {
   // Collect all set-cookie values — Playwright merges multiple Set-Cookie into one string separated by \n
@@ -141,13 +218,26 @@ async function testCorsMisconfiguration(
         } else if (acao === evilOrigin) {
           // With credentials: critical (downgraded if any mitigation present)
           // Without credentials: high (downgraded to medium if mitigated)
-          let severity: 'critical' | 'high' | 'medium';
+          let severity: 'critical' | 'high' | 'medium' | 'low';
+          let confidence: 'high' | 'medium' | 'low';
+          let verifyNote = '';
           if (acac === 'true') {
-            if (sameSiteProtected || isEmptyResponse) severity = 'medium';
-            else if (isNonFunctional) severity = 'high';
-            else severity = 'critical';
+            if (sameSiteProtected || isEmptyResponse) {
+              severity = 'medium';
+              confidence = 'low';
+            } else if (isNonFunctional) {
+              severity = 'high';
+              confidence = 'low';
+            } else {
+              // Origin reflected + credentials — verify actual exploitability
+              const verification = await verifyCorsExploitability(context, url, 'critical', 'high');
+              severity = verification.severity;
+              confidence = verification.confidence;
+              if (verification.reason) verifyNote = ` ${verification.reason}`;
+            }
           } else {
             severity = hasMitigations ? 'medium' : 'high';
+            confidence = (sameSiteProtected || isEmptyResponse) ? 'low' : (isNonFunctional ? 'low' : 'medium');
           }
           findings.push({
             id: randomUUID(),
@@ -158,7 +248,7 @@ async function testCorsMisconfiguration(
               : 'CORS Reflects Arbitrary Origin',
             description: (acac === 'true'
               ? 'The server reflects the Origin header with credentials allowed. This is the most dangerous CORS misconfiguration, enabling full cross-site data theft with authentication.'
-              : 'The server reflects the Origin header in Access-Control-Allow-Origin, allowing any site to read responses.') + mitigationSuffix,
+              : 'The server reflects the Origin header in Access-Control-Allow-Origin, allowing any site to read responses.') + mitigationSuffix + verifyNote,
             url,
             evidence: `Origin: ${evilOrigin}\nAccess-Control-Allow-Origin: ${acao}${acac === 'true' ? '\nAccess-Control-Allow-Credentials: true' : ''}`,
             response: {
@@ -166,7 +256,7 @@ async function testCorsMisconfiguration(
               headers: response.headers(),
             },
             timestamp: new Date().toISOString(),
-            confidence: (sameSiteProtected || isEmptyResponse) ? 'low' : (isNonFunctional ? 'low' : (acac === 'true' ? 'high' : 'medium')),
+            confidence,
             evidencePack: { detectionMethod: 'origin-reflection' },
           });
         } else if (acao === 'null') {
@@ -223,12 +313,24 @@ async function testCorsMisconfiguration(
               if (bypassAcao === bypassOrigin) {
                 const bypassType = bypassOrigin.startsWith(`https://evil${targetHost}`)
                   ? 'prefix' : bypassOrigin.endsWith('.evil.com') ? 'suffix' : 'subdomain';
+
+                // Verify exploitability when credentials are present
+                let bypassSeverity: 'critical' | 'high' | 'medium' | 'low' = bypassAcac === 'true' ? 'critical' : 'high';
+                let bypassConfidence: 'high' | 'medium' | 'low' = 'high';
+                let bypassVerifyNote = '';
+                if (bypassAcac === 'true') {
+                  const verification = await verifyCorsExploitability(context, url, 'critical', 'high');
+                  bypassSeverity = verification.severity;
+                  bypassConfidence = verification.confidence;
+                  if (verification.reason) bypassVerifyNote = ` ${verification.reason}`;
+                }
+
                 findings.push({
                   id: randomUUID(),
                   category: 'cors-misconfiguration',
-                  severity: bypassAcac === 'true' ? 'critical' : 'high',
+                  severity: bypassSeverity,
                   title: `CORS Origin Validation Bypass (${bypassType})`,
-                  description: `The server CORS validation can be bypassed using a ${bypassType}-based origin (${bypassOrigin}). The regex/string matching is not properly anchored, allowing attacker-controlled domains to read authenticated responses.${bypassAcac === 'true' ? ' Credentials are allowed, making this fully exploitable for cross-site data theft.' : ''}`,
+                  description: `The server CORS validation can be bypassed using a ${bypassType}-based origin (${bypassOrigin}). The regex/string matching is not properly anchored, allowing attacker-controlled domains to read authenticated responses.${bypassAcac === 'true' ? ' Credentials are allowed, making this fully exploitable for cross-site data theft.' : ''}${bypassVerifyNote}`,
                   url,
                   evidence: `Bypass origin: ${bypassOrigin}\nAccess-Control-Allow-Origin: ${bypassAcao}${bypassAcac === 'true' ? '\nAccess-Control-Allow-Credentials: true' : ''}`,
                   response: {
@@ -236,7 +338,7 @@ async function testCorsMisconfiguration(
                     headers: bypassResponse.headers(),
                   },
                   timestamp: new Date().toISOString(),
-                  confidence: 'high',
+                  confidence: bypassConfidence,
                   evidencePack: { detectionMethod: 'origin-reflection' },
                 });
                 break; // One bypass finding per URL is enough
