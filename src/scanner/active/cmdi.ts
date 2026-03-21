@@ -6,7 +6,7 @@ import type { CmdiTimingPayload, CmdiOutputPayload } from '../../config/payloads
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck } from './index.js';
-import { delay, measureResponseTime } from '../../utils/shared.js';
+import { delay, measureResponseTime, INFRA_PARAM_RE } from '../../utils/shared.js';
 
 /** Threshold in ms — if response is this much slower than baseline, flag it */
 const CMDI_TIMING_THRESHOLD_MS = 4000;
@@ -102,7 +102,8 @@ async function testCmdiParams(
   for (const originalUrl of urls) {
     let foundForUrl = false;
     const parsed = new URL(originalUrl);
-    const params = Array.from(parsed.searchParams.keys());
+    const params = Array.from(parsed.searchParams.keys())
+      .filter(p => !INFRA_PARAM_RE.test(p));
 
     if (params.length === 0) continue;
 

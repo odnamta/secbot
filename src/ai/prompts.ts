@@ -1,5 +1,6 @@
 import type { ReconResult, CrawledPage, RawFinding, ValidatedFinding } from '../scanner/types.js';
 import type { PayloadContext } from '../utils/payload-context.js';
+import type { LearningContext } from '../learning/types.js';
 
 // ─── Prompt Injection Sanitization ──────────────────────────────────
 
@@ -44,7 +45,14 @@ export type PlannerCheckType =
   | 'rate-limit' | 'jwt' | 'race' | 'graphql' | 'host-header'
   | 'file-upload' | 'access-control' | 'business-logic'
   | 'websocket' | 'api-version' | 'info-disclosure' | 'js-cve' | 'crlf'
-  | 'subdomain-takeover' | 'oauth' | 'cache-poisoning';
+  | 'subdomain-takeover' | 'oauth' | 'cache-poisoning' | 'csrf'
+  | 'prototype-pollution' | 'xxe' | 'insecure-deserialization' | 'request-smuggling' | 'ldap-injection'
+  | 'content-type-confusion' | 'method-override' | 'email-injection'
+  | 'bfla'
+  | 'clickjacking'
+  | 'timing-attack'
+  | 'verbose-errors'
+  | 'xpath-injection';
 
 export const ALL_PLANNER_CHECKS: PlannerCheckType[] = [
   'xss', 'sqli', 'cors', 'redirect', 'traversal',
@@ -52,7 +60,14 @@ export const ALL_PLANNER_CHECKS: PlannerCheckType[] = [
   'rate-limit', 'jwt', 'race', 'graphql', 'host-header',
   'file-upload', 'access-control', 'business-logic',
   'websocket', 'api-version', 'info-disclosure', 'js-cve', 'crlf',
-  'subdomain-takeover', 'oauth', 'cache-poisoning',
+  'subdomain-takeover', 'oauth', 'cache-poisoning', 'csrf',
+  'prototype-pollution', 'xxe', 'insecure-deserialization', 'request-smuggling', 'ldap-injection',
+  'content-type-confusion', 'method-override', 'email-injection',
+  'bfla',
+  'clickjacking',
+  'timing-attack',
+  'verbose-errors',
+  'xpath-injection',
 ];
 
 // ─── Planner Prompt Sections ────────────────────────────────────────
@@ -163,6 +178,48 @@ const CHECK_SECTIONS: Record<PlannerCheckType, string> = {
 
   'cache-poisoning': `- cache-poisoning: Web cache poisoning — test unkeyed HTTP headers (X-Forwarded-Host, X-Original-URL, etc.) for reflection in cached responses
   Rule: Recommend when caching headers detected (X-Cache, CF-Cache-Status, Age, X-Varnish). Skip if no caching layer present.`,
+
+  csrf: `- csrf: Cross-Site Request Forgery — test POST forms for missing CSRF tokens and verify cross-origin submissions are accepted
+  Rule: Recommend when POST forms exist (login, feedback, settings, profile, etc.). Skip if no state-changing forms found.`,
+
+  'prototype-pollution': `- prototype-pollution: Prototype pollution — test query string parsers and JSON API bodies for __proto__/constructor.prototype injection
+  Rule: Recommend when Node.js/Express detected OR API endpoints accept JSON. Also tests client-side pollution via URL params/fragments. Skip on quick profile.`,
+
+  xxe: `- xxe: XML External Entity injection — test XML-accepting endpoints for entity expansion, file read, and SSRF
+  Rule: Recommend when API endpoints exist (especially SOAP, XML-RPC, RSS/Atom). Test with multiple content types. Skip if no API endpoints.`,
+
+  'insecure-deserialization': `- insecure-deserialization: Insecure deserialization — test endpoints for unsafe deserialization of Java, PHP, Python, Node.js, Ruby, .NET, and YAML objects
+  Rule: Recommend when API endpoints exist, SOAP/RPC endpoints found, or backend uses Java/PHP/Python/.NET. High severity — can lead to RCE. Skip on quick profile.`,
+
+  'request-smuggling': `- request-smuggling: HTTP request smuggling — test for CL.TE, TE.CL, and TE.TE desync between proxy/CDN and backend
+  Rule: Recommend when target uses reverse proxy, CDN, or load balancer (most production apps). Uses timing-based detection. Skip on quick profile.`,
+
+  'ldap-injection': `- ldap-injection: LDAP injection — test login forms and search endpoints for LDAP query injection (CWE-90)
+  Rule: Recommend when forms have username/login/uid/cn/dn fields or URL params match LDAP-related names (username, uid, cn, sn, dn, filter, samaccountname). Common in enterprise apps using Active Directory/OpenLDAP. Skip on quick profile.`,
+
+  'content-type-confusion': `- content-type-confusion: Content-Type confusion — test if endpoints accept unexpected Content-Type headers, bypassing CSRF token validation (CWE-436)
+  Rule: Recommend when POST forms exist with state-changing actions (login, settings, profile, transfer). text/plain bypasses CORS preflight and may skip CSRF checks. Skip on quick profile.`,
+
+  'method-override': `- method-override: HTTP method override — test X-HTTP-Method-Override header and _method parameter for ACL bypass (CWE-650)
+  Rule: Recommend when API endpoints or sensitive paths exist. Common in Rails/Django/Express apps. Test if POST+Override=DELETE bypasses access controls. Skip on quick profile.`,
+
+  'email-injection': `- email-injection: Email header injection — test contact/feedback/support forms for SMTP header injection via CRLF (CWE-93)
+  Rule: Recommend when email-sending forms detected (contact, feedback, support, newsletter, invite). Test for Bcc/Cc header injection to use mail server as spam relay. Skip on quick profile.`,
+
+  bfla: `- bfla: Broken Function-Level Authorization — infer and probe undocumented admin/privileged API functions from discovered endpoints (CWE-285, API5:2023)
+  Rule: Recommend when API endpoints exist. Enumerates admin functions by appending /admin, /export, /bulk-delete to discovered paths. Tests dangerous HTTP methods (DELETE/PUT/PATCH) on resource endpoints. Skip on quick profile.`,
+
+  clickjacking: `- clickjacking: Active Clickjacking / UI Redressing — uses Playwright to verify pages can actually be framed in an attacker-controlled iframe (CWE-1021)
+  Rule: Recommend when pages exist. Prioritizes sensitive endpoints (login, settings, payment, admin). Goes beyond passive X-Frame-Options header check by actually loading pages in iframes. Parallel-safe (read-only browser operations).`,
+
+  'timing-attack': `- timing-attack: Response Timing Analysis — detects username enumeration and information leakage via timing side-channels on authentication endpoints (CWE-208)
+  Rule: Recommend when login forms or auth endpoints exist. Compares response times for valid-looking vs invalid usernames using statistical analysis (median of 5 samples, 50ms minimum diff, 1.3x ratio threshold). Parallel-safe (read-only HTTP measurements).`,
+
+  'verbose-errors': `- verbose-errors: Verbose Error / Debug Mode Detection — actively triggers error conditions to detect stack traces, debug pages, and sensitive information disclosure (CWE-209, CWE-215)
+  Rule: Always recommend (every app can have error handling issues). Forces 404/500 errors via malformed URLs, detects framework debug pages (Django/Rails/Laravel/Express/Flask/Spring/ASP.NET), stack traces, internal paths, and DB errors. Parallel-safe.`,
+
+  'xpath-injection': `- xpath-injection: XPath Injection — tests for XPath query manipulation via error-based and boolean-based detection (CWE-643)
+  Rule: Recommend when parameterized URLs or forms with text inputs exist. Injects XPath syntax and detects error messages (15 patterns) or response differences from tautology/contradiction payloads. Profile-scaled payloads. Parallel-safe.`,
 };
 
 /**
@@ -197,6 +254,7 @@ export function buildPlannerUserPrompt(
   pages: CrawledPage[],
   profile: string,
   payloadContext?: PayloadContext,
+  learningContext?: LearningContext,
 ): string {
   const allForms = pages.flatMap((p) => p.forms);
   const urlsWithParams = pages.map((p) => p.url).filter((u) => u.includes('?'));
@@ -257,6 +315,37 @@ export function buildPlannerUserPrompt(
     }
   }
 
+  // Build learning context section from historical scan data
+  let learningSection = '';
+  if (learningContext) {
+    const learningParts: string[] = [];
+    if (learningContext.techProfile) {
+      const { prioritize, deprioritize } = learningContext.techProfile;
+      if (prioritize.length > 0) {
+        learningParts.push(`- Historically effective checks for this tech stack: ${prioritize.join(', ')}`);
+      }
+      if (deprioritize.length > 0) {
+        learningParts.push(`- Historically ineffective checks (0-20% success) for this tech stack: ${deprioritize.join(', ')}. Consider deprioritizing or skipping these.`);
+      }
+    }
+    if (learningContext.outcomeRates && Object.keys(learningContext.outcomeRates).length > 0) {
+      const rates = Object.entries(learningContext.outcomeRates)
+        .map(([cat, rate]) => `${cat}: ${Math.round(rate * 100)}%`)
+        .join(', ');
+      learningParts.push(`- Bounty acceptance rates by category: ${rates}`);
+    }
+    if (learningContext.payloadStats && Object.keys(learningContext.payloadStats).length > 0) {
+      for (const [waf, stats] of Object.entries(learningContext.payloadStats)) {
+        if (stats.best !== 'unknown') {
+          learningParts.push(`- Best payload strategy against ${waf} WAF: ${stats.best}`);
+        }
+      }
+    }
+    if (learningParts.length > 0) {
+      learningSection = `\n\nHistorical Learning Data (from past scans):\n${learningParts.join('\n')}`;
+    }
+  }
+
   return `Analyze this target and recommend security checks.
 
 Target: ${url}
@@ -281,7 +370,7 @@ Endpoints:
 - Admin-like URLs: ${adminUrls.length}
 - Business logic forms: ${businessFields.length}
 - HTTPS: ${isHttps}
-- Pages crawled: ${pages.length}${techContextSection}
+- Pages crawled: ${pages.length}${techContextSection}${learningSection}
 
 Available checks: ${ALL_PLANNER_CHECKS.join(', ')}
 

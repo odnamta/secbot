@@ -5,6 +5,10 @@ export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Infrastructure/framework params that should not be fuzzed by active checks.
+ *  Covers CDN (Cloudflare, Akamai), analytics (GA, GTM, FB), and framework internals (Next.js RSC). */
+export const INFRA_PARAM_RE = /^(__cf_|cf_|__cfruid|__cfwaitingroom|_bm_|akam_|__utm|_ga$|_gid$|_gat$|_gcl_|_fbp$|_fbc$|tag_exp$|_gsid$|uafvl$|_rsc$|__next|_next)/i;
+
 export function severityOrder(s: Severity): number {
   return { critical: 5, high: 4, medium: 3, low: 2, info: 1 }[s];
 }

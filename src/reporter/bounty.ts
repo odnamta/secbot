@@ -1,6 +1,6 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import type { ScanResult, InterpretedFinding, Severity, CheckCategory } from '../scanner/types.js';
+import type { ScanResult, InterpretedFinding, RawFinding, EvidencePack } from '../scanner/types.js';
 import { log } from '../utils/logger.js';
 import { severityOrder, formatDuration } from '../utils/shared.js';
 
@@ -12,9 +12,19 @@ export function writeBountyReport(result: ScanResult, outputPath: string): void 
 }
 
 function generateBountyMarkdown(result: ScanResult): string {
-  const sorted = [...result.interpretedFindings].sort(
-    (a, b) => severityOrder(b.severity) - severityOrder(a.severity),
-  );
+  // Exclude info-severity and non-bounty-worthy findings from bounty reports
+  // Cross-origin isolation headers (COOP/COEP/CORP) are defense-in-depth — no program accepts them
+  const NON_BOUNTY_TITLE_RE = /^(Missing|Weak)\s+Cross-Origin-(Opener|Embedder|Resource)-Policy/i;
+  const sorted = [...result.interpretedFindings]
+    .filter(f => f.severity !== 'info')
+    .filter(f => !NON_BOUNTY_TITLE_RE.test(f.title))
+    .sort((a, b) => severityOrder(b.severity) - severityOrder(a.severity));
+
+  // Build lookup: rawFindingId -> RawFinding (for evidence packs)
+  const rawMap = new Map<string, RawFinding>();
+  for (const raw of result.rawFindings) {
+    rawMap.set(raw.id, raw);
+  }
 
   const lines: string[] = [];
 
@@ -59,7 +69,7 @@ function generateBountyMarkdown(result: ScanResult): string {
     lines.push('---');
     lines.push('');
     for (let i = 0; i < highConfidence.length; i++) {
-      lines.push(...renderBountyFinding(i + 1, highConfidence[i]));
+      lines.push(...renderBountyFinding(i + 1, highConfidence[i], rawMap));
     }
   }
 
@@ -72,7 +82,7 @@ function generateBountyMarkdown(result: ScanResult): string {
     lines.push('---');
     lines.push('');
     for (let i = 0; i < mediumConfidence.length; i++) {
-      lines.push(...renderBountyFinding(highConfidence.length + i + 1, mediumConfidence[i]));
+      lines.push(...renderBountyFinding(highConfidence.length + i + 1, mediumConfidence[i], rawMap));
     }
   }
 
@@ -97,9 +107,26 @@ function generateBountyMarkdown(result: ScanResult): string {
   return lines.join('\n');
 }
 
-function renderBountyFinding(index: number, finding: InterpretedFinding): string[] {
+function renderBountyFinding(
+  index: number,
+  finding: InterpretedFinding,
+  rawMap: Map<string, RawFinding>,
+): string[] {
   const lines: string[] = [];
   const cwe = mapToCwe(finding);
+
+  // Collect evidence packs from all raw findings backing this interpreted finding
+  const evidencePacks: EvidencePack[] = [];
+  const rawFindings: RawFinding[] = [];
+  for (const rawId of finding.rawFindingIds ?? []) {
+    const raw = rawMap.get(rawId);
+    if (raw) {
+      rawFindings.push(raw);
+      if (raw.evidencePack) {
+        evidencePacks.push(raw.evidencePack);
+      }
+    }
+  }
 
   lines.push(`## ${index}. [${finding.severity.toUpperCase()}] ${finding.title}`);
   lines.push('');
@@ -131,10 +158,117 @@ function renderBountyFinding(index: number, finding: InterpretedFinding): string
   lines.push(finding.impact);
   lines.push('');
 
-  // Affected URLs as evidence
-  if (finding.affectedUrls?.length > 0) {
-    lines.push('### Supporting Evidence');
+  // ─── Evidence Section (NEW — HTTP proof) ────────────────────
+  lines.push('### Supporting Evidence');
+  lines.push('');
+
+  // HTTP Request/Response from evidence pack
+  const bestPack = evidencePacks[0];
+  if (bestPack?.httpExchange) {
+    const { request, response } = bestPack.httpExchange;
+    lines.push('**HTTP Request:**');
     lines.push('');
+    lines.push('```http');
+    lines.push(`${request.method} ${request.url} HTTP/1.1`);
+    if (request.headers) {
+      for (const [key, value] of Object.entries(request.headers)) {
+        lines.push(`${key}: ${value}`);
+      }
+    }
+    if (request.body) {
+      lines.push('');
+      lines.push(request.body);
+    }
+    lines.push('```');
+    lines.push('');
+
+    if (response) {
+      lines.push('**HTTP Response:**');
+      lines.push('');
+      lines.push('```http');
+      lines.push(`HTTP/1.1 ${response.status}`);
+      if (response.headers) {
+        for (const [key, value] of Object.entries(response.headers)) {
+          lines.push(`${key}: ${value}`);
+        }
+      }
+      if (response.body) {
+        lines.push('');
+        // Truncate large response bodies for readability
+        const maxBody = 500;
+        if (response.body.length > maxBody) {
+          lines.push(response.body.slice(0, maxBody));
+          lines.push(`[...truncated, ${response.body.length} bytes total]`);
+        } else {
+          lines.push(response.body);
+        }
+      }
+      lines.push('```');
+      lines.push('');
+    }
+  } else if (rawFindings.length > 0 && (rawFindings[0].request || rawFindings[0].response)) {
+    // Fallback: use request/response from raw finding directly
+    const raw = rawFindings[0];
+    if (raw.request) {
+      lines.push('**HTTP Request:**');
+      lines.push('');
+      lines.push('```http');
+      lines.push(`${raw.request.method} ${raw.request.url} HTTP/1.1`);
+      if (raw.request.headers) {
+        for (const [key, value] of Object.entries(raw.request.headers)) {
+          lines.push(`${key}: ${value}`);
+        }
+      }
+      if (raw.request.body) {
+        lines.push('');
+        lines.push(raw.request.body);
+      }
+      lines.push('```');
+      lines.push('');
+    }
+    if (raw.response) {
+      lines.push('**HTTP Response:**');
+      lines.push('');
+      lines.push('```http');
+      lines.push(`HTTP/1.1 ${raw.response.status}`);
+      if (raw.response.headers) {
+        for (const [key, value] of Object.entries(raw.response.headers)) {
+          lines.push(`${key}: ${value}`);
+        }
+      }
+      if (raw.response.bodySnippet) {
+        lines.push('');
+        lines.push(raw.response.bodySnippet);
+      }
+      lines.push('```');
+      lines.push('');
+    }
+  }
+
+  // Curl reproduction command
+  if (bestPack?.curlCommand) {
+    lines.push('**Reproduce with curl:**');
+    lines.push('');
+    lines.push('```bash');
+    lines.push(bestPack.curlCommand);
+    lines.push('```');
+    lines.push('');
+  }
+
+  // Payload used
+  if (bestPack?.payloadUsed) {
+    lines.push(`**Payload:** \`${bestPack.payloadUsed}\``);
+    lines.push('');
+  }
+
+  // Detection method
+  if (bestPack?.detectionMethod) {
+    lines.push(`**Detection Method:** ${bestPack.detectionMethod}`);
+    lines.push('');
+  }
+
+  // Affected URLs
+  if (finding.affectedUrls?.length > 0) {
     lines.push('**Affected URLs:**');
     for (const url of finding.affectedUrls.slice(0, 10)) {
       lines.push(`- ${url}`);
@@ -145,9 +279,9 @@ function renderBountyFinding(index: number, finding: InterpretedFinding): string
     lines.push('');
   }
 
-  // Code example as evidence
-  if (finding.codeExample) {
-    lines.push('**HTTP Request/Response:**');
+  // Code example (AI-generated, kept as fallback)
+  if (finding.codeExample && !bestPack?.httpExchange) {
+    lines.push('**Additional Evidence:**');
     lines.push('');
     lines.push('```');
     lines.push(finding.codeExample);
@@ -167,28 +301,53 @@ function renderBountyFinding(index: number, finding: InterpretedFinding): string
 }
 
 function mapToCwe(finding: InterpretedFinding): string {
-  // Infer category from title/owasp
   const title = finding.title.toLowerCase();
   const owasp = finding.owaspCategory.toLowerCase();
 
   if (title.includes('xss') || title.includes('cross-site scripting')) return 'CWE-79: Improper Neutralization of Input During Web Page Generation';
   if (title.includes('sql') || title.includes('sqli')) return 'CWE-89: SQL Injection';
+  if (title.includes('command') || title.includes('cmdi') || title.includes('os injection')) return 'CWE-78: OS Command Injection';
+  if (title.includes('ssrf')) return 'CWE-918: Server-Side Request Forgery';
+  if (title.includes('ssti') || title.includes('template')) return 'CWE-1336: Server-Side Template Injection';
   if (title.includes('cors')) return 'CWE-942: Permissive Cross-domain Policy with Untrusted Domains';
   if (title.includes('redirect')) return 'CWE-601: URL Redirection to Untrusted Site';
-  if (title.includes('traversal') || title.includes('path')) return 'CWE-22: Path Traversal';
+  if (title.includes('traversal') || title.includes('path') || title.includes('lfi')) return 'CWE-22: Path Traversal';
+  if (title.includes('sri') || title.includes('subresource integrity')) return 'CWE-829: Inclusion of Functionality from Untrusted Control Sphere';
+  if (title.includes('upload')) return 'CWE-434: Unrestricted Upload of File with Dangerous Type';
+  if (title.includes('rce') || title.includes('remote code')) return 'CWE-94: Improper Control of Generation of Code';
+  if (title.includes('idor') || title.includes('insecure direct')) return 'CWE-639: Authorization Bypass Through User-Controlled Key';
+  if (title.includes('jwt')) return 'CWE-345: Insufficient Verification of Data Authenticity';
+  if (title.includes('race') || title.includes('toctou')) return 'CWE-367: Time-of-check Time-of-use Race Condition';
+  if (title.includes('graphql')) return 'CWE-400: Uncontrolled Resource Consumption';
+  if (title.includes('crlf') || title.includes('header injection')) return 'CWE-113: HTTP Response Splitting';
+  if (title.includes('subdomain') || title.includes('takeover')) return 'CWE-923: Improper Restriction of Communication Channel to Intended Endpoints';
   if (title.includes('hsts') || title.includes('transport')) return 'CWE-319: Cleartext Transmission of Sensitive Information';
   if (title.includes('csp') || title.includes('content-security')) return 'CWE-693: Protection Mechanism Failure';
   if (title.includes('cookie')) return 'CWE-614: Sensitive Cookie in HTTPS Session Without Secure Attribute';
+  if (title.includes('hardcoded') || title.includes('secret') && title.includes('javascript')) return 'CWE-798: Use of Hard-coded Credentials';
   if (title.includes('clickjack') || title.includes('frame')) return 'CWE-1021: Improper Restriction of Rendered UI Layers';
   if (title.includes('info') || title.includes('disclosure') || title.includes('leakage')) return 'CWE-200: Exposure of Sensitive Information';
   if (title.includes('mixed content')) return 'CWE-311: Missing Encryption of Sensitive Data';
+  if (title.includes('rate limit') || title.includes('brute')) return 'CWE-307: Improper Restriction of Excessive Authentication Attempts';
+  if (title.includes('host header')) return 'CWE-644: Improper Neutralization of HTTP Headers';
+  if (title.includes('websocket')) return 'CWE-1385: Missing Origin Validation in WebSockets';
+  if (title.includes('access control') || title.includes('authorization')) return 'CWE-284: Improper Access Control';
+  if (title.includes('csrf') || title.includes('cross-site request forgery')) return 'CWE-352: Cross-Site Request Forgery';
+  if (title.includes('oauth') || title.includes('openid')) return 'CWE-287: Improper Authentication';
+  if (title.includes('cache poison')) return 'CWE-444: Inconsistent Interpretation of HTTP Requests';
+  if (title.includes('directory listing') || title.includes('directory index')) return 'CWE-548: Exposure of Information Through Directory Listing';
+  if (title.includes('api version') || title.includes('deprecated api')) return 'CWE-1059: Insufficient Technical Documentation';
+  if (title.includes('business logic') || title.includes('price') || title.includes('workflow')) return 'CWE-840: Business Logic Errors';
+  if (title.includes('prototype pollution')) return 'CWE-1321: Improperly Controlled Modification of Object Prototype Attributes';
+  if (title.includes('xxe') || title.includes('xml external entity') || title.includes('xml entity')) return 'CWE-611: Improper Restriction of XML External Entity Reference';
 
   if (owasp.includes('injection')) return 'CWE-74: Injection';
   if (owasp.includes('cryptographic')) return 'CWE-310: Cryptographic Issues';
   if (owasp.includes('access control')) return 'CWE-284: Improper Access Control';
   if (owasp.includes('misconfiguration')) return 'CWE-16: Configuration';
+  if (owasp.includes('integrity')) return 'CWE-353: Missing Support for Integrity Check';
+  if (owasp.includes('authentication')) return 'CWE-287: Improper Authentication';
+  if (owasp.includes('logging') || owasp.includes('monitoring')) return 'CWE-778: Insufficient Logging';
 
   return 'CWE-Unknown';
 }
-
-// severityOrder and formatDuration imported from shared utils

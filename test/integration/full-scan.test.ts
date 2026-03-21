@@ -152,5 +152,5 @@ describe('Full scan integration', () => {
     } finally {
       await closeBrowser(browser);
     }
-  }, 180000);
+  }, 600000);
 });

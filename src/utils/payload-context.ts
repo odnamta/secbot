@@ -6,10 +6,11 @@
  * those unlikely to work against the detected tech stack.
  */
 
-import type { ReconResult, TechFingerprint, FrameworkDetection, WafDetection } from '../scanner/types.js';
+import type { ReconResult, TechFingerprint, FrameworkDetection } from '../scanner/types.js';
+import type { PayloadStats } from '../learning/payload-stats.js';
 
 export type DatabaseType = 'mysql' | 'mssql' | 'postgres' | 'oracle' | 'sqlite' | 'mongodb' | 'unknown';
-export type TemplateEngine = 'jinja2' | 'twig' | 'handlebars' | 'pug' | 'ejs' | 'erb' | 'freemarker' | 'velocity' | 'unknown';
+export type TemplateEngine = 'jinja2' | 'twig' | 'handlebars' | 'pug' | 'ejs' | 'erb' | 'freemarker' | 'velocity' | 'thymeleaf' | 'nunjucks' | 'mako' | 'smarty' | 'razor' | 'unknown';
 export type BackendLang = 'php' | 'java' | 'dotnet' | 'python' | 'ruby' | 'node' | 'go' | 'unknown';
 
 export interface PayloadContext {
@@ -75,9 +76,12 @@ function inferTemplateEngines(tech: TechFingerprint, framework: FrameworkDetecti
 
   if (all.includes('django') || all.includes('flask')) engines.push('jinja2');
   if (all.includes('php') || all.includes('laravel') || all.includes('symfony')) engines.push('twig');
-  if (all.includes('express') || all.includes('node')) engines.push('handlebars', 'pug', 'ejs');
+  if (all.includes('express') || all.includes('node')) engines.push('handlebars', 'pug', 'ejs', 'nunjucks');
   if (all.includes('ruby') || all.includes('rails')) engines.push('erb');
-  if (all.includes('java') || all.includes('spring')) engines.push('freemarker', 'velocity');
+  if (all.includes('java') || all.includes('spring')) engines.push('freemarker', 'velocity', 'thymeleaf');
+  if (all.includes('php') || all.includes('smarty')) engines.push('smarty');
+  if (all.includes('python') || all.includes('pyramid') || all.includes('pylons')) engines.push('mako');
+  if (all.includes('.net') || all.includes('asp') || all.includes('razor')) engines.push('razor');
 
   return engines.length > 0 ? [...new Set(engines)] : ['unknown'];
 }
@@ -171,7 +175,7 @@ function inferOS(tech: TechFingerprint): 'unix' | 'windows' | 'unknown' {
  * - CMDi checks use OS-appropriate payloads
  * - All checks apply WAF bypass encodings when WAF is detected
  */
-export function buildPayloadContext(recon: ReconResult): PayloadContext {
+export function buildPayloadContext(recon: ReconResult, payloadStats?: PayloadStats): PayloadContext {
   const databases = inferDatabases(recon.techStack, recon.framework);
   const templateEngines = inferTemplateEngines(recon.techStack, recon.framework);
   const backendLanguages = inferBackendLanguages(recon.techStack, recon.framework);
@@ -181,13 +185,34 @@ export function buildPayloadContext(recon: ReconResult): PayloadContext {
     (f) => recon.framework.name?.toLowerCase().includes(f),
   );
 
+  let wafBypasses = recon.waf.recommendedTechniques ?? [];
+
+  // If we have historical payload stats for this WAF, prioritize strategies
+  // that have worked before and deprioritize those that haven't
+  if (payloadStats && recon.waf.detected && recon.waf.name) {
+    const stats = payloadStats.getStatsForWaf(recon.waf.name);
+    if (Object.keys(stats).length > 0) {
+      // Sort strategies by success rate (best first)
+      const ranked = Object.entries(stats)
+        .filter(([, s]) => s.total >= 2) // only trust strategies with enough data
+        .sort(([, a], [, b]) => b.rate - a.rate);
+
+      if (ranked.length > 0) {
+        const bestStrategies = ranked.filter(([, s]) => s.rate >= 0.5).map(([name]) => `${name} (learned: effective)`);
+        const worstStrategies = ranked.filter(([, s]) => s.rate < 0.2).map(([name]) => `avoid:${name}`);
+        // Prepend learned strategies to existing bypass recommendations
+        wafBypasses = [...bestStrategies, ...wafBypasses, ...worstStrategies];
+      }
+    }
+  }
+
   return {
     databases,
     templateEngines,
     backendLanguages,
     preferDomXss,
     wafPresent: recon.waf.detected,
-    wafBypasses: recon.waf.recommendedTechniques ?? [],
+    wafBypasses,
     frameworkHints: generateFrameworkHints(recon.framework, recon.techStack),
     osHint: inferOS(recon.techStack),
   };

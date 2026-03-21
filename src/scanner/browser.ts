@@ -87,6 +87,7 @@ export async function crawl(
       ? getRandomUserAgent()
       : (config.userAgent ?? DEFAULT_USER_AGENT),
     ignoreHTTPSErrors: true,
+    ...(config.extraHeaders ? { extraHTTPHeaders: config.extraHeaders } : {}),
   };
 
   if (config.authStorageState) {
@@ -359,6 +360,23 @@ async function crawlPage(
     const scripts = await extractScripts(page);
     const cookies = await extractCookies(context, finalUrl);
 
+    // Extract API-like URLs from inline scripts (SPAs embed API endpoints in JS)
+    const jsApiUrls = await extractJsApiUrls(page, finalUrl);
+    if (jsApiUrls.length > 0) {
+      links.push(...jsApiUrls);
+      log.debug(`Extracted ${jsApiUrls.length} API-like URLs from inline scripts`);
+    }
+
+    // Extract API endpoints from external JS bundles (SPAs hide endpoints in compiled JS)
+    const externalJsUrls = await extractExternalJsEndpoints(page, finalUrl);
+    if (externalJsUrls.length > 0) {
+      // Deduplicate against already-found links
+      const existingSet = new Set(links);
+      const newUrls = externalJsUrls.filter(u => !existingSet.has(u));
+      links.push(...newUrls);
+      log.info(`JS bundle analysis: ${externalJsUrls.length} API endpoints found (${newUrls.length} new)`);
+    }
+
     return {
       url: finalUrl,
       status,
@@ -450,6 +468,156 @@ async function extractScripts(page: Page): Promise<string[]> {
   return page.$$eval('script[src]', (scripts) =>
     scripts.map((s) => s.getAttribute('src')).filter(Boolean) as string[],
   );
+}
+
+/** Regex patterns for finding API endpoints in JavaScript source code */
+const JS_API_PATTERNS = [
+  // Relative API paths: "/api/users", "/rest/v2/data", "/graphql"
+  /["'`](\/(?:api|graphql|v[0-9]+|rest|rpc|_api|__api)\/[^"'`\s}{]{2,120})["'`]/g,
+  // Absolute API URLs
+  /["'`](https?:\/\/[^"'`\s]{10,200}\/(?:api|graphql|v[0-9]+|rest|rpc)\/[^"'`\s}{]{2,120})["'`]/g,
+  // fetch() calls: fetch("/path") or fetch("https://...")
+  /fetch\s*\(\s*["'`](\/[^"'`\s]{2,200})["'`]/g,
+  // axios calls: axios.get("/path"), axios.post("/path"), axios("/path")
+  /axios(?:\.[a-z]+)?\s*\(\s*["'`](\/[^"'`\s]{2,200})["'`]/g,
+  // XMLHttpRequest.open: xhr.open("GET", "/path")
+  /\.open\s*\(\s*["'`][A-Z]+["'`]\s*,\s*["'`](\/[^"'`\s]{2,200})["'`]/g,
+  // URL construction: new URL("/api/...", base) or baseURL + "/api/..."
+  /(?:baseURL|baseUrl|BASE_URL|apiUrl|API_URL|apiBase)\s*[+:=]\s*["'`](\/[^"'`\s]{2,200})["'`]/g,
+  // Route definitions: path: "/api/users", url: "/rest/data"
+  /(?:path|url|endpoint|route|href)\s*:\s*["'`](\/(?:api|rest|v[0-9]+|graphql)[^"'`\s}{]{1,120})["'`]/g,
+];
+
+/** Extract API-like URLs from inline <script> content and data attributes */
+async function extractJsApiUrls(page: Page, baseUrl: string): Promise<string[]> {
+  try {
+    const rawUrls = await page.evaluate(() => {
+      const urls: string[] = [];
+      // Scan inline scripts for URL-like patterns
+      const scripts = document.querySelectorAll('script:not([src])');
+      const urlRegex = /["'`](\/(?:api|graphql|v[0-9]+|rest|rpc|_api|__api)\/[^"'`\s}{]{2,120})["'`]/g;
+      const fullUrlRegex = /["'`](https?:\/\/[^"'`\s]{10,200}\/(?:api|graphql|v[0-9]+|rest|rpc)\/[^"'`\s}{]{2,120})["'`]/g;
+      const fetchRegex = /fetch\s*\(\s*["'`](\/[^"'`\s]{2,200})["'`]/g;
+      const axiosRegex = /axios(?:\.[a-z]+)?\s*\(\s*["'`](\/[^"'`\s]{2,200})["'`]/g;
+      const xhrRegex = /\.open\s*\(\s*["'`][A-Z]+["'`]\s*,\s*["'`](\/[^"'`\s]{2,200})["'`]/g;
+      for (const script of scripts) {
+        const text = script.textContent ?? '';
+        if (text.length > 500000) continue; // Skip very large inline scripts
+        for (const re of [urlRegex, fullUrlRegex, fetchRegex, axiosRegex, xhrRegex]) {
+          re.lastIndex = 0;
+          let match;
+          while ((match = re.exec(text)) !== null) {
+            urls.push(match[1]);
+          }
+        }
+      }
+      // Also check data attributes that commonly contain API URLs
+      const dataEls = document.querySelectorAll('[data-api-url], [data-endpoint], [data-url]');
+      for (const el of dataEls) {
+        for (const attr of ['data-api-url', 'data-endpoint', 'data-url']) {
+          const val = el.getAttribute(attr);
+          if (val) urls.push(val);
+        }
+      }
+      return urls;
+    });
+    // Resolve relative URLs and deduplicate
+    const resolved = new Set<string>();
+    for (const raw of rawUrls) {
+      try {
+        resolved.add(new URL(raw, baseUrl).href);
+      } catch { /* skip invalid */ }
+    }
+    return [...resolved];
+  } catch {
+    return [];
+  }
+}
+
+/** Max JS files to scan for endpoint extraction (avoid slowdown) */
+const MAX_JS_FILES_TO_SCAN = 20;
+/** Max size per JS file to scan (bytes) */
+const MAX_JS_FILE_SIZE = 1_000_000;
+
+/**
+ * Extract API endpoints from external JavaScript files loaded by the page.
+ * Uses page.evaluate + fetch to read JS bundles from the browser cache,
+ * then scans content for API URL patterns, fetch/axios/XHR calls.
+ */
+async function extractExternalJsEndpoints(page: Page, baseUrl: string): Promise<string[]> {
+  try {
+    const origin = new URL(baseUrl).origin;
+
+    const rawUrls = await page.evaluate(async ({ origin: pageOrigin, maxFiles, maxSize }) => {
+      const urls: string[] = [];
+      // Get all external script sources
+      const scriptEls = document.querySelectorAll('script[src]');
+      const srcUrls: string[] = [];
+      for (const el of scriptEls) {
+        const src = el.getAttribute('src');
+        if (!src) continue;
+        try {
+          const resolved = new URL(src, pageOrigin).href;
+          // Only scan same-origin and common CDN JS files
+          if (resolved.startsWith(pageOrigin) || resolved.includes('.js')) {
+            srcUrls.push(resolved);
+          }
+        } catch { /* skip invalid */ }
+      }
+
+      // Limit to maxFiles most relevant files
+      const toScan = srcUrls.slice(0, maxFiles);
+
+      // Define patterns to scan for (in-browser regex)
+      const patterns = [
+        /["'`](\/(?:api|graphql|v[0-9]+|rest|rpc|_api|__api)\/[^"'`\s}{]{2,120})["'`]/g,
+        /["'`](https?:\/\/[^"'`\s]{10,200}\/(?:api|graphql|v[0-9]+|rest|rpc)\/[^"'`\s}{]{2,120})["'`]/g,
+        /fetch\s*\(\s*["'`](\/[^"'`\s]{2,200})["'`]/g,
+        /axios(?:\.[a-z]+)?\s*\(\s*["'`](\/[^"'`\s]{2,200})["'`]/g,
+        /\.open\s*\(\s*["'`][A-Z]+["'`]\s*,\s*["'`](\/[^"'`\s]{2,200})["'`]/g,
+        /(?:baseURL|baseUrl|BASE_URL|apiUrl|API_URL|apiBase)\s*[+:=]\s*["'`](\/[^"'`\s]{2,200})["'`]/g,
+        /(?:path|url|endpoint|route|href)\s*:\s*["'`](\/(?:api|rest|v[0-9]+|graphql)[^"'`\s}{]{1,120})["'`]/g,
+      ];
+
+      // Fetch and scan each JS file
+      for (const jsUrl of toScan) {
+        try {
+          const resp = await fetch(jsUrl, { cache: 'force-cache' });
+          if (!resp.ok) continue;
+          const contentLength = parseInt(resp.headers.get('content-length') ?? '0', 10);
+          if (contentLength > maxSize) continue;
+
+          const text = await resp.text();
+          if (text.length > maxSize) continue;
+
+          for (const re of patterns) {
+            re.lastIndex = 0;
+            let match;
+            while ((match = re.exec(text)) !== null) {
+              urls.push(match[1]);
+            }
+          }
+        } catch { /* skip failed fetches */ }
+      }
+
+      return urls;
+    }, { origin, maxFiles: MAX_JS_FILES_TO_SCAN, maxSize: MAX_JS_FILE_SIZE });
+
+    // Resolve relative URLs, deduplicate, filter out static assets
+    const resolved = new Set<string>();
+    const staticRe = /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot|map|webp)(\?|$)/i;
+    for (const raw of rawUrls) {
+      try {
+        const full = new URL(raw, baseUrl).href;
+        if (!staticRe.test(full)) {
+          resolved.add(full);
+        }
+      } catch { /* skip invalid */ }
+    }
+    return [...resolved];
+  } catch {
+    return [];
+  }
 }
 
 async function extractCookies(context: BrowserContext, url: string): Promise<CookieInfo[]> {

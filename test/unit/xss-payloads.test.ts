@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { XSS_PAYLOADS, XSS_MARKERS } from '../../src/config/payloads/xss.js';
-import { collectSearchUrls, SEARCH_PARAM_RE } from '../../src/scanner/active/xss.js';
+import { XSS_PAYLOADS, XSS_MARKERS, JS_CONTEXT_PAYLOADS, DANGLING_MARKUP_PAYLOADS } from '../../src/config/payloads/xss.js';
+import { collectSearchUrls, SEARCH_PARAM_RE, checkJsStringBreakout } from '../../src/scanner/active/xss.js';
 import type { ScanTargets } from '../../src/scanner/active/index.js';
 import type { ScanConfig } from '../../src/scanner/types.js';
 
@@ -224,6 +224,21 @@ describe('XSS Payloads', () => {
     expect(template.length).toBeGreaterThan(0);
   });
 
+  it('has framework-specific template payloads (Angular/Vue)', () => {
+    const template = XSS_PAYLOADS.filter(p => p.type === 'template');
+    // Angular sandbox escape
+    const angularPayloads = template.filter(p =>
+      p.payload.includes('$on.constructor') || p.payload.includes('$eval'),
+    );
+    expect(angularPayloads.length).toBeGreaterThanOrEqual(1);
+
+    // Vue template injection
+    const vuePayloads = template.filter(p =>
+      p.payload.includes('_c.constructor') || p.payload.includes('$el.constructor'),
+    );
+    expect(vuePayloads.length).toBeGreaterThanOrEqual(1);
+  });
+
   it('has dom payloads', () => {
     const dom = XSS_PAYLOADS.filter(p => p.type === 'dom');
     expect(dom.length).toBeGreaterThan(0);
@@ -247,5 +262,186 @@ describe('XSS Payloads', () => {
     for (let i = 0; i < XSS_PAYLOADS.length; i++) {
       expect(XSS_MARKERS[i]).toBe(XSS_PAYLOADS[i].marker);
     }
+  });
+});
+
+describe('JS Context Payloads', () => {
+  it('has at least 7 JS context payloads', () => {
+    expect(JS_CONTEXT_PAYLOADS.length).toBeGreaterThanOrEqual(7);
+  });
+
+  it('each payload contains its marker', () => {
+    for (const p of JS_CONTEXT_PAYLOADS) {
+      expect(p.payload).toContain(p.marker);
+    }
+  });
+
+  it('all markers are unique', () => {
+    const markers = JS_CONTEXT_PAYLOADS.map(p => p.marker);
+    expect(new Set(markers).size).toBe(markers.length);
+  });
+
+  it('has double-quote string breakout payload', () => {
+    expect(JS_CONTEXT_PAYLOADS.some(p => p.payload.startsWith('";'))).toBe(true);
+  });
+
+  it('has single-quote string breakout payload', () => {
+    expect(JS_CONTEXT_PAYLOADS.some(p => p.payload.startsWith("';"))).toBe(true);
+  });
+
+  it('has script tag closure payload (universal JS escape)', () => {
+    expect(JS_CONTEXT_PAYLOADS.some(p => p.payload.includes('</script>'))).toBe(true);
+  });
+
+  it('has backslash escape bypass payload', () => {
+    expect(JS_CONTEXT_PAYLOADS.some(p => p.payload.startsWith('\\";'))).toBe(true);
+  });
+
+  it('has JSON concatenation breakout payload', () => {
+    expect(JS_CONTEXT_PAYLOADS.some(p => p.payload.startsWith('"+'))).toBe(true);
+  });
+
+  it('has numeric assignment breakout payload', () => {
+    expect(JS_CONTEXT_PAYLOADS.some(p => p.payload.startsWith('1;'))).toBe(true);
+  });
+
+  it('no marker collisions with main XSS_PAYLOADS', () => {
+    const mainMarkers = new Set(XSS_PAYLOADS.map(p => p.marker));
+    for (const p of JS_CONTEXT_PAYLOADS) {
+      expect(mainMarkers.has(p.marker)).toBe(false);
+    }
+  });
+});
+
+describe('checkJsStringBreakout', () => {
+  it('detects double-quote breakout in script block', () => {
+    const payload = '";alert("secbot-xss-51");//';
+    const content = `<html><body>
+      <script>var q = "${payload}";</script>
+    </body></html>`;
+    const result = checkJsStringBreakout(content, payload);
+    expect(result).not.toBeNull();
+    expect(result).toContain('JS string breakout');
+  });
+
+  it('detects single-quote breakout in script block', () => {
+    const payload = "';alert('secbot-xss-52');//";
+    const content = `<html><body>
+      <script>var q = '${payload}';</script>
+    </body></html>`;
+    const result = checkJsStringBreakout(content, payload);
+    expect(result).not.toBeNull();
+  });
+
+  it('detects backslash escape bypass in script block', () => {
+    const payload = '\\";alert("secbot-xss-54");//';
+    const content = `<html><body>
+      <script>var q = "${payload}";</script>
+    </body></html>`;
+    const result = checkJsStringBreakout(content, payload);
+    expect(result).not.toBeNull();
+  });
+
+  it('returns null for payload outside script blocks', () => {
+    const payload = '";alert("secbot-xss-51");//';
+    const content = `<html><body><div>${payload}</div></body></html>`;
+    const result = checkJsStringBreakout(content, payload);
+    expect(result).toBeNull();
+  });
+
+  it('returns null for payload NOT starting with quote terminator', () => {
+    const payload = '<script>alert(1)</script>';
+    const content = `<html><body>
+      <script>var q = "${payload}";</script>
+    </body></html>`;
+    const result = checkJsStringBreakout(content, payload);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when payload is properly JSON-escaped', () => {
+    const rawPayload = '";alert("secbot-xss-51");//';
+    const escaped = rawPayload.replace(/"/g, '\\"');
+    const content = `<html><body>
+      <script>var q = "${escaped}";</script>
+    </body></html>`;
+    const result = checkJsStringBreakout(content, rawPayload);
+    expect(result).toBeNull();
+  });
+
+  it('returns null for Next.js __NEXT_DATA__ JSON (no breakout)', () => {
+    const payload = '";alert("secbot-xss-51");//';
+    const jsonEscaped = JSON.stringify(payload).slice(1, -1);
+    const content = `<html><body>
+      <script id="__NEXT_DATA__" type="application/json">{"props":{"q":"${jsonEscaped}"}}</script>
+    </body></html>`;
+    const result = checkJsStringBreakout(content, payload);
+    expect(result).toBeNull();
+  });
+
+  it('handles multiple script blocks — detects in any', () => {
+    const payload = '";alert("secbot-xss-51");//';
+    const content = `<html><body>
+      <script>var a = "safe";</script>
+      <script>var q = "${payload}";</script>
+      <script>var b = "also safe";</script>
+    </body></html>`;
+    const result = checkJsStringBreakout(content, payload);
+    expect(result).not.toBeNull();
+  });
+});
+
+describe('DANGLING_MARKUP_PAYLOADS', () => {
+  it('has at least 5 dangling markup payloads', () => {
+    expect(DANGLING_MARKUP_PAYLOADS.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('all payloads have payload, marker, and type fields', () => {
+    for (const p of DANGLING_MARKUP_PAYLOADS) {
+      expect(p.payload).toBeTruthy();
+      expect(p.marker).toBeTruthy();
+      expect(p.type).toBe('reflected');
+    }
+  });
+
+  it('all markers start with secbot-dm-', () => {
+    for (const p of DANGLING_MARKUP_PAYLOADS) {
+      expect(p.marker).toMatch(/^secbot-dm-\d+$/);
+    }
+  });
+
+  it('includes unclosed img src exfiltration', () => {
+    const img = DANGLING_MARKUP_PAYLOADS.filter(p => p.payload.includes('<img') && p.payload.includes('src='));
+    expect(img.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('includes form action hijack', () => {
+    const form = DANGLING_MARKUP_PAYLOADS.filter(p => p.payload.includes('<form') && p.payload.includes('action='));
+    expect(form.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('includes base tag hijack', () => {
+    const base = DANGLING_MARKUP_PAYLOADS.filter(p => p.payload.includes('<base'));
+    expect(base.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('includes textarea capture', () => {
+    const textarea = DANGLING_MARKUP_PAYLOADS.filter(p => p.payload.includes('<textarea'));
+    expect(textarea.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('includes meta refresh exfiltration', () => {
+    const meta = DANGLING_MARKUP_PAYLOADS.filter(p => p.payload.includes('<meta') && p.payload.includes('refresh'));
+    expect(meta.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('all payloads start with attribute close', () => {
+    for (const p of DANGLING_MARKUP_PAYLOADS) {
+      expect(p.payload.startsWith('">')).toBe(true);
+    }
+  });
+
+  it('markers are unique', () => {
+    const markers = DANGLING_MARKUP_PAYLOADS.map(p => p.marker);
+    expect(new Set(markers).size).toBe(markers.length);
   });
 });

@@ -47,7 +47,14 @@ export async function validateFindings(
         const parsed = parseJsonResponse<{ validations: ValidatedFinding[] }>(cached);
         if (parsed?.validations) {
           log.info(`Using cached validation for batch ${batchNum}`);
-          allValidations.push(...parsed.validations);
+          // Remap finding IDs: cached results have old UUIDs from a previous scan.
+          // Since the cache key preserves ordering (same category+url+evidence hash),
+          // the Nth cached validation maps to the Nth current finding.
+          const remapped = parsed.validations.map((v, idx) => ({
+            ...v,
+            findingId: idx < batch.length ? batch[idx].id : v.findingId,
+          }));
+          allValidations.push(...remapped);
           continue;
         }
       }

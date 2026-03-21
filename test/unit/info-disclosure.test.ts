@@ -14,6 +14,7 @@ import {
   matchesDSStore,
   matchesDebugEndpoint,
   matchesActuatorEndpoint,
+  scanJsForSecrets,
 } from '../../src/scanner/active/info-disclosure.js';
 
 describe('Info disclosure check: metadata', () => {
@@ -470,5 +471,100 @@ describe('matchesActuatorEndpoint', () => {
 
   it('rejects JSON without status or _links', () => {
     expect(matchesActuatorEndpoint('{"name":"app"}')).toBe(false);
+  });
+});
+
+describe('scanJsForSecrets', () => {
+  const URL = 'https://example.com/app.js';
+
+  it('finds AWS access key', () => {
+    const content = 'var key = "AKIAIOSFODNN7EXAMPLE";';
+    const results = scanJsForSecrets(content, URL);
+    expect(results.length).toBe(1);
+    expect(results[0].name).toBe('AWS Access Key');
+    expect(results[0].severity).toBe('high');
+    expect(results[0].match).toContain('AKIAIOSFODNN7EXAMPLE');
+  });
+
+  it('finds Google API key', () => {
+    // AIza prefix + exactly 35 alphanumeric chars = 39-char total key
+    const key = 'AIza0123456789ABCDEFabcdefghijklmnopqrs';
+    const content = `const apiKey = "${key}";`;
+    const results = scanJsForSecrets(content, URL);
+    expect(results.length).toBe(1);
+    expect(results[0].name).toBe('Google API Key');
+    expect(results[0].severity).toBe('medium');
+    expect(results[0].match).toBe(key);
+  });
+
+  it('finds Stripe secret key', () => {
+    // Build key dynamically to avoid GitHub push protection false positive
+    const prefix = 'sk' + '_' + 'live' + '_';
+    const content = `stripe.init("${prefix}abcdefghijklmnopqrstuvwx");`;
+    const results = scanJsForSecrets(content, URL);
+    expect(results.length).toBe(1);
+    expect(results[0].name).toBe('Stripe Secret Key');
+    expect(results[0].severity).toBe('high');
+    expect(results[0].match).toContain(prefix);
+  });
+
+  it('finds GitHub token', () => {
+    const content = 'const token = "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij";';
+    const results = scanJsForSecrets(content, URL);
+    expect(results.length).toBe(1);
+    expect(results[0].name).toBe('GitHub Token');
+    expect(results[0].severity).toBe('high');
+    expect(results[0].match).toContain('ghp_');
+  });
+
+  it('finds private key PEM header', () => {
+    const content = '-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA...';
+    const results = scanJsForSecrets(content, URL);
+    expect(results.length).toBe(1);
+    expect(results[0].name).toBe('Private Key (PEM)');
+    expect(results[0].severity).toBe('high');
+    expect(results[0].match).toContain('-----BEGIN RSA PRIVATE KEY-----');
+  });
+
+  it('finds internal IP address in URL', () => {
+    const content = 'fetch("http://192.168.1.100:8080/api/data")';
+    const results = scanJsForSecrets(content, URL);
+    expect(results.length).toBe(1);
+    expect(results[0].name).toBe('Internal IP Address');
+    expect(results[0].severity).toBe('medium');
+    expect(results[0].match).toContain('192.168.1.100');
+  });
+
+  it('finds hardcoded Bearer token', () => {
+    const content = 'headers: { Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9abc" }';
+    const results = scanJsForSecrets(content, URL);
+    expect(results.length).toBe(1);
+    expect(results[0].name).toBe('Hardcoded Bearer Token');
+    expect(results[0].severity).toBe('high');
+    expect(results[0].match).toContain('Bearer ');
+  });
+
+  it('returns empty array for clean JS content', () => {
+    const content = [
+      'function add(a, b) { return a + b; }',
+      'const config = { debug: false, version: "1.0.0" };',
+      'export default function App() { return null; }',
+    ].join('\n');
+    expect(scanJsForSecrets(content, URL)).toEqual([]);
+  });
+
+  it('deduplicates the same secret appearing multiple times', () => {
+    const secret = 'AKIAIOSFODNN7EXAMPLE';
+    const content = `var a = "${secret}"; var b = "${secret}";`;
+    const results = scanJsForSecrets(content, URL);
+    expect(results.length).toBe(1);
+    expect(results[0].match).toContain(secret);
+  });
+
+  it('does not match Stripe publishable key (pk_live_)', () => {
+    // pk_live_ keys are intentionally public and should NOT trigger a finding
+    const content = 'stripe.init("pk_live_abcdefghijklmnopqrstuvwx");';
+    const results = scanJsForSecrets(content, URL);
+    expect(results).toEqual([]);
   });
 });

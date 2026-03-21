@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { AdaptiveEncoder } from '../../src/utils/payload-mutator.js';
+import { AdaptiveEncoder, sqlCaseRandomize } from '../../src/utils/payload-mutator.js';
 
 describe('AdaptiveEncoder', () => {
   it('starts with first strategy', () => {
@@ -25,11 +25,18 @@ describe('AdaptiveEncoder', () => {
   it('cycles through all strategies before repeating', () => {
     const encoder = new AdaptiveEncoder();
     const seen = new Set<string>();
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 9; i++) {
       seen.add(encoder.currentStrategy());
       encoder.recordBlock();
     }
-    expect(seen.size).toBe(8);
+    expect(seen.size).toBe(9);
+  });
+
+  it('sql-space-bypass replaces spaces with SQL comments', () => {
+    const encoder = new AdaptiveEncoder(['sql-space-bypass']);
+    const result = encoder.encode("' OR SLEEP(5)--");
+    expect(result).toBe("'/**/OR/**/SLEEP(5)--");
+    expect(result).not.toContain(' ');
   });
 
   it('skips already-blocked strategies', () => {
@@ -72,5 +79,29 @@ describe('AdaptiveEncoder', () => {
     expect(encoder.currentStrategy()).toBe('url');
     encoder.recordBlock();
     expect(encoder.currentStrategy()).toBe('double-url');
+  });
+});
+
+describe('sqlCaseRandomize', () => {
+  it('randomizes case of SQL keywords', () => {
+    const result = sqlCaseRandomize("' OR SLEEP(5)--");
+    // Should not be identical to input (keywords get case-randomized)
+    expect(result).not.toBe("' OR SLEEP(5)--");
+    // Should still contain the same characters (case-insensitive)
+    expect(result.toLowerCase()).toContain('sleep');
+    expect(result.toLowerCase()).toContain('or');
+  });
+
+  it('does not alter non-keyword characters', () => {
+    const result = sqlCaseRandomize("1=1");
+    expect(result).toBe("1=1");
+  });
+
+  it('handles UNION SELECT keyword', () => {
+    const result = sqlCaseRandomize("' UNION SELECT NULL--");
+    expect(result.toLowerCase()).toContain('union');
+    expect(result.toLowerCase()).toContain('select');
+    // Should not be all-uppercase anymore
+    expect(result).not.toBe("' UNION SELECT NULL--");
   });
 });

@@ -56,14 +56,20 @@ async function testDirectoryTraversal(
     try {
       const parsed = new URL(endpoint);
       const fileParams = Array.from(parsed.searchParams.keys()).filter((k) => FILE_PARAMS.test(k));
+      // Use more payloads for file params (they're the highest-value targets)
+      const filePayloadCount = config.profile === 'deep' ? payloadsToTest.length
+        : config.profile === 'quick' ? 2
+        : Math.min(payloadsToTest.length, 8);
       for (const param of fileParams) {
-        for (const payload of payloadsToTest.slice(0, 2)) {
+        let foundForParam = false;
+        for (const payload of payloadsToTest.slice(0, filePayloadCount)) {
           const testUrl = new URL(endpoint);
           testUrl.searchParams.set(param, payload);
           const found = await testTraversalUrl(context, testUrl.href, endpoint, payload, requestLogger);
-          if (found) { findings.push(found); break; }
+          if (found) { findings.push(found); foundForParam = true; break; }
           await delay(config.requestDelay);
         }
+        if (foundForParam) break;
       }
     } catch (err) {
       log.debug(`Traversal URL parse: ${(err as Error).message}`);

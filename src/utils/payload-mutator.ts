@@ -1,6 +1,6 @@
 import type { WafDetection } from '../scanner/types.js';
 
-export type EncodingStrategy = 'none' | 'url' | 'double-url' | 'html-entity' | 'unicode' | 'mixed' | 'from-char-code' | 'json-unicode';
+export type EncodingStrategy = 'none' | 'url' | 'double-url' | 'html-entity' | 'unicode' | 'mixed' | 'from-char-code' | 'json-unicode' | 'sql-space-bypass';
 
 /**
  * Mutate a payload using various encoding strategies to bypass WAFs.
@@ -32,20 +32,20 @@ export function pickStrategies(waf: WafDetection | undefined): EncodingStrategy[
   switch (waf.name?.toLowerCase()) {
     case 'cloudflare':
       // Cloudflare is aggressive on common patterns — use unicode + mixed + fromCharCode
-      strategies.push('unicode', 'mixed', 'from-char-code');
+      strategies.push('unicode', 'mixed', 'from-char-code', 'sql-space-bypass');
       break;
     case 'aws waf':
     case 'unknown waf':
-      // Generic WAFs — try all encodings including JSON unicode
-      strategies.push('html-entity', 'unicode', 'mixed', 'json-unicode');
+      // Generic WAFs — try all encodings including JSON unicode + space bypass
+      strategies.push('html-entity', 'unicode', 'mixed', 'json-unicode', 'sql-space-bypass');
       break;
     case 'akamai':
     case 'imperva':
-      // Enterprise WAFs — double-encode often works
-      strategies.push('double-url', 'html-entity');
+      // Enterprise WAFs — double-encode + space bypass
+      strategies.push('double-url', 'html-entity', 'sql-space-bypass');
       break;
     default:
-      strategies.push('html-entity', 'unicode');
+      strategies.push('html-entity', 'unicode', 'sql-space-bypass');
   }
 
   return [...new Set(strategies)];
@@ -76,6 +76,9 @@ function applyEncoding(payload: string, strategy: EncodingStrategy): string {
 
     case 'json-unicode':
       return jsonUnicodeEncode(payload);
+
+    case 'sql-space-bypass':
+      return sqlSpaceBypass(payload);
 
     default:
       return payload;
@@ -147,6 +150,27 @@ function mixedEncode(input: string): string {
   return result;
 }
 
+/** Replace spaces with alternatives that SQL parsers accept but WAFs miss.
+ *  Uses /**\/ (inline comment) as space replacement — works on MySQL, MSSQL, PostgreSQL. */
+function sqlSpaceBypass(input: string): string {
+  // Replace spaces between SQL keywords with /**\/
+  return input.replace(/ /g, '/**/');
+}
+
+/** Randomize case of SQL keywords to bypass case-sensitive WAF rules.
+ *  e.g., "SLEEP" → "sLeEp", "UNION SELECT" → "uNiOn SeLeCt" */
+export function sqlCaseRandomize(payload: string): string {
+  const keywords = ['UNION', 'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP', 'SLEEP', 'WAITFOR', 'BENCHMARK', 'ORDER', 'CONVERT', 'CASE', 'WHEN', 'THEN', 'ELSE', 'NULL', 'FROM'];
+  let result = payload;
+  for (const kw of keywords) {
+    const re = new RegExp(`\\b${kw}\\b`, 'gi');
+    result = result.replace(re, (match) => {
+      return [...match].map((ch, i) => i % 2 === 0 ? ch.toLowerCase() : ch.toUpperCase()).join('');
+    });
+  }
+  return result;
+}
+
 // Insert SQL comments to break up keywords that WAFs pattern-match.
 // e.g., "UNION SELECT" → "UN[comment]ION SEL[comment]ECT"
 export function sqlCommentObfuscate(payload: string): string {
@@ -176,7 +200,7 @@ export class AdaptiveEncoder {
   private blocked = new Set<EncodingStrategy>();
 
   constructor(initial?: EncodingStrategy[]) {
-    this.strategies = initial ?? ['none', 'url', 'double-url', 'html-entity', 'unicode', 'mixed', 'from-char-code', 'json-unicode'];
+    this.strategies = initial ?? ['none', 'url', 'double-url', 'html-entity', 'unicode', 'mixed', 'from-char-code', 'json-unicode', 'sql-space-bypass'];
   }
 
   /** Current encoding strategy. */

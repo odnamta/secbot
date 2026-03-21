@@ -157,13 +157,14 @@ describe('determineRelevantChecks', () => {
     expect(checks).toContain('cors');
   });
 
-  it('skips xss and sqli when no forms and no URL params', () => {
+  it('includes xss when pages exist even without forms or params (DOM XSS + param probing)', () => {
     const checks = determineRelevantChecks(
       'http://example.com',
       makeRecon(),
       [makePage()],
     );
-    expect(checks).not.toContain('xss');
+    expect(checks).toContain('xss');
+    // SQLi still requires forms or params
     expect(checks).not.toContain('sqli');
   });
 
@@ -533,8 +534,9 @@ describe('determineRelevantChecks', () => {
     expect(checks).toContain('host-header');
     expect(checks).toContain('info-disclosure');
     expect(checks).toContain('js-cve');
+    // XSS is now always-on when pages exist (DOM XSS + param probing)
+    expect(checks).toContain('xss');
     // Should NOT include checks requiring forms, params, or specific features
-    expect(checks).not.toContain('xss');
     expect(checks).not.toContain('sqli');
     expect(checks).not.toContain('ssrf');
     expect(checks).not.toContain('ssti');
@@ -570,10 +572,34 @@ describe('determineRelevantChecks', () => {
             ],
             pageUrl: 'https://example.com',
           },
+          {
+            action: '/contact',
+            method: 'POST',
+            inputs: [
+              { name: 'email', type: 'email' },
+              { name: 'subject', type: 'text' },
+              { name: 'message', type: 'text' },
+            ],
+            pageUrl: 'https://example.com/contact',
+          },
         ],
         links: ['https://example.com/login?redirect=/home', 'https://example.com/oauth/callback'],
         scripts: ['https://cdn.example.com/socket.io/socket.io.js'],
         cookies: [{ name: 'token', value: 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc' }],
+      }), makePage({
+        url: 'https://example.com/login',
+        forms: [{
+          action: '/login',
+          method: 'POST',
+          inputs: [
+            { name: 'username', type: 'text' },
+            { name: 'password', type: 'password' },
+          ],
+          pageUrl: 'https://example.com/login',
+        }],
+        links: [],
+        scripts: [],
+        cookies: [],
       })],
     );
     // All check types should be included

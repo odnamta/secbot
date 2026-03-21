@@ -43,6 +43,16 @@ export const REDIRECT_PAYLOADS = [
   'https:evil.example.com',
   'http:/evil.example.com',
 
+  // ── Double-URL encoding (bypasses single-decode filters) ──
+  '%252F%252Fevil.example.com',
+  'https%253A%252F%252Fevil.example.com',
+
+  // ── Unicode normalization bypass ──
+  '//evil%E3%80%82example%E3%80%82com',
+
+  // ── CRLF-in-redirect (inject Location header) ──
+  '%0d%0aLocation:%20https://evil.example.com',
+
   // ── Data URI (when redirect is used in src/href context) ──
   'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==',
   'javascript:alert(1)',

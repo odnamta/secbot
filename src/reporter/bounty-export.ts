@@ -1,23 +1,27 @@
-import type { InterpretedFinding } from '../scanner/types.js';
+import type { InterpretedFinding, RawFinding, EvidencePack } from '../scanner/types.js';
+
+interface ExportContext {
+  rawFindings?: RawFinding[];
+}
 
 /**
  * Format a finding for HackerOne submission.
- * Produces copy-paste ready markdown.
+ * Produces copy-paste ready markdown with HTTP evidence.
  */
-export function formatForHackerOne(finding: InterpretedFinding): string {
+export function formatForHackerOne(finding: InterpretedFinding, ctx?: ExportContext): string {
   const lines: string[] = [];
+  const evidencePack = getEvidencePack(finding, ctx);
 
   lines.push(`## ${finding.title}`);
   lines.push('');
 
-  // Severity mapping for HackerOne taxonomy
   const h1Severity = mapToHackerOneSeverity(finding.severity);
   lines.push(`**Severity:** ${h1Severity}`);
   lines.push(`**Weakness:** ${finding.owaspCategory}`);
   lines.push(`**Asset:** ${finding.affectedUrls?.[0] ?? 'N/A'}`);
   lines.push('');
 
-  // Description
+  // Summary
   lines.push('### Summary');
   lines.push('');
   lines.push(finding.description);
@@ -36,13 +40,65 @@ export function formatForHackerOne(finding: InterpretedFinding): string {
   }
   lines.push('');
 
-  // Supporting Material / PoC
-  if (finding.codeExample) {
-    lines.push('### Supporting Material/References');
+  // Curl command for easy reproduction
+  if (evidencePack?.curlCommand) {
+    lines.push('**Quick reproduction:**');
     lines.push('');
+    lines.push('```bash');
+    lines.push(evidencePack.curlCommand);
+    lines.push('```');
+    lines.push('');
+  }
+
+  // Supporting Material / PoC — HTTP evidence
+  lines.push('### Supporting Material/References');
+  lines.push('');
+
+  if (evidencePack?.httpExchange) {
+    const { request, response } = evidencePack.httpExchange;
+    lines.push('**Request:**');
+    lines.push('```http');
+    lines.push(`${request.method} ${request.url} HTTP/1.1`);
+    if (request.headers) {
+      for (const [k, v] of Object.entries(request.headers)) {
+        lines.push(`${k}: ${v}`);
+      }
+    }
+    if (request.body) {
+      lines.push('');
+      lines.push(request.body);
+    }
+    lines.push('```');
+    lines.push('');
+
+    if (response) {
+      lines.push('**Response:**');
+      lines.push('```http');
+      lines.push(`HTTP/1.1 ${response.status}`);
+      if (response.headers) {
+        for (const [k, v] of Object.entries(response.headers)) {
+          lines.push(`${k}: ${v}`);
+        }
+      }
+      if (response.body) {
+        lines.push('');
+        const body = response.body.length > 500
+          ? response.body.slice(0, 500) + '\n[...truncated]'
+          : response.body;
+        lines.push(body);
+      }
+      lines.push('```');
+      lines.push('');
+    }
+  } else if (finding.codeExample) {
     lines.push('```');
     lines.push(finding.codeExample);
     lines.push('```');
+    lines.push('');
+  }
+
+  if (evidencePack?.payloadUsed) {
+    lines.push(`**Payload used:** \`${evidencePack.payloadUsed}\``);
     lines.push('');
   }
 
@@ -76,15 +132,15 @@ export function formatForHackerOne(finding: InterpretedFinding): string {
 
 /**
  * Format a finding for Bugcrowd submission.
- * Produces copy-paste ready markdown.
+ * Produces copy-paste ready markdown with HTTP evidence.
  */
-export function formatForBugcrowd(finding: InterpretedFinding): string {
+export function formatForBugcrowd(finding: InterpretedFinding, ctx?: ExportContext): string {
   const lines: string[] = [];
+  const evidencePack = getEvidencePack(finding, ctx);
 
   lines.push(`# ${finding.title}`);
   lines.push('');
 
-  // Bugcrowd uses P1-P5 priority ratings
   const bcPriority = mapToBugcrowdPriority(finding.severity);
   lines.push(`**Priority:** ${bcPriority}`);
   lines.push(`**Vulnerability Type:** ${finding.owaspCategory}`);
@@ -111,13 +167,59 @@ export function formatForBugcrowd(finding: InterpretedFinding): string {
   }
   lines.push('');
 
-  // HTTP Request/Response
-  if (finding.codeExample) {
-    lines.push('## HTTP Request/Response');
+  // Curl reproduction
+  if (evidencePack?.curlCommand) {
+    lines.push('**Reproduce:**');
+    lines.push('```bash');
+    lines.push(evidencePack.curlCommand);
+    lines.push('```');
     lines.push('');
+  }
+
+  // HTTP Request/Response
+  lines.push('## HTTP Request/Response');
+  lines.push('');
+
+  if (evidencePack?.httpExchange) {
+    const { request, response } = evidencePack.httpExchange;
+    lines.push('```http');
+    lines.push(`${request.method} ${request.url} HTTP/1.1`);
+    if (request.headers) {
+      for (const [k, v] of Object.entries(request.headers)) {
+        lines.push(`${k}: ${v}`);
+      }
+    }
+    if (request.body) {
+      lines.push('');
+      lines.push(request.body);
+    }
+    lines.push('```');
+    lines.push('');
+    if (response) {
+      lines.push('```http');
+      lines.push(`HTTP/1.1 ${response.status}`);
+      if (response.headers) {
+        for (const [k, v] of Object.entries(response.headers)) {
+          lines.push(`${k}: ${v}`);
+        }
+      }
+      if (response.body) {
+        lines.push('');
+        const body = response.body.length > 500
+          ? response.body.slice(0, 500) + '\n[...truncated]'
+          : response.body;
+        lines.push(body);
+      }
+      lines.push('```');
+      lines.push('');
+    }
+  } else if (finding.codeExample) {
     lines.push('```http');
     lines.push(finding.codeExample);
     lines.push('```');
+    lines.push('');
+  } else {
+    lines.push('*No HTTP exchange captured for this finding.*');
     lines.push('');
   }
 
@@ -147,6 +249,28 @@ export function formatForBugcrowd(finding: InterpretedFinding): string {
   lines.push('');
 
   return lines.join('\n');
+}
+
+/**
+ * Look up the best evidence pack from raw findings backing an interpreted finding.
+ */
+function getEvidencePack(
+  finding: InterpretedFinding,
+  ctx?: ExportContext,
+): EvidencePack | undefined {
+  if (!ctx?.rawFindings || !finding.rawFindingIds?.length) return undefined;
+
+  const rawMap = new Map<string, RawFinding>();
+  for (const raw of ctx.rawFindings) {
+    rawMap.set(raw.id, raw);
+  }
+
+  for (const id of finding.rawFindingIds) {
+    const raw = rawMap.get(id);
+    if (raw?.evidencePack) return raw.evidencePack;
+  }
+
+  return undefined;
 }
 
 function mapToHackerOneSeverity(severity: string): string {

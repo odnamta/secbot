@@ -62,6 +62,13 @@ function categoryToRuleName(category: CheckCategory): string {
     'subdomain-takeover': 'Subdomain Takeover',
     'oauth': 'OAuth Flow Vulnerability',
     'cache-poisoning': 'Cache Poisoning',
+    'csrf': 'Cross-Site Request Forgery (CSRF)',
+    'prototype-pollution': 'Prototype Pollution',
+    'xxe': 'XML External Entity (XXE) Injection',
+    'insecure-deserialization': 'Insecure Deserialization',
+    'request-smuggling': 'HTTP Request Smuggling',
+    'ldap-injection': 'LDAP Injection',
+    'clickjacking': 'Clickjacking (UI Redressing)',
     'vuln-chain': 'Vulnerability Chain',
   };
   return map[category] ?? category;

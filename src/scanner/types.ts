@@ -34,9 +34,43 @@ export type CheckCategory =
   | 'subdomain-takeover'
   | 'oauth'
   | 'cache-poisoning'
+  | 'csrf'
+  | 'prototype-pollution'
+  | 'xxe'
+  | 'insecure-deserialization'
+  | 'request-smuggling'
+  | 'ldap-injection'
+  | 'clickjacking'
   | 'vuln-chain';
 
 export type ScanProfile = 'quick' | 'standard' | 'deep' | 'stealth';
+
+export interface EvidencePack {
+  /** The exact payload string that triggered the finding */
+  payloadUsed?: string;
+  /** Patterns/strings in the response that confirmed the vulnerability */
+  responseIndicators?: string[];
+  /** Full HTTP exchange for reproduction */
+  httpExchange?: {
+    request: {
+      method: string;
+      url: string;
+      headers?: Record<string, string>;
+      body?: string;
+    };
+    response: {
+      status: number;
+      headers?: Record<string, string>;
+      body?: string;
+    };
+  };
+  /** Auto-generated curl command to reproduce the finding */
+  curlCommand?: string;
+  /** Exact URL that reproduces the vulnerability (with payload in place) */
+  reproductionUrl?: string;
+  /** Detection method that flagged this (e.g. "error-pattern", "timing", "reflection") */
+  detectionMethod?: string;
+}
 
 export interface RawFinding {
   id: string;
@@ -60,6 +94,8 @@ export interface RawFinding {
   timestamp: string;
   affectedUrls?: string[];
   confidence?: Confidence;
+  /** Structured evidence for bounty-grade reports */
+  evidencePack?: EvidencePack;
 }
 
 export interface InterpretedFinding {
@@ -119,6 +155,8 @@ export interface ScanConfig {
   aiFocusAreas?: string[];
   /** Subdomain enumeration results from recon phase — used by subdomain-takeover check */
   subdomainResults?: import('./recon/subdomain.js').SubdomainResult[];
+  /** Extra HTTP headers to inject into every request (e.g. Authorization: Bearer <token>) */
+  extraHeaders?: Record<string, string>;
 }
 
 export interface CrawledPage {
@@ -188,6 +226,7 @@ export interface ScanResult {
   checksRun: string[];
   tokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
   callbackUrl?: string;
+  sessionRefreshes?: number;
 }
 
 export interface ScanSummary {

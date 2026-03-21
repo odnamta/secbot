@@ -3,6 +3,7 @@ import {
   generateBlindXssPayloads,
   generateBlindSsrfPayloads,
   generateBlindSqliPayloads,
+  generateBlindCmdiPayloads,
 } from '../../src/scanner/oob/blind-payloads.js';
 
 describe('Blind XSS Payloads', () => {
@@ -148,5 +149,112 @@ describe('Blind SQLi Payloads', () => {
     const withComment = payloads.filter((p) => p.includes('-- -'));
     // Most SQLi payloads should have comment terminators
     expect(withComment.length).toBeGreaterThanOrEqual(5);
+  });
+});
+
+describe('Blind CMDi OOB Payloads', () => {
+  const callbackUrl = 'http://oob.attacker.com:4444';
+
+  it('generates at least 10 payloads', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    expect(payloads.length).toBeGreaterThanOrEqual(10);
+  });
+
+  it('all payloads have os, technique, and payload fields', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    for (const p of payloads) {
+      expect(p.payload).toBeTruthy();
+      expect(['unix', 'windows']).toContain(p.os);
+      expect(p.technique).toBeTruthy();
+    }
+  });
+
+  it('includes Unix curl HTTP callback', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    const curl = payloads.filter(p => p.os === 'unix' && p.payload.includes('curl') && p.payload.includes('oob.attacker.com'));
+    expect(curl.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('includes Unix wget HTTP callback', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    const wget = payloads.filter(p => p.os === 'unix' && p.payload.includes('wget'));
+    expect(wget.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('includes Unix DNS exfiltration (nslookup)', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    const nslookup = payloads.filter(p => p.os === 'unix' && p.payload.includes('nslookup'));
+    expect(nslookup.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('includes Unix DNS exfiltration (dig)', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    const dig = payloads.filter(p => p.os === 'unix' && p.payload.includes('dig'));
+    expect(dig.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('includes Windows PowerShell callback', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    const ps = payloads.filter(p => p.os === 'windows' && p.payload.includes('powershell'));
+    expect(ps.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('includes Windows nslookup callback', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    const nslookup = payloads.filter(p => p.os === 'windows' && p.payload.includes('nslookup'));
+    expect(nslookup.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('includes Windows certutil LOLBin callback', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    const certutil = payloads.filter(p => p.os === 'windows' && p.payload.includes('certutil'));
+    expect(certutil.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('includes command substitution for data exfiltration', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    const withExfil = payloads.filter(p => p.payload.includes('$(whoami)') || p.payload.includes('`id`'));
+    expect(withExfil.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('references the callback host in most payloads', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    const withHost = payloads.filter(p => p.payload.includes('oob.attacker.com'));
+    expect(withHost.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('has both Unix and Windows payloads', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    const unix = payloads.filter(p => p.os === 'unix');
+    const windows = payloads.filter(p => p.os === 'windows');
+    expect(unix.length).toBeGreaterThanOrEqual(5);
+    expect(windows.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('each payload has a unique bcmdi- ID', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    const ids = payloads.map(p => {
+      const m = p.payload.match(/bcmdi-[0-9a-f]{8}/);
+      return m ? m[0] : null;
+    }).filter(Boolean);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('generates different IDs on each call', () => {
+    const p1 = generateBlindCmdiPayloads(callbackUrl);
+    const p2 = generateBlindCmdiPayloads(callbackUrl);
+    expect(p1[0].payload).not.toEqual(p2[0].payload);
+  });
+
+  it('includes python fallback for curl-less systems', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    const python = payloads.filter(p => p.payload.includes('python'));
+    expect(python.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('techniques are all unique', () => {
+    const payloads = generateBlindCmdiPayloads(callbackUrl);
+    const techniques = payloads.map(p => p.technique);
+    expect(new Set(techniques).size).toBe(techniques.length);
   });
 });

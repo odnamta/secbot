@@ -8,6 +8,24 @@ import type { ActiveCheck } from './index.js';
 /** File extensions that are typically static assets (CDN-served) */
 const STATIC_ASSET_RE = /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot|map|webp|avif)(\?|$)/i;
 
+/** Check if Set-Cookie headers all have SameSite=Lax or Strict (mitigates CORS credential theft) */
+function hasSameSiteProtection(headers: Record<string, string>): boolean {
+  // Collect all set-cookie values — Playwright merges multiple Set-Cookie into one string separated by \n
+  const setCookieRaw = headers['set-cookie'];
+  if (!setCookieRaw) return false; // No cookies = no mitigation (but also no theft vector)
+
+  const setCookies = setCookieRaw.split('\n').filter(Boolean);
+  if (setCookies.length === 0) return false;
+
+  // Check if ALL cookies have SameSite=Lax or SameSite=Strict
+  return setCookies.every(cookie => {
+    const sameSiteMatch = /samesite\s*=\s*(lax|strict|none)/i.exec(cookie);
+    if (!sameSiteMatch) return false; // No explicit SameSite — treat as unprotected (older browsers don't default to Lax)
+    const value = sameSiteMatch[1].toLowerCase();
+    return value === 'lax' || value === 'strict';
+  });
+}
+
 /** Check if a URL is likely an API endpoint vs a static asset */
 function isApiEndpoint(url: string, contentType?: string): boolean {
   // Static asset by extension — not an API endpoint
@@ -81,29 +99,55 @@ async function testCorsMisconfiguration(
         const contentType = response.headers()['content-type'] ?? '';
 
         // Only flag wildcard ACAO on API endpoints, not static assets
+        // Downgrade severity for non-functional endpoints (4xx/5xx responses)
+        // A reflected origin on a 405/404/500 is less exploitable than on a 200
+        const statusCode = response.status();
+        const isNonFunctional = statusCode >= 400;
+        const sameSiteProtected = hasSameSiteProtection(response.headers());
+        const contentLength = response.headers()['content-length'];
+        const isEmptyResponse = contentLength === '0';
+        const mitigationNotes: string[] = [];
+        if (isNonFunctional) mitigationNotes.push(`Endpoint returned HTTP ${statusCode}, which may limit exploitability.`);
+        if (sameSiteProtected) mitigationNotes.push('All cookies use SameSite=Lax or Strict, preventing cross-origin cookie attachment via fetch/XHR.');
+        if (isEmptyResponse) mitigationNotes.push('Response body is empty (Content-Length: 0), so no data can be stolen.');
+        const mitigationSuffix = mitigationNotes.length > 0 ? ` Note: ${mitigationNotes.join(' ')}` : '';
+
+        // Count active mitigations for severity downgrade decisions
+        const hasMitigations = sameSiteProtected || isEmptyResponse || isNonFunctional;
+
         if (acao === '*' && acac === 'true') {
-          // Wildcard + credentials is always critical, even on static — but note context
+          // Wildcard + credentials — downgrade if any mitigation present
+          const severity = hasMitigations ? 'medium' as const : 'high' as const;
           findings.push({
             id: randomUUID(),
             category: 'cors-misconfiguration',
-            severity: 'high',
+            severity,
             title: 'CORS Wildcard with Credentials',
             description:
-              'The server allows any origin with credentials, enabling cross-site data theft.',
+              'The server allows any origin with credentials, enabling cross-site data theft.' + mitigationSuffix,
             url,
             evidence: `Access-Control-Allow-Origin: *\nAccess-Control-Allow-Credentials: true`,
             response: {
-              status: response.status(),
+              status: statusCode,
               headers: response.headers(),
             },
             timestamp: new Date().toISOString(),
-            confidence: 'low',
+            confidence: hasMitigations ? 'low' : 'low',
           });
         } else if (acao === '*' && !isApiEndpoint(url, contentType)) {
           // Wildcard on static assets is normal — skip
           log.debug(`CORS wildcard on static asset, skipping: ${url}`);
         } else if (acao === evilOrigin) {
-          const severity = acac === 'true' ? 'critical' as const : 'high' as const;
+          // With credentials: critical (downgraded if any mitigation present)
+          // Without credentials: high (downgraded to medium if mitigated)
+          let severity: 'critical' | 'high' | 'medium';
+          if (acac === 'true') {
+            if (sameSiteProtected || isEmptyResponse) severity = 'medium';
+            else if (isNonFunctional) severity = 'high';
+            else severity = 'critical';
+          } else {
+            severity = hasMitigations ? 'medium' : 'high';
+          }
           findings.push({
             id: randomUUID(),
             category: 'cors-misconfiguration',
@@ -111,17 +155,17 @@ async function testCorsMisconfiguration(
             title: acac === 'true'
               ? 'CORS Reflects Origin with Credentials'
               : 'CORS Reflects Arbitrary Origin',
-            description: acac === 'true'
+            description: (acac === 'true'
               ? 'The server reflects the Origin header with credentials allowed. This is the most dangerous CORS misconfiguration, enabling full cross-site data theft with authentication.'
-              : 'The server reflects the Origin header in Access-Control-Allow-Origin, allowing any site to read responses.',
+              : 'The server reflects the Origin header in Access-Control-Allow-Origin, allowing any site to read responses.') + mitigationSuffix,
             url,
             evidence: `Origin: ${evilOrigin}\nAccess-Control-Allow-Origin: ${acao}${acac === 'true' ? '\nAccess-Control-Allow-Credentials: true' : ''}`,
             response: {
-              status: response.status(),
+              status: statusCode,
               headers: response.headers(),
             },
             timestamp: new Date().toISOString(),
-            confidence: acac === 'true' ? 'high' : 'medium',
+            confidence: (sameSiteProtected || isEmptyResponse) ? 'low' : (isNonFunctional ? 'low' : (acac === 'true' ? 'high' : 'medium')),
           });
         } else if (acao === 'null') {
           findings.push({
@@ -142,7 +186,64 @@ async function testCorsMisconfiguration(
           });
         }
 
-        // Test 2: Send Origin: null actively
+        // Test 2: Subdomain prefix/suffix bypass
+        // Many CORS implementations use regex like /\.example\.com$/ but forget to anchor,
+        // allowing evilexample.com, example.com.evil.com, or evil.example.com
+        if (!findings.some((f) => f.url === url)) {
+          const targetOrigin = new URL(url).origin;
+          const targetHost = new URL(url).hostname;
+          const bypassOrigins = [
+            `https://evil${targetHost}`,           // Prefix bypass: evilexample.com
+            `https://${targetHost}.evil.com`,       // Suffix bypass: example.com.evil.com
+            `https://subdomain.${targetHost}`,      // Subdomain: may be overly trusted
+          ];
+
+          for (const bypassOrigin of bypassOrigins) {
+            if (bypassOrigin === targetOrigin) continue; // Skip if it matches the actual origin
+            try {
+              const bypassResponse = await page.request.fetch(url, {
+                headers: { Origin: bypassOrigin },
+              });
+
+              requestLogger?.log({
+                timestamp: new Date().toISOString(),
+                method: 'GET',
+                url,
+                headers: { Origin: bypassOrigin },
+                responseStatus: bypassResponse.status(),
+                phase: 'active-cors-bypass',
+              });
+
+              const bypassAcao = bypassResponse.headers()['access-control-allow-origin'];
+              const bypassAcac = bypassResponse.headers()['access-control-allow-credentials'];
+
+              if (bypassAcao === bypassOrigin) {
+                const bypassType = bypassOrigin.startsWith(`https://evil${targetHost}`)
+                  ? 'prefix' : bypassOrigin.endsWith('.evil.com') ? 'suffix' : 'subdomain';
+                findings.push({
+                  id: randomUUID(),
+                  category: 'cors-misconfiguration',
+                  severity: bypassAcac === 'true' ? 'critical' : 'high',
+                  title: `CORS Origin Validation Bypass (${bypassType})`,
+                  description: `The server CORS validation can be bypassed using a ${bypassType}-based origin (${bypassOrigin}). The regex/string matching is not properly anchored, allowing attacker-controlled domains to read authenticated responses.${bypassAcac === 'true' ? ' Credentials are allowed, making this fully exploitable for cross-site data theft.' : ''}`,
+                  url,
+                  evidence: `Bypass origin: ${bypassOrigin}\nAccess-Control-Allow-Origin: ${bypassAcao}${bypassAcac === 'true' ? '\nAccess-Control-Allow-Credentials: true' : ''}`,
+                  response: {
+                    status: bypassResponse.status(),
+                    headers: bypassResponse.headers(),
+                  },
+                  timestamp: new Date().toISOString(),
+                  confidence: 'high',
+                });
+                break; // One bypass finding per URL is enough
+              }
+            } catch {
+              // Bypass test may fail
+            }
+          }
+        }
+
+        // Test 3: Send Origin: null actively
         try {
           const nullResponse = await page.request.fetch(url, {
             headers: { Origin: 'null' },
@@ -182,7 +283,7 @@ async function testCorsMisconfiguration(
           // Origin: null test may fail
         }
 
-        // Test 3: OPTIONS preflight to check CORS policy enforcement
+        // Test 4: OPTIONS preflight to check CORS policy enforcement
         try {
           const preflight = await page.request.fetch(url, {
             method: 'OPTIONS',
@@ -206,25 +307,37 @@ async function testCorsMisconfiguration(
           const allowMethods = preflight.headers()['access-control-allow-methods'];
           const preflightAcac = preflight.headers()['access-control-allow-credentials'];
 
-          // Overly permissive preflight
+          // Overly permissive preflight — only exploitable with credentials
+          // ACAO: * without credentials is safe per browser spec (cookies not sent)
           if (preflightAcao === '*' || preflightAcao === evilOrigin) {
             if (allowMethods?.includes('*') || (allowMethods?.includes('DELETE') && allowMethods?.includes('PUT'))) {
-              findings.push({
-                id: randomUUID(),
-                category: 'cors-misconfiguration',
-                severity: 'high',
-                title: 'CORS Preflight Allows Dangerous Methods',
-                description:
-                  'The server CORS preflight response allows arbitrary origins with dangerous HTTP methods (DELETE, PUT). This enables cross-site state-changing requests.',
-                url,
-                evidence: `Origin: ${evilOrigin}\nAccess-Control-Allow-Origin: ${preflightAcao}\nAccess-Control-Allow-Methods: ${allowMethods}${preflightAcac === 'true' ? '\nAccess-Control-Allow-Credentials: true' : ''}`,
-                response: {
-                  status: preflight.status(),
-                  headers: preflight.headers(),
-                },
-                timestamp: new Date().toISOString(),
-                confidence: 'medium',
-              });
+              const hasCredentials = preflightAcac === 'true';
+              // Wildcard without credentials is not exploitable — browsers block credentialed
+              // cross-origin requests when ACAO is *. Only flag when credentials are present
+              // or when origin is reflected (not wildcard).
+              if (hasCredentials || preflightAcao === evilOrigin) {
+                findings.push({
+                  id: randomUUID(),
+                  category: 'cors-misconfiguration',
+                  severity: hasCredentials ? 'high' : 'medium',
+                  title: hasCredentials
+                    ? 'CORS Preflight Allows Dangerous Methods with Credentials'
+                    : 'CORS Preflight Reflects Origin with Dangerous Methods',
+                  description: hasCredentials
+                    ? 'The server CORS preflight allows arbitrary origins with credentials and dangerous HTTP methods (DELETE, PUT). This enables authenticated cross-site state-changing requests.'
+                    : 'The server reflects the Origin header in preflight with dangerous HTTP methods. Without credentials, the impact is limited to reading responses from the attacker\'s own requests.',
+                  url,
+                  evidence: `Origin: ${evilOrigin}\nAccess-Control-Allow-Origin: ${preflightAcao}\nAccess-Control-Allow-Methods: ${allowMethods}${hasCredentials ? '\nAccess-Control-Allow-Credentials: true' : ''}`,
+                  response: {
+                    status: preflight.status(),
+                    headers: preflight.headers(),
+                  },
+                  timestamp: new Date().toISOString(),
+                  confidence: hasCredentials ? 'high' : 'medium',
+                });
+              } else {
+                log.debug(`CORS preflight: ${url} allows * with methods but no credentials — safe per spec`);
+              }
             }
           }
         } catch {

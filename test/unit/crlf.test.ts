@@ -11,8 +11,20 @@ import {
 
 describe('CRLF Injection — Unit Tests', () => {
   describe('CRLF_PAYLOADS', () => {
-    it('has at least 4 payload variants', () => {
-      expect(CRLF_PAYLOADS.length).toBeGreaterThanOrEqual(4);
+    it('has at least 6 payload variants', () => {
+      expect(CRLF_PAYLOADS.length).toBeGreaterThanOrEqual(6);
+    });
+
+    it('includes cache-poisoning payload', () => {
+      const cp = CRLF_PAYLOADS.find((p) => p.name === 'cache-poisoning');
+      expect(cp).toBeDefined();
+      expect(cp!.payload).toContain('X-Cache-Poisoned');
+    });
+
+    it('includes set-cookie-injection payload', () => {
+      const sc = CRLF_PAYLOADS.find((p) => p.name === 'set-cookie-injection');
+      expect(sc).toBeDefined();
+      expect(sc!.payload).toContain('Set-Cookie');
     });
 
     it('includes url-encoded CRLF payload', () => {
@@ -54,45 +66,60 @@ describe('CRLF Injection — Unit Tests', () => {
   });
 
   describe('detectInjectedHeader()', () => {
-    it('returns true when sentinel header is present', () => {
+    it('returns match string when sentinel header is present', () => {
       const headers: Record<string, string> = {
         'content-type': 'text/html',
         'injected-header': 'secbot-test',
       };
-      expect(detectInjectedHeader(headers)).toBe(true);
+      expect(detectInjectedHeader(headers)).toBeTruthy();
+      expect(detectInjectedHeader(headers)).toContain('Injected-Header');
     });
 
-    it('returns true regardless of header name casing', () => {
+    it('returns match regardless of header name casing', () => {
       const headers: Record<string, string> = {
         'Injected-Header': 'secbot-test',
       };
-      expect(detectInjectedHeader(headers)).toBe(true);
+      expect(detectInjectedHeader(headers)).toBeTruthy();
     });
 
-    it('returns false when sentinel header is absent', () => {
+    it('returns null when sentinel header is absent', () => {
       const headers: Record<string, string> = {
         'content-type': 'text/html',
         'x-custom': 'other-value',
       };
-      expect(detectInjectedHeader(headers)).toBe(false);
+      expect(detectInjectedHeader(headers)).toBeNull();
     });
 
-    it('returns false when header name matches but value does not', () => {
+    it('returns null when header name matches but value does not', () => {
       const headers: Record<string, string> = {
         'injected-header': 'wrong-value',
       };
-      expect(detectInjectedHeader(headers)).toBe(false);
+      expect(detectInjectedHeader(headers)).toBeNull();
     });
 
     it('handles empty headers object', () => {
-      expect(detectInjectedHeader({})).toBe(false);
+      expect(detectInjectedHeader({})).toBeNull();
     });
 
     it('trims whitespace from header value', () => {
       const headers: Record<string, string> = {
         'injected-header': ' secbot-test ',
       };
-      expect(detectInjectedHeader(headers)).toBe(true);
+      expect(detectInjectedHeader(headers)).toBeTruthy();
+    });
+
+    it('detects cache poisoning header', () => {
+      const headers: Record<string, string> = {
+        'x-cache-poisoned': 'secbot-cache-test',
+      };
+      expect(detectInjectedHeader(headers)).toContain('X-Cache-Poisoned');
+    });
+
+    it('detects Set-Cookie injection', () => {
+      const headers: Record<string, string> = {
+        'set-cookie': 'secbot_test=injected;Path=/',
+      };
+      expect(detectInjectedHeader(headers)).toContain('Set-Cookie');
     });
   });
 

@@ -39,6 +39,22 @@ import { accessControlCheck } from './access-control.js';
 import { subdomainTakeoverCheck } from './subdomain-takeover.js';
 import { oauthCheck } from './oauth.js';
 import { cachePoisoningCheck } from './cache-poisoning.js';
+import { csrfCheck } from './csrf.js';
+import { prototypePollutionCheck } from './prototype-pollution.js';
+import { xxeCheck } from './xxe.js';
+import { insecureDeserializationCheck } from './insecure-deserialization.js';
+import { requestSmugglingCheck } from './request-smuggling.js';
+import { ldapInjectionCheck } from './ldap-injection.js';
+import { userEnumCheck } from './user-enum.js';
+import { massAssignmentCheck } from './mass-assignment.js';
+import { contentTypeConfusionCheck } from './content-type-confusion.js';
+import { methodOverrideCheck } from './method-override.js';
+import { emailInjectionCheck } from './email-injection.js';
+import { bflaCheck } from './bfla.js';
+import { clickjackingCheck } from './clickjacking.js';
+import { timingAttackCheck } from './timing-attack.js';
+import { verboseErrorsCheck } from './verbose-errors.js';
+import { xpathInjectionCheck } from './xpath-injection.js';
 import { log } from '../../utils/logger.js';
 
 export interface ScanTargets {
@@ -92,6 +108,22 @@ export const CHECK_REGISTRY: ActiveCheck[] = [
   subdomainTakeoverCheck,
   oauthCheck,
   cachePoisoningCheck,
+  csrfCheck,
+  prototypePollutionCheck,
+  xxeCheck,
+  insecureDeserializationCheck,
+  requestSmugglingCheck,
+  ldapInjectionCheck,
+  userEnumCheck,
+  massAssignmentCheck,
+  contentTypeConfusionCheck,
+  methodOverrideCheck,
+  emailInjectionCheck,
+  bflaCheck,
+  clickjackingCheck,
+  timingAttackCheck,
+  verboseErrorsCheck,
+  xpathInjectionCheck,
 ];
 
 /**
@@ -150,20 +182,97 @@ function isFileLikeValue(value: string): boolean {
   return false;
 }
 
-/** Build scan targets from crawled pages, filtering by scope */
-export function buildTargets(pages: CrawledPage[], targetUrl: string, scope?: ScanScope): ScanTargets {
+/** Regex for XHR/API response content types */
+const API_CONTENT_TYPE_RE = /application\/json|application\/graphql|application\/xml|text\/xml/i;
+
+/** URL patterns indicating API endpoints (broader than just /api/) */
+const API_URL_PATTERN_RE = /\/api\/|\/graphql|\/v[0-9]+\/|\/rest\/|\/rpc\/|\/query|\/mutation|\/endpoint/i;
+
+/** Static asset patterns to exclude from API endpoint discovery */
+const STATIC_ASSET_RE = /\.(js|css|png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot|map|webp|avif|mp[34]|webm)(\?|$)/i;
+
+/** Analytics/tracking URL patterns — not worth testing for injection vulns */
+const TRACKING_URL_RE = /\/(?:ga|gtag|g\/collect|analytics|beacon|pixel|tr|__utm|_ga|go9u\/ga|j\/collect|pagead|ad_event|conversion|log_event)\b/i;
+
+/** URLs with excessive query params (>15) are almost always tracking/telemetry, not user input */
+function hasExcessiveParams(url: string): boolean {
+  try {
+    const params = new URL(url).searchParams;
+    let count = 0;
+    for (const _ of params) { count++; if (count > 15) return true; }
+    return false;
+  } catch { return false; }
+}
+
+/** Check if a URL is a tracking/analytics endpoint not worth XSS testing */
+function isTrackingUrl(url: string): boolean {
+  return TRACKING_URL_RE.test(url) || hasExcessiveParams(url);
+}
+
+/** Build scan targets from crawled pages, filtering by scope.
+ * Optionally accepts intercepted responses to discover API endpoints from network traffic.
+ */
+export function buildTargets(
+  pages: CrawledPage[],
+  targetUrl: string,
+  scope?: ScanScope,
+  interceptedResponses?: Array<{ url: string; status: number; headers: Record<string, string> }>,
+): ScanTargets {
   const inScope = (url: string) => isInScope(url, targetUrl, scope);
 
   const scopedPages = pages.filter((p) => inScope(p.url));
-  const allForms = scopedPages.flatMap((p) => p.forms).filter((f) => {
+  const rawForms = scopedPages.flatMap((p) => p.forms).filter((f) => {
     try { return inScope(new URL(f.action, f.pageUrl).href); } catch (err) { log.debug(`Scope check: ${(err as Error).message}`); return true; }
   });
-  const urlsWithParams = scopedPages.map((p) => p.url).filter((u) => u.includes('?'));
-  const apiEndpoints = scopedPages.map((p) => p.url).filter((u) => /\/api\//i.test(u));
+  // Deduplicate forms by method+action to avoid testing the same search form from every page
+  const formDedup = new Map<string, typeof rawForms[0]>();
+  for (const form of rawForms) {
+    const key = `${form.method}:${form.action}`;
+    if (!formDedup.has(key)) formDedup.set(key, form);
+  }
+  const allForms = [...formDedup.values()];
+  if (rawForms.length !== allForms.length) {
+    log.info(`Form dedup: ${rawForms.length} → ${allForms.length} unique forms`);
+  }
+  const urlsWithParamsSet = new Set(scopedPages.map((p) => p.url).filter((u) => u.includes('?') && !isTrackingUrl(u)));
+  const apiEndpointSet = new Set(scopedPages.map((p) => p.url).filter((u) => /\/api\//i.test(u)));
   const redirectUrls = scopedPages
     .flatMap((p) => p.links)
     .filter((l) => REDIRECT_PARAM_RE.test(l))
     .filter(inScope);
+
+  // Extract API endpoints and parameterized URLs from intercepted network traffic
+  if (interceptedResponses) {
+    for (const resp of interceptedResponses) {
+      try {
+        if (!inScope(resp.url)) continue;
+        if (STATIC_ASSET_RE.test(resp.url)) continue;
+
+        const contentType = resp.headers['content-type'] ?? '';
+
+        // API endpoint: URL matches API pattern or response is JSON/XML
+        if (API_URL_PATTERN_RE.test(resp.url) || API_CONTENT_TYPE_RE.test(contentType)) {
+          // Strip query params to get the base API endpoint
+          const baseUrl = resp.url.split('?')[0];
+          apiEndpointSet.add(baseUrl);
+        }
+
+        // URL with query parameters (discovered from network traffic)
+        // Exclude tracking/analytics URLs — they waste XSS testing time
+        if (resp.url.includes('?') && !STATIC_ASSET_RE.test(resp.url) && !isTrackingUrl(resp.url)) {
+          urlsWithParamsSet.add(resp.url);
+        }
+      } catch {
+        // Skip malformed URLs
+      }
+    }
+
+    const networkApis = apiEndpointSet.size - scopedPages.map((p) => p.url).filter((u) => /\/api\//i.test(u)).length;
+    const networkParams = urlsWithParamsSet.size - scopedPages.map((p) => p.url).filter((u) => u.includes('?')).length;
+    if (networkApis > 0 || networkParams > 0) {
+      log.info(`Network traffic discovery: +${networkApis} API endpoints, +${networkParams} parameterized URLs`);
+    }
+  }
 
   // Detect URLs with file-like parameters
   const fileParams: string[] = [];
@@ -185,8 +294,8 @@ export function buildTargets(pages: CrawledPage[], targetUrl: string, scope?: Sc
   return {
     pages: scopedPages.map((p) => p.url),
     forms: allForms,
-    urlsWithParams,
-    apiEndpoints,
+    urlsWithParams: [...urlsWithParamsSet],
+    apiEndpoints: [...apiEndpointSet],
     redirectUrls,
     fileParams: [...new Set(fileParams)],
   };
@@ -203,13 +312,14 @@ export async function runActiveChecks(
   config: ScanConfig,
   attackPlan?: AttackPlan,
   requestLogger?: RequestLogger,
+  interceptedResponses?: Array<{ url: string; status: number; headers: Record<string, string> }>,
 ): Promise<RawFinding[]> {
   if (config.profile === 'quick' && !attackPlan) {
     log.info('Quick profile — skipping active checks');
     return [];
   }
 
-  const targets = buildTargets(pages, config.targetUrl, config.scope);
+  const targets = buildTargets(pages, config.targetUrl, config.scope, interceptedResponses);
   const findings: RawFinding[] = [];
 
   // Create adaptive rate limiter — use per-domain limiter when rateLimits config is present

@@ -46,14 +46,87 @@ function isExternalRedirectToCanary(location: string): boolean {
   return trimmed.includes(REDIRECT_CANARY);
 }
 
+/** Common pages that often accept redirect parameters */
+const REDIRECT_PAGE_PATHS = [
+  '/login', '/signin', '/auth', '/sso', '/oauth', '/logout', '/signout',
+  '/redirect', '/goto', '/out', '/link', '/callback',
+];
+
+/** Common redirect parameter names to probe */
+const REDIRECT_PROBE_PARAMS = ['url', 'redirect', 'next', 'return', 'returnTo', 'redirect_uri', 'goto', 'dest'];
+
+/**
+ * Generate probe URLs for common redirect endpoints that might not be discovered by the crawler.
+ * Only probes pages that exist (200 status) and aren't already in the crawled redirectUrls.
+ */
+async function probeCommonRedirectPages(
+  context: BrowserContext,
+  config: ScanConfig,
+  existingRedirectUrls: string[],
+  requestLogger?: RequestLogger,
+): Promise<string[]> {
+  const origin = new URL(config.targetUrl).origin;
+  const existingPaths = new Set(existingRedirectUrls.map(u => {
+    try { return new URL(u).pathname; } catch { return ''; }
+  }));
+
+  const probeUrls: string[] = [];
+
+  for (const path of REDIRECT_PAGE_PATHS) {
+    if (existingPaths.has(path)) continue; // Already discovered
+
+    const page = await context.newPage();
+    try {
+      const response = await page.request.fetch(`${origin}${path}`, { maxRedirects: 0 });
+      const status = response.status();
+
+      requestLogger?.log({
+        timestamp: new Date().toISOString(),
+        method: 'GET',
+        url: `${origin}${path}`,
+        responseStatus: status,
+        phase: 'active-redirect-probe',
+      });
+
+      // Page exists (200 or redirect) — try redirect params
+      if (status >= 200 && status < 400) {
+        for (const param of REDIRECT_PROBE_PARAMS) {
+          probeUrls.push(`${origin}${path}?${param}=https://evil.example.com`);
+        }
+        break; // Found one auth page, don't probe more (rate limiting)
+      }
+    } catch {
+      // Page doesn't exist
+    } finally {
+      await page.close();
+    }
+
+    await delay(config.requestDelay);
+  }
+
+  return probeUrls;
+}
+
 export const redirectCheck: ActiveCheck = {
   name: 'redirect',
   category: 'open-redirect',
   async run(context, targets, config, requestLogger) {
-    if (targets.redirectUrls.length === 0) return [];
+    let redirectUrls = [...targets.redirectUrls];
 
-    log.info(`Testing ${targets.redirectUrls.length} URLs for open redirect...`);
-    return testOpenRedirect(context, targets.redirectUrls, config, requestLogger);
+    // Probe common redirect pages when no redirect URLs found by crawler
+    if (redirectUrls.length === 0 && config.profile !== 'quick') {
+      log.info('Open redirect: no redirect URLs from crawl, probing common auth pages...');
+      const probeUrls = await probeCommonRedirectPages(context, config, redirectUrls, requestLogger);
+      if (probeUrls.length > 0) {
+        log.info(`Open redirect: found ${probeUrls.length} probe URLs from common auth pages`);
+        redirectUrls = redirectUrls.concat(probeUrls);
+      }
+    }
+
+    if (redirectUrls.length === 0) return [];
+
+    log.info(`Testing ${redirectUrls.length} URLs for open redirect...`);
+    return testOpenRedirect(context, redirectUrls, config, requestLogger);
   },
 };
 

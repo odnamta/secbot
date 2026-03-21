@@ -22,7 +22,7 @@ export interface ServiceFingerprint {
 
 /**
  * Database of known subdomain takeover fingerprints.
- * 14 services: 12 exploitable, 2 non-exploitable (informational).
+ * 23 services: 21 exploitable, 2 non-exploitable (informational).
  */
 export const TAKEOVER_FINGERPRINTS: ServiceFingerprint[] = [
   {
@@ -151,6 +151,94 @@ export const TAKEOVER_FINGERPRINTS: ServiceFingerprint[] = [
     bodyFingerprints: [
       '404 Not Found',
       'fly.io',
+    ],
+    statusCodes: [404],
+    exploitable: true,
+  },
+  {
+    service: 'Cargo Collective',
+    cnamePatterns: [/\.cargocollective\.com$/i],
+    bodyFingerprints: [
+      '404 Not Found',
+      'Cargo',
+    ],
+    statusCodes: [404],
+    exploitable: true,
+  },
+  {
+    service: 'Bitbucket',
+    cnamePatterns: [/\.bitbucket\.io$/i],
+    bodyFingerprints: [
+      'Repository not found',
+      'The page you have requested does not exist',
+    ],
+    statusCodes: [404],
+    exploitable: true,
+  },
+  {
+    service: 'Ghost',
+    cnamePatterns: [/\.ghost\.io$/i],
+    bodyFingerprints: [
+      'The thing you were looking for is no longer here',
+      'Ghost - The Professional Publishing Platform',
+    ],
+    statusCodes: [404],
+    exploitable: true,
+  },
+  {
+    service: 'HubSpot',
+    cnamePatterns: [/\.hubspot\.net$/i, /\.hs-sites\.com$/i],
+    bodyFingerprints: [
+      'This page isn\'t available',
+      'does not exist',
+    ],
+    statusCodes: [404],
+    exploitable: true,
+  },
+  {
+    service: 'LaunchRock',
+    cnamePatterns: [/\.launchrock\.com$/i],
+    bodyFingerprints: [
+      'It looks like you may have taken a wrong turn somewhere',
+    ],
+    statusCodes: [404],
+    exploitable: true,
+  },
+  {
+    service: 'Readme.io',
+    cnamePatterns: [/\.readme\.io$/i],
+    bodyFingerprints: [
+      'Project doesnt exist',
+      'Project not found',
+    ],
+    statusCodes: [404],
+    exploitable: true,
+  },
+  {
+    service: 'Tilda',
+    cnamePatterns: [/\.tilda\.ws$/i],
+    bodyFingerprints: [
+      'Please renew your subscription',
+    ],
+    statusCodes: [404],
+    exploitable: true,
+  },
+  {
+    service: 'Unbounce',
+    cnamePatterns: [/\.unbouncepages\.com$/i],
+    bodyFingerprints: [
+      'The requested URL was not found on this server.',
+      'unbouncepages.com',
+    ],
+    statusCodes: [404],
+    exploitable: true,
+  },
+  {
+    service: 'AWS Elastic Beanstalk',
+    cnamePatterns: [/\.elasticbeanstalk\.com$/i],
+    bodyFingerprints: [
+      '404 Not Found',
+      'NXDOMAIN',
     ],
     statusCodes: [404],
     exploitable: true,

@@ -81,6 +81,15 @@ describe('extractQueryParamIds', () => {
     expect(results).toHaveLength(1);
     expect(results[0].param).toBe('invoice_id');
   });
+
+  it('detects expanded ID params (project_id, org_id, payment_id, etc.)', () => {
+    const expandedParams = ['project_id', 'team_id', 'org_id', 'post_id', 'comment_id', 'transaction_id', 'payment_id', 'subscription_id', 'report_id'];
+    for (const param of expandedParams) {
+      const results = extractQueryParamIds(`https://example.com/api?${param}=42`);
+      expect(results).toHaveLength(1);
+      expect(results[0].param).toBe(param);
+    }
+  });
 });
 
 // ─── extractIdPatterns — UUID in path segments ──────────────────────────────

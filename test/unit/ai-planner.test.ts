@@ -186,8 +186,9 @@ describe('planAttack', () => {
       expect(systemPrompt).toContain('- sri:');
       expect(systemPrompt).toContain('- host-header:');
       expect(systemPrompt).toContain('- info-disclosure:');
+      // XSS is now included when pages exist (DOM XSS + param probing)
+      expect(systemPrompt).toContain('- xss:');
       // Should not include checks that have no targets
-      expect(systemPrompt).not.toContain('- xss:');
       expect(systemPrompt).not.toContain('- sqli:');
       expect(systemPrompt).not.toContain('- graphql:');
     });
@@ -401,10 +402,10 @@ describe('planAttack', () => {
 
       const result = await planAttack('https://example.com', recon, pages, 'quick');
 
-      expect(result.recommendedChecks.length).toBeLessThanOrEqual(3);
+      expect(result.recommendedChecks.length).toBeLessThanOrEqual(6);
     });
 
-    it('default plan limits to 6 checks for standard profile', async () => {
+    it('default plan includes all gated checks for standard profile', async () => {
       const pages = [makePage({
         url: 'https://example.com/search?q=test',
         forms: [{
@@ -428,7 +429,8 @@ describe('planAttack', () => {
 
       const result = await planAttack('https://example.com', recon, pages, 'standard');
 
-      expect(result.recommendedChecks.length).toBeLessThanOrEqual(6);
+      // Standard profile no longer limits checks — individual gates handle filtering
+      expect(result.recommendedChecks.length).toBeGreaterThan(6);
     });
 
     it('default plan does not limit checks for deep profile', async () => {

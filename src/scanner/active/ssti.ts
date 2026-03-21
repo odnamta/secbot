@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig } from '../types.js';
-import { SSTI_PAYLOADS, SSTI_CONTROL_PAYLOADS } from '../../config/payloads/ssti.js';
+import { SSTI_PAYLOADS, SSTI_CONTROL_PAYLOADS, SSTI_RCE_PROBES } from '../../config/payloads/ssti.js';
 import type { SSTIPayload } from '../../config/payloads/ssti.js';
 import type { TemplateEngine } from '../../utils/payload-context.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck } from './index.js';
-import { delay } from '../../utils/shared.js';
+import { delay, INFRA_PARAM_RE } from '../../utils/shared.js';
 
 /** Reorder SSTI payloads: matching template engines first */
 export function prioritizeSstiPayloads(engines: TemplateEngine[]): SSTIPayload[] {
@@ -62,6 +62,46 @@ function findControlPayload(engine: string) {
   return SSTI_CONTROL_PAYLOADS.find((c) => c.engine === engine);
 }
 
+/** Find RCE proof payloads for the same engine family */
+function findRceProbes(engine: string): SSTIPayload[] {
+  return SSTI_RCE_PROBES.filter((p) => p.engine === engine);
+}
+
+/** Try RCE proof payloads after confirming SSTI. Returns evidence string if RCE works. */
+async function tryRceProbe(
+  context: BrowserContext,
+  url: string,
+  param: string,
+  engine: string,
+  requestLogger?: RequestLogger,
+): Promise<string | null> {
+  const probes = findRceProbes(engine);
+  for (const probe of probes) {
+    const testUrl = new URL(url);
+    testUrl.searchParams.set(param, probe.payload);
+    const page = await context.newPage();
+    try {
+      const response = await page.request.fetch(testUrl.href);
+      const body = await response.text();
+      requestLogger?.log({
+        timestamp: new Date().toISOString(),
+        method: 'GET',
+        url: testUrl.href,
+        responseStatus: response.status(),
+        phase: 'active-ssti-rce-probe',
+      });
+      if (body.includes(probe.expected)) {
+        return `RCE CONFIRMED — payload: ${probe.payload} — output contains "${probe.expected}"`;
+      }
+    } catch {
+      // RCE probe failed — non-fatal
+    } finally {
+      await page.close();
+    }
+  }
+  return null;
+}
+
 async function testSstiParams(
   context: BrowserContext,
   urls: string[],
@@ -74,7 +114,8 @@ async function testSstiParams(
   for (const originalUrl of urls) {
     let foundForUrl = false;
     const parsed = new URL(originalUrl);
-    const params = Array.from(parsed.searchParams.keys());
+    const params = Array.from(parsed.searchParams.keys())
+      .filter(p => !INFRA_PARAM_RE.test(p));
 
     if (params.length === 0) continue;
 
@@ -144,14 +185,20 @@ async function testSstiParams(
               }
             }
 
+            // Try RCE proof if SSTI is confirmed
+            let rceEvidence: string | null = null;
+            if (confirmed) {
+              rceEvidence = await tryRceProbe(context, originalUrl, param, sstiPayload.engine, requestLogger);
+            }
+
             findings.push({
               id: randomUUID(),
               category: 'ssti',
               severity: 'critical',
-              title: `Server-Side Template Injection via "${param}" Parameter${confirmed ? ' (Confirmed)' : ''}`,
-              description: `The parameter "${param}" evaluates template expressions server-side (engine: ${sstiPayload.engine}). SSTI can lead to Remote Code Execution (RCE).${confirmed ? ' Confirmed with control payload.' : ''}`,
+              title: `Server-Side Template Injection via "${param}" Parameter${rceEvidence ? ' (RCE Confirmed)' : confirmed ? ' (Confirmed)' : ''}`,
+              description: `The parameter "${param}" evaluates template expressions server-side (engine: ${sstiPayload.engine}). SSTI can lead to Remote Code Execution (RCE).${rceEvidence ? ' RCE CONFIRMED — command execution demonstrated.' : confirmed ? ' Confirmed with control payload.' : ''}`,
               url: originalUrl,
-              evidence: `Payload: ${sstiPayload.payload}\nExpected: ${sstiPayload.expected}\nEngine: ${sstiPayload.engine}\nConfirmed: ${confirmed}\nResponse snippet: ${body.slice(0, 300)}`,
+              evidence: `Payload: ${sstiPayload.payload}\nExpected: ${sstiPayload.expected}\nEngine: ${sstiPayload.engine}\nConfirmed: ${confirmed}${rceEvidence ? `\n${rceEvidence}` : ''}\nResponse snippet: ${body.slice(0, 300)}`,
               request: { method: 'GET', url: testUrl.href },
               response: { status, bodySnippet: body.slice(0, 200) },
               timestamp: new Date().toISOString(),

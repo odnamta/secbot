@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { runPassiveChecks } from '../../src/scanner/passive.js';
+import { runPassiveChecks, extractSensitiveComments } from '../../src/scanner/passive.js';
 import type { CrawledPage, InterceptedResponse, CookieInfo, ReconResult } from '../../src/scanner/types.js';
 
 function makeCookie(overrides: Partial<CookieInfo> = {}): CookieInfo {
@@ -32,7 +32,7 @@ function makePage(overrides: Partial<CrawledPage> = {}): CrawledPage {
 describe('passive checks: cookie HttpOnly heuristics', () => {
   const analyticsCookies = ['_ga', '_gid', '_gat_UA12345', '_fbp', '_gcl_au'];
   const preferenceCookies = ['locale', 'theme', 'lang', 'i18n_lang'];
-  const csrfCookies = ['csrf_token', 'xsrf-token', '_csrf'];
+  const csrfCookies = ['csrf_token', 'xsrf-token', '_csrf', '__Host-js_csrf', 'my_xsrf_key'];
   const utmCookies = ['__utma', '__utmz'];
 
   const skipCookies = [
@@ -455,5 +455,153 @@ describe('passive checks: framework-aware CSP unsafe-inline filtering', () => {
 
     expect(unsafeEval).toBeDefined();
     expect(unsafeEval!.severity).toBe('medium');
+  });
+});
+
+// ─── CSP directive-level unsafe-inline parsing ──────────────────────────────
+
+describe('passive checks: CSP directive-level unsafe-inline parsing', () => {
+  it('style-src only unsafe-inline generates info-level finding (not medium)', () => {
+    const page = makePage({
+      headers: {
+        ...allSecureHeaders,
+        'content-security-policy': "default-src 'self'; script-src 'self' 'nonce-abc123'; style-src 'self' 'unsafe-inline'",
+      },
+    });
+
+    const findings = runPassiveChecks([page], []);
+    const styleInline = findings.find((f) => f.title === 'CSP Allows Unsafe Inline Styles');
+    const scriptInline = findings.find((f) => f.title === 'CSP Allows Unsafe Inline Scripts');
+
+    expect(styleInline).toBeDefined();
+    expect(styleInline!.severity).toBe('info');
+    expect(scriptInline).toBeUndefined();
+  });
+
+  it('script-src unsafe-inline generates medium finding (not info)', () => {
+    const page = makePage({
+      headers: {
+        ...allSecureHeaders,
+        'content-security-policy': "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'",
+      },
+    });
+
+    const findings = runPassiveChecks([page], []);
+    const scriptInline = findings.find((f) => f.title === 'CSP Allows Unsafe Inline Scripts');
+
+    expect(scriptInline).toBeDefined();
+    expect(scriptInline!.severity).toBe('medium');
+  });
+
+  it('Dropbox-style CSP (nonce in script-src, unsafe-inline in style-src) is info only', () => {
+    const dropboxCsp = "default-src 'none'; script-src 'nonce-abc123' https://www.dropbox.com/static/; style-src https://* 'unsafe-inline' 'unsafe-eval'";
+    const page = makePage({
+      headers: {
+        ...allSecureHeaders,
+        'content-security-policy': dropboxCsp,
+      },
+    });
+
+    const findings = runPassiveChecks([page], []);
+    const scriptInline = findings.find((f) => f.title === 'CSP Allows Unsafe Inline Scripts');
+    const styleInline = findings.find((f) => f.title === 'CSP Allows Unsafe Inline Styles');
+
+    expect(scriptInline).toBeUndefined();
+    expect(styleInline).toBeDefined();
+    expect(styleInline!.severity).toBe('info');
+  });
+
+  it('unsafe-eval in style-src only is NOT reported as unsafe-eval finding', () => {
+    const page = makePage({
+      headers: {
+        ...allSecureHeaders,
+        'content-security-policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-eval'",
+      },
+    });
+
+    const findings = runPassiveChecks([page], []);
+    const unsafeEval = findings.find((f) => f.title === 'CSP Allows Unsafe Eval');
+    expect(unsafeEval).toBeUndefined();
+  });
+
+  it('multi-policy CSP (comma-separated) parses correctly', () => {
+    // Some servers send multiple CSP policies (enforced policy, report-only)
+    const page = makePage({
+      headers: {
+        ...allSecureHeaders,
+        'content-security-policy': "default-src 'self'; style-src 'unsafe-inline', default-src 'self'; script-src 'strict-dynamic' 'nonce-xyz'",
+      },
+    });
+
+    const findings = runPassiveChecks([page], []);
+    const scriptInline = findings.find((f) => f.title === 'CSP Allows Unsafe Inline Scripts');
+    const styleInline = findings.find((f) => f.title === 'CSP Allows Unsafe Inline Styles');
+
+    // Should detect style-src unsafe-inline from first policy
+    expect(styleInline).toBeDefined();
+    // Should NOT report script unsafe-inline (no script-src with unsafe-inline)
+    expect(scriptInline).toBeUndefined();
+  });
+});
+
+describe('extractSensitiveComments', () => {
+  it('finds password in HTML comment', () => {
+    const html = '<html><!-- password: hunter2 --><body>hi</body></html>';
+    const results = extractSensitiveComments(html);
+    expect(results).toHaveLength(1);
+    expect(results[0].label).toBe('password');
+  });
+
+  it('finds API key in comment', () => {
+    const testKey = 'sk' + '_test_' + 'abc123def456ghi789';
+    const html = `<!-- api_key = ${testKey} -->`;
+    const results = extractSensitiveComments(html);
+    expect(results).toHaveLength(1);
+    expect(results[0].label).toBe('API key');
+  });
+
+  it('finds internal IP in comment', () => {
+    const html = '<!-- connect to http://192.168.1.100:8080/api -->';
+    const results = extractSensitiveComments(html);
+    expect(results).toHaveLength(1);
+    expect(results[0].label).toBe('internal IP');
+  });
+
+  it('finds security TODO', () => {
+    const html = '<!-- TODO: fix auth bypass before release, remove hardcoded password -->';
+    const results = extractSensitiveComments(html);
+    expect(results).toHaveLength(1);
+    expect(results[0].label).toBe('security TODO');
+  });
+
+  it('finds debug flag', () => {
+    const html = '<!-- DEBUG = true -->';
+    const results = extractSensitiveComments(html);
+    expect(results).toHaveLength(1);
+    expect(results[0].label).toBe('debug flag');
+  });
+
+  it('returns empty for clean HTML', () => {
+    const html = '<html><!-- Main content area --><body><h1>Hello</h1></body></html>';
+    const results = extractSensitiveComments(html);
+    expect(results).toHaveLength(0);
+  });
+
+  it('skips IE conditional comments', () => {
+    const html = '<!--[if lt IE 9]><script src="html5shiv.js"></script><![endif]-->';
+    const results = extractSensitiveComments(html);
+    expect(results).toHaveLength(0);
+  });
+
+  it('skips short comments', () => {
+    const html = '<!-- hi -->';
+    const results = extractSensitiveComments(html);
+    expect(results).toHaveLength(0);
+  });
+
+  it('skips copyright/license comments', () => {
+    const html = '<!-- Copyright 2026 Acme Corp. All rights reserved. -->';
+    const results = extractSensitiveComments(html);
+    expect(results).toHaveLength(0);
   });
 });

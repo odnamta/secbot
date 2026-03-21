@@ -44,6 +44,16 @@ function findByCategory(findings: RawFinding[], category: CheckCategory): RawFin
   return findings.filter((f) => f.category === category);
 }
 
+/**
+ * Find findings by category with minimum confidence.
+ * Chains should only form from medium+ confidence findings to avoid FP chains.
+ */
+function findByCategoryConfident(findings: RawFinding[], category: CheckCategory): RawFinding[] {
+  return findings.filter(
+    (f) => f.category === category && (f.confidence === 'high' || f.confidence === 'medium'),
+  );
+}
+
 const CHAIN_RULES: ChainRule[] = [
   // 1. Open Redirect + SSRF = Internal SSRF
   {
@@ -55,8 +65,8 @@ const CHAIN_RULES: ChainRule[] = [
     impact:
       'Access to internal services, cloud metadata endpoints, and internal APIs that should not be externally reachable.',
     match(findings) {
-      const redirects = findByCategory(findings, 'open-redirect');
-      const ssrfs = findByCategory(findings, 'ssrf');
+      const redirects = findByCategoryConfident(findings, 'open-redirect');
+      const ssrfs = findByCategoryConfident(findings, 'ssrf');
       if (redirects.length === 0 || ssrfs.length === 0) return null;
 
       // Find pairs on the same domain
@@ -82,14 +92,15 @@ const CHAIN_RULES: ChainRule[] = [
     impact:
       'Full account takeover — attacker can change passwords, email, and perform privileged actions as the victim.',
     match(findings) {
-      const xssFindings = findByCategory(findings, 'xss');
+      const xssFindings = findByCategoryConfident(findings, 'xss');
       if (xssFindings.length === 0) return null;
 
-      // Look for CSRF-related findings in security headers or cookie flags
+      // Look for CSRF findings (dedicated check or header/cookie indicators)
       const csrfMissing = findings.filter(
         (f) =>
-          (f.category === 'security-headers' || f.category === 'cookie-flags') &&
-          /csrf|samesite|cross-site/i.test(f.title + ' ' + f.description),
+          f.category === 'csrf' ||
+          ((f.category === 'security-headers' || f.category === 'cookie-flags') &&
+            /csrf|samesite|cross-site/i.test(f.title + ' ' + f.description)),
       );
 
       if (csrfMissing.length === 0) return null;
@@ -127,8 +138,8 @@ const CHAIN_RULES: ChainRule[] = [
     impact:
       'Cross-origin data theft — attacker can read sensitive API responses, user data, and tokens from other origins.',
     match(findings) {
-      const cors = findByCategory(findings, 'cors-misconfiguration');
-      const xss = findByCategory(findings, 'xss');
+      const cors = findByCategoryConfident(findings, 'cors-misconfiguration');
+      const xss = findByCategoryConfident(findings, 'xss');
       if (cors.length === 0 || xss.length === 0) return null;
       return [cors[0].id, xss[0].id];
     },
@@ -144,8 +155,8 @@ const CHAIN_RULES: ChainRule[] = [
     impact:
       'Full authentication bypass — attacker can forge JWT tokens for any user including administrators.',
     match(findings) {
-      const jwtFindings = findByCategory(findings, 'jwt');
-      const rateLimitFindings = findByCategory(findings, 'rate-limit');
+      const jwtFindings = findByCategoryConfident(findings, 'jwt');
+      const rateLimitFindings = findByCategoryConfident(findings, 'rate-limit');
       if (jwtFindings.length === 0 || rateLimitFindings.length === 0) return null;
 
       // JWT finding should mention weak secret specifically
@@ -155,6 +166,47 @@ const CHAIN_RULES: ChainRule[] = [
       if (!weakJwt) return null;
 
       return [weakJwt.id, rateLimitFindings[0].id];
+    },
+  },
+
+  // 6. CSRF + Missing SameSite Cookie = Full CSRF Attack
+  {
+    name: 'Missing CSRF Token + Weak SameSite Cookie → Full CSRF Attack',
+    severity: 'high',
+    description:
+      'A state-changing form without CSRF protection combined with session cookies missing SameSite=Strict ' +
+      'enables full cross-site request forgery. The attacker can submit forms as the victim from any website.',
+    impact:
+      'Full CSRF — attacker can perform any state-changing action (transfers, settings changes, account modifications) as the authenticated victim.',
+    match(findings) {
+      const csrfFindings = findByCategoryConfident(findings, 'csrf');
+      if (csrfFindings.length === 0) return null;
+
+      // Look for cookie findings indicating weak SameSite
+      const weakCookies = findings.filter(
+        (f) =>
+          f.category === 'cookie-flags' &&
+          /samesite.*none|missing.*samesite|without.*samesite/i.test(f.title + ' ' + f.description),
+      );
+
+      if (weakCookies.length === 0) return null;
+      return [csrfFindings[0].id, weakCookies[0].id];
+    },
+  },
+  // 7. Request Smuggling + Cache Poisoning = Mass User Compromise
+  {
+    name: 'Request Smuggling + Cache Poisoning → Mass User Compromise',
+    severity: 'critical',
+    description:
+      'HTTP request smuggling combined with web cache poisoning enables mass user compromise. ' +
+      'The attacker can smuggle a request that poisons the cache, causing all subsequent visitors to receive malicious content.',
+    impact:
+      'Mass compromise — every user who hits the poisoned cache entry receives attacker-controlled content (XSS, phishing, credential theft).',
+    match(findings) {
+      const smuggling = findByCategoryConfident(findings, 'request-smuggling');
+      const cachePoison = findByCategoryConfident(findings, 'cache-poisoning');
+      if (smuggling.length === 0 || cachePoison.length === 0) return null;
+      return [smuggling[0].id, cachePoison[0].id];
     },
   },
 ];

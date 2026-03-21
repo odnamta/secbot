@@ -2,9 +2,9 @@
 
 **AI-powered security testing CLI -- Playwright for security.**
 
-SecBot scans web applications for OWASP Top 10 vulnerabilities with a single command. It uses Playwright for browser automation, runs 17 check types (6 passive + 11 active), and optionally uses Claude AI to plan attacks, validate findings, and generate actionable reports. It works fully without an API key via rule-based fallback.
+SecBot scans web applications for OWASP Top 10 vulnerabilities with a single command. It uses Playwright for browser automation, runs 33 check types (6 passive + 27 active), and optionally uses Claude AI to plan attacks, validate findings, and generate actionable reports. It works fully without an API key via rule-based fallback.
 
-> **Status:** v0.7.0 -- under active development. Not production-hardened yet.
+> **Status:** v1.0.0 -- AI-powered DAST scanner with bounty workflow foundations. Validated against 4 target tiers.
 
 ## Quick Start
 
@@ -32,7 +32,7 @@ Phase 1: Crawl         Playwright browser crawl + HTTP interception
 Phase 2: Recon         Tech fingerprinting, WAF detection, endpoint mapping
 Phase 3: AI Plan       Claude analyzes recon, recommends checks to run
 Phase 4: Passive Scan  Headers, cookies, info leaks, mixed content, CORS policy
-Phase 5: Active Scan   AI-selected checks (11 types)
+Phase 5: Active Scan   AI-selected checks (27 types)
   Pre-dedup            Deduplicate raw findings before AI validation (saves tokens)
 Phase 6: AI Validate   Claude validates each finding (real or false positive?)
 Phase 7: AI Report     Deduplicate, prioritize, explain, suggest fixes
@@ -84,7 +84,7 @@ Options:
 
 ## Security Checks
 
-### Active Checks (11)
+### Active Checks (27)
 
 | Check | Category | Description |
 |-------|----------|-------------|

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig, Severity } from '../types.js';
-import { SSRF_PAYLOADS, SSRF_PARAM_PATTERNS, SSRF_INDICATORS, getSSRFPayloads, CLOUD_METADATA_PROBES } from '../../config/payloads/ssrf.js';
+import { SSRF_PAYLOADS, SSRF_PARAM_PATTERNS, SSRF_INDICATORS, getSSRFPayloads, CLOUD_METADATA_PROBES, SSRF_INTERNAL_SERVICE_PROBES, getObfuscationPayloads, SSRF_JSON_FIELD_NAMES } from '../../config/payloads/ssrf.js';
 import { generateDnsCanary } from '../oob/dns-canary.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
@@ -12,21 +12,37 @@ export const ssrfCheck: ActiveCheck = {
   name: 'ssrf',
   category: 'ssrf',
   async run(context, targets, config, requestLogger) {
+    const findings: RawFinding[] = [];
+
     // Find URLs with parameters matching SSRF-relevant names
     const ssrfTargets = targets.urlsWithParams.filter((u) => SSRF_PARAM_PATTERNS.test(u));
 
-    if (ssrfTargets.length === 0) return [];
+    if (ssrfTargets.length > 0) {
+      log.info(`Testing ${ssrfTargets.length} URLs for SSRF (GET params)...`);
+      const getFindings = await testSsrf(context, ssrfTargets, config, requestLogger);
+      findings.push(...getFindings);
+    }
 
-    log.info(`Testing ${ssrfTargets.length} URLs for SSRF...`);
-    return testSsrf(context, ssrfTargets, config, requestLogger);
+    // Test API endpoints with POST/JSON body for SSRF
+    if (targets.apiEndpoints.length > 0 && config.profile !== 'quick') {
+      const apiLimit = config.profile === 'deep' ? targets.apiEndpoints.length : Math.min(targets.apiEndpoints.length, 5);
+      const apiTargets = targets.apiEndpoints.slice(0, apiLimit);
+      log.info(`Testing ${apiTargets.length} API endpoints for SSRF (POST/JSON body)...`);
+      const postFindings = await testSsrfJsonBody(context, apiTargets, config, requestLogger);
+      findings.push(...postFindings);
+    }
+
+    return findings;
   },
 };
 
 /** Determine severity based on payload type */
 function getSeverity(payload: string): Severity {
-  // Cloud metadata or file:// access = critical
+  // Cloud metadata or file:// access = critical (includes obfuscated variants)
   if (payload.includes('169.254.169.254') || payload.includes('metadata.google') ||
-      payload.includes('100.100.100.200') || payload.startsWith('file://')) {
+      payload.includes('100.100.100.200') || payload.startsWith('file://') ||
+      payload.includes('A9FEA9FE') || payload.includes('2852039166') ||
+      payload.includes('ffff:169.254')) {
     return 'critical';
   }
   // Internal port scanning = high
@@ -80,8 +96,12 @@ async function testSsrf(
     }
   }
 
-  // All payloads: base first, then callback payloads, then DNS canaries
-  const payloadsToTest = [...basePayloads, ...callbackPayloads, ...dnsCanaryPayloads];
+  // Get obfuscation payloads for WAF bypass
+  const obfuscationPayloads = getObfuscationPayloads(config.profile, !!config.wafDetection);
+  log.debug(`Including ${obfuscationPayloads.length} IP obfuscation payloads for WAF bypass`);
+
+  // All payloads: base first, then obfuscation, then callback payloads, then DNS canaries
+  const payloadsToTest = [...basePayloads, ...obfuscationPayloads, ...callbackPayloads, ...dnsCanaryPayloads];
 
   let callbacksInjected = 0;
 
@@ -91,7 +111,7 @@ async function testSsrf(
     // Parse URL and find SSRF-relevant parameters
     const parsed = new URL(originalUrl);
     const ssrfParams = Array.from(parsed.searchParams.keys()).filter((k) =>
-      /^(url|link|src|image|proxy|callback|fetch|load|uri|href|path|file|resource|target|site|page|data)$/i.test(k),
+      /^(url|link|src|image|proxy|callback|fetch|load|uri|href|path|file|resource|target|site|page|data|webhook|redirect|return|dest|destination|endpoint|api|service|host|domain|address)$/i.test(k),
     );
 
     if (ssrfParams.length === 0) continue;
@@ -246,6 +266,56 @@ async function testSsrf(
         }
       }
 
+      // --- Internal service probing ---
+      if (!foundForUrl && config.profile !== 'quick') {
+        const serviceProbes = config.profile === 'deep'
+          ? SSRF_INTERNAL_SERVICE_PROBES
+          : SSRF_INTERNAL_SERVICE_PROBES.slice(0, 8); // Top 8: K8s, Docker, Consul, etcd
+
+        for (const probe of serviceProbes) {
+          const testUrl = new URL(originalUrl);
+          testUrl.searchParams.set(param, probe.url);
+
+          const page = await context.newPage();
+          try {
+            const response = await page.request.fetch(testUrl.href);
+            const body = await response.text();
+
+            requestLogger?.log({
+              timestamp: new Date().toISOString(),
+              method: 'GET',
+              url: testUrl.href,
+              responseStatus: response.status(),
+              phase: 'active-ssrf-internal-service',
+            });
+
+            if (probe.indicator.test(body)) {
+              findings.push({
+                id: randomUUID(),
+                category: 'ssrf',
+                severity: probe.severity,
+                title: `SSRF: ${probe.service} Accessible via "${param}"`,
+                description: `The parameter "${param}" allows accessing the internal ${probe.service} service. This is a ${probe.severity}-severity vulnerability — an attacker can interact with internal infrastructure.`,
+                url: originalUrl,
+                evidence: `Payload: ${probe.url}\nService: ${probe.service}\nResponse snippet: ${body.slice(0, 500)}`,
+                request: { method: 'GET', url: testUrl.href },
+                response: { status: response.status(), bodySnippet: body.slice(0, 300) },
+                timestamp: new Date().toISOString(),
+                confidence: 'high',
+              });
+              foundForUrl = true;
+              break;
+            }
+          } catch (err) {
+            log.debug(`SSRF internal service probe: ${(err as Error).message}`);
+          } finally {
+            await page.close();
+          }
+
+          await delay(config.requestDelay);
+        }
+      }
+
       // --- Time-based SSRF detection ---
       if (!foundForUrl && config.profile !== 'quick') {
         const timeFinding = await testTimeSsrf(context, originalUrl, param, config, requestLogger);
@@ -331,4 +401,90 @@ async function testTimeSsrf(
   }
 
   return null;
+}
+
+/** Test API endpoints for SSRF via POST/JSON body.
+ *  Modern APIs accept URLs in JSON fields (webhook URLs, image URLs, callback URLs, etc.)
+ *  These are often missed by GET-only SSRF testing. */
+async function testSsrfJsonBody(
+  context: BrowserContext,
+  apiEndpoints: string[],
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+
+  // Use a focused set of payloads for JSON body testing
+  const payloads = [
+    'http://127.0.0.1',
+    'http://169.254.169.254/latest/meta-data/',
+    'http://2130706433',                       // Decimal IP bypass
+    'http://[::ffff:127.0.0.1]',               // IPv6-mapped
+  ];
+
+  // Limit field names based on profile
+  const fieldNames = config.profile === 'deep'
+    ? SSRF_JSON_FIELD_NAMES
+    : SSRF_JSON_FIELD_NAMES.slice(0, 12);
+
+  for (const endpoint of apiEndpoints) {
+    let found = false;
+
+    for (const fieldName of fieldNames) {
+      if (found) break;
+
+      for (const payload of payloads) {
+        const page = await context.newPage();
+        try {
+          const body = JSON.stringify({ [fieldName]: payload });
+          const response = await page.request.fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            data: body,
+          });
+          const responseBody = await response.text();
+          const status = response.status();
+
+          requestLogger?.log({
+            timestamp: new Date().toISOString(),
+            method: 'POST',
+            url: endpoint,
+            responseStatus: status,
+            phase: 'active-ssrf-json-body',
+          });
+
+          // Check for SSRF indicators in response
+          for (const indicator of SSRF_INDICATORS) {
+            if (indicator.test(responseBody)) {
+              findings.push({
+                id: randomUUID(),
+                category: 'ssrf',
+                severity: getSeverity(payload),
+                title: `SSRF via JSON Body Field "${fieldName}"`,
+                description: `The API endpoint accepts a URL in the JSON field "${fieldName}" and makes server-side requests. The response contains evidence of internal resource access.`,
+                url: endpoint,
+                evidence: `Method: POST\nField: ${fieldName}\nPayload: ${payload}\nIndicator: ${indicator.source}\nResponse: ${responseBody.slice(0, 300)}`,
+                request: { method: 'POST', url: endpoint, body },
+                response: { status, bodySnippet: responseBody.slice(0, 200) },
+                timestamp: new Date().toISOString(),
+                confidence: 'high',
+              });
+              found = true;
+              break;
+            }
+          }
+
+          if (found) break;
+        } catch (err) {
+          log.debug(`SSRF JSON body test: ${(err as Error).message}`);
+        } finally {
+          await page.close();
+        }
+
+        await delay(config.requestDelay);
+      }
+    }
+  }
+
+  return findings;
 }

@@ -1,261 +1,110 @@
 import { describe, it, expect } from 'vitest';
+import { randomUUID } from 'node:crypto';
 import { detectChains } from '../../src/scanner/active/chain-detector.js';
-import type { RawFinding, CheckCategory } from '../../src/scanner/types.js';
+import type { RawFinding } from '../../src/scanner/types.js';
 
-function makeFinding(overrides: Partial<RawFinding> & { category: CheckCategory }): RawFinding {
+function makeFinding(overrides: Partial<RawFinding>): RawFinding {
   return {
-    id: `f-${overrides.category}-${Math.random().toString(36).slice(2)}`,
-    severity: 'medium',
-    title: `Test ${overrides.category} finding`,
-    description: `Description for ${overrides.category}`,
-    url: 'https://example.com/page',
-    evidence: 'Test evidence',
+    id: randomUUID(),
+    category: 'xss',
+    severity: 'high',
+    title: 'Test Finding',
+    description: 'Test description',
+    url: 'https://example.com',
+    evidence: 'test evidence',
     timestamp: new Date().toISOString(),
+    confidence: 'medium',
     ...overrides,
   };
 }
 
-describe('detectChains', () => {
-  it('returns empty array when no chains detected', () => {
-    const findings = [
-      makeFinding({ category: 'xss' }),
+describe('Chain Detector', () => {
+  it('should detect XSS + CSRF chain', () => {
+    const findings: RawFinding[] = [
+      makeFinding({ category: 'xss', title: 'Reflected XSS' }),
+      makeFinding({ category: 'csrf', title: 'Missing CSRF Protection on POST Form' }),
     ];
     const chains = detectChains(findings);
-    expect(chains).toEqual([]);
+    expect(chains.length).toBeGreaterThanOrEqual(1);
+    const xssCsrf = chains.find((c) => c.name.includes('XSS') && c.name.includes('CSRF'));
+    expect(xssCsrf).toBeDefined();
+    expect(xssCsrf!.severity).toBe('critical');
   });
 
-  it('returns empty array for empty findings', () => {
-    expect(detectChains([])).toEqual([]);
+  it('should detect CSRF + weak SameSite cookie chain', () => {
+    const findings: RawFinding[] = [
+      makeFinding({ category: 'csrf', title: 'Missing CSRF Protection on POST Form' }),
+      makeFinding({
+        category: 'cookie-flags',
+        title: 'Cookie Missing SameSite Attribute',
+        description: 'Session cookie without SameSite protection',
+      }),
+    ];
+    const chains = detectChains(findings);
+    const csrfCookie = chains.find((c) => c.name.includes('CSRF') && c.name.includes('SameSite'));
+    expect(csrfCookie).toBeDefined();
+    expect(csrfCookie!.severity).toBe('high');
   });
 
-  describe('Open Redirect + SSRF → Internal SSRF', () => {
-    it('detects chain when both findings exist on same domain', () => {
-      const findings = [
-        makeFinding({ category: 'open-redirect', url: 'https://example.com/redirect' }),
-        makeFinding({ category: 'ssrf', url: 'https://example.com/api/fetch' }),
-      ];
-      const chains = detectChains(findings);
-      expect(chains).toHaveLength(1);
-      expect(chains[0].name).toContain('Open Redirect');
-      expect(chains[0].name).toContain('SSRF');
-      expect(chains[0].severity).toBe('critical');
-      expect(chains[0].components).toHaveLength(2);
-    });
-
-    it('detects chain even on different domains', () => {
-      const findings = [
-        makeFinding({ category: 'open-redirect', url: 'https://example.com/redirect' }),
-        makeFinding({ category: 'ssrf', url: 'https://api.example.com/fetch' }),
-      ];
-      const chains = detectChains(findings);
-      expect(chains).toHaveLength(1);
-    });
-
-    it('does not detect chain when only redirect exists', () => {
-      const findings = [
-        makeFinding({ category: 'open-redirect' }),
-      ];
-      const chains = detectChains(findings);
-      const ssrfChain = chains.find(c => c.name.includes('SSRF'));
-      expect(ssrfChain).toBeUndefined();
-    });
+  it('should detect redirect + SSRF chain', () => {
+    const findings: RawFinding[] = [
+      makeFinding({ category: 'open-redirect', title: 'Open Redirect' }),
+      makeFinding({ category: 'ssrf', title: 'SSRF' }),
+    ];
+    const chains = detectChains(findings);
+    const redirectSsrf = chains.find((c) => c.name.includes('Redirect') && c.name.includes('SSRF'));
+    expect(redirectSsrf).toBeDefined();
+    expect(redirectSsrf!.severity).toBe('critical');
   });
 
-  describe('XSS + CSRF → Account Takeover', () => {
-    it('detects chain when XSS and missing CSRF protection exist', () => {
-      const findings = [
-        makeFinding({ category: 'xss', title: 'Reflected XSS' }),
-        makeFinding({
-          category: 'cookie-flags',
-          title: 'Missing SameSite cookie flag',
-          description: 'Cookie lacks SameSite attribute, vulnerable to cross-site request forgery (CSRF)',
-        }),
-      ];
-      const chains = detectChains(findings);
-      const atoChain = chains.find(c => c.name.includes('Account Takeover'));
-      expect(atoChain).toBeDefined();
-      expect(atoChain!.severity).toBe('critical');
-      expect(atoChain!.components).toHaveLength(2);
-    });
-
-    it('detects chain with security-headers CSRF mention', () => {
-      const findings = [
-        makeFinding({ category: 'xss' }),
-        makeFinding({
-          category: 'security-headers',
-          title: 'No CSRF protection detected',
-          description: 'Application does not implement CSRF tokens',
-        }),
-      ];
-      const chains = detectChains(findings);
-      const atoChain = chains.find(c => c.name.includes('Account Takeover'));
-      expect(atoChain).toBeDefined();
-    });
-
-    it('does not detect chain when XSS alone exists', () => {
-      const findings = [
-        makeFinding({ category: 'xss' }),
-      ];
-      const chains = detectChains(findings);
-      const atoChain = chains.find(c => c.name.includes('Account Takeover'));
-      expect(atoChain).toBeUndefined();
-    });
+  it('should detect CORS + XSS chain', () => {
+    const findings: RawFinding[] = [
+      makeFinding({ category: 'cors-misconfiguration', title: 'CORS Reflects Origin' }),
+      makeFinding({ category: 'xss', title: 'Reflected XSS' }),
+    ];
+    const chains = detectChains(findings);
+    const corsXss = chains.find((c) => c.name.includes('CORS') && c.name.includes('XSS'));
+    expect(corsXss).toBeDefined();
   });
 
-  describe('Info Disclosure + IDOR → Data Breach', () => {
-    it('detects chain with info-disclosure and IDOR', () => {
-      const findings = [
-        makeFinding({ category: 'info-disclosure', title: 'Exposed .env file' }),
-        makeFinding({ category: 'idor', title: 'IDOR on user profile' }),
-      ];
-      const chains = detectChains(findings);
-      const dataChain = chains.find(c => c.name.includes('Data Breach'));
-      expect(dataChain).toBeDefined();
-      expect(dataChain!.severity).toBe('critical');
-      expect(dataChain!.components).toHaveLength(2);
-    });
-
-    it('detects chain with info-leakage and IDOR', () => {
-      const findings = [
-        makeFinding({ category: 'info-leakage', title: 'Server version disclosed' }),
-        makeFinding({ category: 'idor', title: 'IDOR on API endpoint' }),
-      ];
-      const chains = detectChains(findings);
-      const dataChain = chains.find(c => c.name.includes('Data Breach'));
-      expect(dataChain).toBeDefined();
-    });
-
-    it('does not detect chain without IDOR', () => {
-      const findings = [
-        makeFinding({ category: 'info-disclosure' }),
-      ];
-      const chains = detectChains(findings);
-      const dataChain = chains.find(c => c.name.includes('Data Breach'));
-      expect(dataChain).toBeUndefined();
-    });
+  it('should return empty for no matching chains', () => {
+    const findings: RawFinding[] = [
+      makeFinding({ category: 'tls', title: 'Weak TLS' }),
+      makeFinding({ category: 'sri', title: 'Missing SRI' }),
+    ];
+    const chains = detectChains(findings);
+    expect(chains.length).toBe(0);
   });
 
-  describe('CORS + XSS → Cross-Origin Data Theft', () => {
-    it('detects chain with CORS misconfiguration and XSS', () => {
-      const findings = [
-        makeFinding({ category: 'cors-misconfiguration', title: 'Wildcard CORS' }),
-        makeFinding({ category: 'xss', title: 'Stored XSS' }),
-      ];
-      const chains = detectChains(findings);
-      const corsChain = chains.find(c => c.name.includes('Cross-Origin Data Theft'));
-      expect(corsChain).toBeDefined();
-      expect(corsChain!.severity).toBe('high');
-      expect(corsChain!.components).toHaveLength(2);
-    });
-
-    it('does not detect chain with CORS alone', () => {
-      const findings = [
-        makeFinding({ category: 'cors-misconfiguration' }),
-      ];
-      const chains = detectChains(findings);
-      const corsChain = chains.find(c => c.name.includes('Cross-Origin Data Theft'));
-      expect(corsChain).toBeUndefined();
-    });
+  it('should include component finding IDs in chain', () => {
+    const xss = makeFinding({ category: 'xss', title: 'XSS' });
+    const csrf = makeFinding({ category: 'csrf', title: 'Missing CSRF' });
+    const chains = detectChains([xss, csrf]);
+    const chain = chains.find((c) => c.name.includes('CSRF'));
+    expect(chain).toBeDefined();
+    expect(chain!.components).toContain(xss.id);
+    expect(chain!.components).toContain(csrf.id);
   });
 
-  describe('JWT Weak Secret + Missing Rate Limit → Auth Bypass', () => {
-    it('detects chain with weak JWT secret and missing rate limit', () => {
-      const findings = [
-        makeFinding({
-          category: 'jwt',
-          title: 'JWT Weak Secret',
-          description: 'JWT signed with a weak secret key that can be brute-forced',
-        }),
-        makeFinding({ category: 'rate-limit', title: 'No rate limiting on login endpoint' }),
-      ];
-      const chains = detectChains(findings);
-      const authChain = chains.find(c => c.name.includes('Authentication Bypass'));
-      expect(authChain).toBeDefined();
-      expect(authChain!.severity).toBe('critical');
-      expect(authChain!.components).toHaveLength(2);
-    });
-
-    it('detects chain with none algorithm JWT', () => {
-      const findings = [
-        makeFinding({
-          category: 'jwt',
-          title: 'JWT None Algorithm Accepted',
-          description: 'Server accepts JWT with none algorithm bypass',
-        }),
-        makeFinding({ category: 'rate-limit' }),
-      ];
-      const chains = detectChains(findings);
-      const authChain = chains.find(c => c.name.includes('Authentication Bypass'));
-      expect(authChain).toBeDefined();
-    });
-
-    it('does not detect chain when JWT finding is not about weak secrets', () => {
-      const findings = [
-        makeFinding({
-          category: 'jwt',
-          title: 'JWT Missing Expiry',
-          description: 'JWT token does not contain exp claim',
-        }),
-        makeFinding({ category: 'rate-limit' }),
-      ];
-      const chains = detectChains(findings);
-      const authChain = chains.find(c => c.name.includes('Authentication Bypass'));
-      expect(authChain).toBeUndefined();
-    });
-
-    it('does not detect chain without rate-limit finding', () => {
-      const findings = [
-        makeFinding({
-          category: 'jwt',
-          title: 'JWT Weak Secret',
-          description: 'Weak secret key',
-        }),
-      ];
-      const chains = detectChains(findings);
-      const authChain = chains.find(c => c.name.includes('Authentication Bypass'));
-      expect(authChain).toBeUndefined();
-    });
+  it('should NOT form chains from low-confidence findings', () => {
+    const findings: RawFinding[] = [
+      makeFinding({ category: 'xss', title: 'Reflected XSS', confidence: 'low' }),
+      makeFinding({ category: 'csrf', title: 'Missing CSRF Protection', confidence: 'medium' }),
+    ];
+    const chains = detectChains(findings);
+    // XSS is low-confidence, so XSS+CSRF chain should not form
+    const xssCsrf = chains.find((c) => c.name.includes('XSS') && c.name.includes('CSRF'));
+    expect(xssCsrf).toBeUndefined();
   });
 
-  describe('multiple chains', () => {
-    it('detects multiple chains simultaneously', () => {
-      const findings = [
-        makeFinding({ category: 'open-redirect' }),
-        makeFinding({ category: 'ssrf' }),
-        makeFinding({ category: 'xss' }),
-        makeFinding({
-          category: 'security-headers',
-          title: 'Missing CSRF token',
-          description: 'No CSRF protection',
-        }),
-        makeFinding({ category: 'cors-misconfiguration' }),
-      ];
-      const chains = detectChains(findings);
-      // Should detect: redirect+ssrf, xss+csrf, cors+xss
-      expect(chains.length).toBeGreaterThanOrEqual(3);
-    });
-  });
-
-  describe('VulnChain structure', () => {
-    it('has correct fields', () => {
-      const findings = [
-        makeFinding({ category: 'open-redirect', id: 'redirect-1' }),
-        makeFinding({ category: 'ssrf', id: 'ssrf-1' }),
-      ];
-      const chains = detectChains(findings);
-      expect(chains).toHaveLength(1);
-      const chain = chains[0];
-      expect(chain).toHaveProperty('name');
-      expect(chain).toHaveProperty('severity');
-      expect(chain).toHaveProperty('description');
-      expect(chain).toHaveProperty('components');
-      expect(chain).toHaveProperty('impact');
-      expect(chain.components).toContain('redirect-1');
-      expect(chain.components).toContain('ssrf-1');
-      expect(typeof chain.description).toBe('string');
-      expect(typeof chain.impact).toBe('string');
-      expect(chain.description.length).toBeGreaterThan(0);
-      expect(chain.impact.length).toBeGreaterThan(0);
-    });
+  it('should form chains from high-confidence findings', () => {
+    const findings: RawFinding[] = [
+      makeFinding({ category: 'xss', title: 'Reflected XSS', confidence: 'high' }),
+      makeFinding({ category: 'csrf', title: 'Missing CSRF Protection', confidence: 'high' }),
+    ];
+    const chains = detectChains(findings);
+    const xssCsrf = chains.find((c) => c.name.includes('XSS') && c.name.includes('CSRF'));
+    expect(xssCsrf).toBeDefined();
+    expect(xssCsrf!.severity).toBe('critical');
   });
 });

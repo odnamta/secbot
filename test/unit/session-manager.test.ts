@@ -268,6 +268,140 @@ describe('SessionManager.refreshSession', () => {
   });
 });
 
+describe('SessionManager.isLoginPageResponse', () => {
+  const manager = new SessionManager();
+
+  it('returns true when redirected to /login', () => {
+    expect(manager.isLoginPageResponse(
+      'https://example.com/dashboard',
+      'https://example.com/login?redirect=/dashboard',
+    )).toBe(true);
+  });
+
+  it('returns true when redirected to /login.php', () => {
+    expect(manager.isLoginPageResponse(
+      'https://dvwa.local/vulnerabilities/sqli/',
+      'https://dvwa.local/login.php',
+    )).toBe(true);
+  });
+
+  it('returns true when redirected to /wp-login.php', () => {
+    expect(manager.isLoginPageResponse(
+      'https://wp.local/wp-admin/',
+      'https://wp.local/wp-login.php?redirect_to=/wp-admin/',
+    )).toBe(true);
+  });
+
+  it('returns true when redirected to /signin', () => {
+    expect(manager.isLoginPageResponse(
+      'https://example.com/api/data',
+      'https://example.com/signin',
+    )).toBe(true);
+  });
+
+  it('returns true when redirected to /auth/login', () => {
+    expect(manager.isLoginPageResponse(
+      'https://example.com/protected',
+      'https://example.com/auth/login',
+    )).toBe(true);
+  });
+
+  it('returns true when redirected to /sso/login', () => {
+    expect(manager.isLoginPageResponse(
+      'https://example.com/protected',
+      'https://example.com/sso/login',
+    )).toBe(true);
+  });
+
+  it('returns false when request URL is already a login page', () => {
+    expect(manager.isLoginPageResponse(
+      'https://example.com/login',
+      'https://example.com/login',
+    )).toBe(false);
+  });
+
+  it('returns false when request URL is login.php', () => {
+    expect(manager.isLoginPageResponse(
+      'https://dvwa.local/login.php',
+      'https://dvwa.local/login.php',
+    )).toBe(false);
+  });
+
+  it('returns false when URLs are the same (no redirect)', () => {
+    expect(manager.isLoginPageResponse(
+      'https://example.com/api/data',
+      'https://example.com/api/data',
+    )).toBe(false);
+  });
+
+  it('returns false when redirected to non-login URL', () => {
+    expect(manager.isLoginPageResponse(
+      'https://example.com/old-page',
+      'https://example.com/new-page',
+    )).toBe(false);
+  });
+
+  it('returns true when body contains password input + form (URL changed)', () => {
+    const body = '<html><body><form action="/login" method="POST"><input type="text" name="user"><input type="password" name="pass"><button type="submit">Login</button></form></body></html>';
+    expect(manager.isLoginPageResponse(
+      'https://example.com/dashboard',
+      'https://example.com/auth-page',
+      body,
+    )).toBe(true);
+  });
+
+  it('returns false when body contains password input but URL did not change', () => {
+    const body = '<html><body><form action="/change-password" method="POST"><input type="password" name="old_pass"><input type="password" name="new_pass"></form></body></html>';
+    expect(manager.isLoginPageResponse(
+      'https://example.com/settings',
+      'https://example.com/settings',
+      body,
+    )).toBe(false);
+  });
+});
+
+describe('SessionManager.loginRedirectPatterns', () => {
+  it('includes /login.php pattern', () => {
+    const patterns = SessionManager.loginRedirectPatterns;
+    expect(patterns.some((p) => p.test('/login.php'))).toBe(true);
+  });
+
+  it('includes /wp-login pattern', () => {
+    const patterns = SessionManager.loginRedirectPatterns;
+    expect(patterns.some((p) => p.test('/wp-login.php'))).toBe(true);
+  });
+
+  it('includes /login pattern', () => {
+    const patterns = SessionManager.loginRedirectPatterns;
+    expect(patterns.some((p) => p.test('/login'))).toBe(true);
+  });
+
+  it('includes /signin pattern', () => {
+    const patterns = SessionManager.loginRedirectPatterns;
+    expect(patterns.some((p) => p.test('/signin'))).toBe(true);
+  });
+
+  it('includes /auth/ pattern', () => {
+    const patterns = SessionManager.loginRedirectPatterns;
+    expect(patterns.some((p) => p.test('/auth/login'))).toBe(true);
+  });
+
+  it('includes /sso/ pattern', () => {
+    const patterns = SessionManager.loginRedirectPatterns;
+    expect(patterns.some((p) => p.test('/sso/saml'))).toBe(true);
+  });
+
+  it('does not match /logout', () => {
+    const patterns = SessionManager.loginRedirectPatterns;
+    // /logout would match /login pattern (contains "login" substring via /log.../),
+    // but let's verify the actual behavior
+    const matchesLogin = patterns.some((p) => p.test('/logout'));
+    // /logout contains "login"? No — /login pattern matches "/login" which is not in "/logout"
+    // Actually /\/login/i would NOT match /logout. Good.
+    expect(matchesLogin).toBe(false);
+  });
+});
+
 describe('SessionManager multi-role support', () => {
   it('can create separate managers per role', () => {
     const adminManager = new SessionManager(3);

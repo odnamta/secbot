@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig, FormInfo } from '../types.js';
-import { XSS_PAYLOADS, MUTATION_XSS_PAYLOADS, CSP_BYPASS_PAYLOADS, type XSSPayload } from '../../config/payloads/xss.js';
+import { XSS_PAYLOADS, MUTATION_XSS_PAYLOADS, CSP_BYPASS_PAYLOADS, JS_CONTEXT_PAYLOADS, DANGLING_MARKUP_PAYLOADS, type XSSPayload } from '../../config/payloads/xss.js';
 import { getPolyglotXss } from '../../utils/polyglot-payloads.js';
 import { generateHppVariants } from '../../utils/param-pollution.js';
 import { generateBlindXssPayloads } from '../oob/blind-payloads.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck, ScanTargets } from './index.js';
-import { delay } from '../../utils/shared.js';
+import { delay, INFRA_PARAM_RE } from '../../utils/shared.js';
 import { mutatePayload, pickStrategies, caseRandomize } from '../../utils/payload-mutator.js';
 import { detectFramework, waitForHydration } from '../discovery/framework-detector.js';
 
@@ -25,6 +25,10 @@ const DANGEROUS_CONTEXTS_ALWAYS = [
   /(?:href|src|action)\s*=\s*["']?\s*javascript:[^"']*PAYLOAD/i,
   // Unquoted attribute value
   /=\s*PAYLOAD/,
+  // Attribute value break-out: payload breaks out of quoted attribute and opens a new tag
+  /["']\s*>.*PAYLOAD/i,
+  // Template expression injection (Angular/Vue/Svelte): {{payload}} or ${payload}
+  /(\{\{|\$\{)[^}]*PAYLOAD/,
 ];
 
 /**
@@ -141,6 +145,23 @@ const DOM_XSS_INIT_SCRIPT = `
     }
   } catch (e) { /* location property override may fail */ }
 
+  // Monitor postMessage listeners — tracks 'message' event handlers and whether
+  // they check event.origin. postMessage without origin validation is a DOM XSS source.
+  window.__secbot_postmessage_listeners = [];
+  const origAddEventListener = EventTarget.prototype.addEventListener;
+  EventTarget.prototype.addEventListener = function(type, handler, options) {
+    if (type === 'message' && typeof handler === 'function') {
+      const src = handler.toString();
+      const checksOrigin = /event\.origin|e\.origin|evt\.origin|msg\.origin|\.origin\s*[!=]==?/.test(src);
+      window.__secbot_postmessage_listeners.push({
+        target: this === window ? 'window' : (this.constructor?.name || 'unknown'),
+        checksOrigin,
+        handlerSnippet: src.slice(0, 200),
+      });
+    }
+    return origAddEventListener.call(this, type, handler, options);
+  };
+
   // Monitor innerHTML assignments via MutationObserver (backup for cases where
   // property descriptor override fails)
   const observer = new MutationObserver((mutations) => {
@@ -163,6 +184,11 @@ const DOM_XSS_INIT_SCRIPT = `
 
 /** Destructive action indicators — skip forms that look like they delete or cancel things */
 const DESTRUCTIVE_ACTION_RE = /\b(delete|remove|cancel|destroy|drop|reset|purge|wipe|terminate)\b/i;
+
+/**
+ * Infrastructure/CDN parameters — not application-level, testing them produces FPs.
+ * These are set by WAFs, CDNs, and security proxies (Cloudflare, Akamai, etc.)
+ */
 
 /** Search-like query parameter names — common across SPAs and traditional web apps */
 export const SEARCH_PARAM_RE = /^(q|query|search|s|keyword|term|text|find|filter|k|key|name|input)$/i;
@@ -227,12 +253,15 @@ export const xssCheck: ActiveCheck = {
 
     // --- Reflected XSS phases ---
     const runReflectedPhases = async () => {
-      if (targets.forms.length > 0) {
-        log.info(`Testing ${targets.forms.length} forms for XSS...`);
-        findings.push(...(await testXssOnForms(context, targets.forms, config, requestLogger)));
+      // Cap forms in standard profile to avoid excessive testing
+      const formsToTest = config.profile === 'deep' ? targets.forms : targets.forms.slice(0, 10);
+
+      if (formsToTest.length > 0) {
+        log.info(`Testing ${formsToTest.length} forms for XSS...`);
+        findings.push(...(await testXssOnForms(context, formsToTest, config, requestLogger)));
       }
 
-      const postForms = targets.forms.filter(f => f.method === 'POST');
+      const postForms = formsToTest.filter(f => f.method === 'POST');
       if (postForms.length > 0) {
         log.info(`Testing ${postForms.length} POST forms for body parameter XSS...`);
         findings.push(...(await testPostFormXss(context, postForms, config, requestLogger)));
@@ -241,6 +270,27 @@ export const xssCheck: ActiveCheck = {
       if (targets.urlsWithParams.length > 0) {
         log.info(`Testing ${targets.urlsWithParams.length} URLs for reflected XSS...`);
         findings.push(...(await testXssOnUrls(context, targets.urlsWithParams, config, requestLogger)));
+      }
+
+      // Param probing: test pages WITHOUT query params using common param names
+      // Many vulnerable pages accept params (e.g. ?q=, ?search=) but don't expose
+      // them in links. Standard profile probes top 2 pages with core params,
+      // deep profile probes 5 pages with extended param list.
+      if (config.profile !== 'quick') {
+        const paramlessPages = targets.pages.filter(u => !u.includes('?'));
+        if (paramlessPages.length > 0) {
+          const isDeep = config.profile === 'deep';
+          const PROBE_PARAMS = isDeep
+            ? ['q', 'search', 'query', 'id', 's', 'keyword', 'term', 'name', 'input', 'text']
+            : ['q', 'search', 'query', 's', 'id'];
+          const maxPages = isDeep ? 5 : 2;
+          const pagesToProbe = paramlessPages.slice(0, maxPages);
+          const probeUrls = pagesToProbe.flatMap(pageUrl => {
+            return PROBE_PARAMS.map(p => `${pageUrl}?${p}=secbot-probe`);
+          });
+          log.info(`Probing ${pagesToProbe.length} paramless pages for reflected XSS (${PROBE_PARAMS.length} params each)...`);
+          findings.push(...(await testXssOnUrls(context, probeUrls, config, requestLogger)));
+        }
       }
 
       if (targets.apiEndpoints.length > 0) {
@@ -291,6 +341,12 @@ export const xssCheck: ActiveCheck = {
       findings.push(...(await testCspBypassXss(context, targets, config, requestLogger)));
     }
 
+    // Dangling markup: scriptless exfiltration payloads (works even under strict CSP)
+    if (config.profile === 'deep' && (targets.urlsWithParams.length > 0 || targets.forms.length > 0)) {
+      log.info(`Testing dangling markup payloads (${DANGLING_MARKUP_PAYLOADS.length} payloads)...`);
+      findings.push(...(await testDanglingMarkupXss(context, targets, config, requestLogger)));
+    }
+
     return findings;
   },
 };
@@ -299,7 +355,7 @@ export const xssCheck: ActiveCheck = {
  * Check if nearby content has HTML-encoded versions of the marker,
  * indicating the app IS encoding output (safe, not XSS).
  */
-function isHtmlEncoded(content: string, marker: string): boolean {
+export function isHtmlEncoded(content: string, marker: string): boolean {
   const idx = content.indexOf(marker);
   if (idx === -1) return false;
 
@@ -314,19 +370,44 @@ function isHtmlEncoded(content: string, marker: string): boolean {
  * Check if a payload is reflected in a dangerous (unencoded, executable) context.
  * Returns the context description if dangerous, null if safely encoded.
  */
-function checkDangerousReflection(content: string, payload: string, marker: string): string | null {
+export function checkDangerousReflection(content: string, payload: string, marker: string): string | null {
+  // Pre-compute content without script blocks for context checks.
+  // Payloads/markers inside <script> blocks as JS string data are not exploitable
+  // UNLESS the payload contains raw `<` (could close the outer script tag).
+  const contentNoScripts = content.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+
   // Check full payload first (higher signal)
   if (content.includes(payload)) {
-    for (const pattern of [...DANGEROUS_CONTEXTS_ALWAYS, ...DANGEROUS_CONTEXTS_PAYLOAD_ONLY]) {
-      const contextPattern = new RegExp(pattern.source.replace('PAYLOAD', escapeRegex(payload)), pattern.flags);
-      if (contextPattern.test(content)) {
-        return `Unencoded reflection in dangerous context`;
-      }
-    }
+    // Payloads with raw HTML tags (`<`) could close script tags — check full content.
+    // URL-encoded/entity-encoded payloads can't close tags — check outside scripts only.
+    const hasRawHtml = payload.includes('<');
+    const checkContent = hasRawHtml ? content : contentNoScripts;
 
-    // If the raw HTML tag payload appears as-is, it's dangerous
-    if (payload.includes('<') && content.includes(payload)) {
-      return `Raw HTML tag reflected without encoding`;
+    if (!checkContent.includes(payload)) {
+      // Payload only appears inside script blocks and doesn't have raw HTML tags.
+      // Check for JS string breakout: if payload starts with a quote terminator
+      // and appears raw inside a <script> block, it broke out of JS string context.
+      const jsBreakout = checkJsStringBreakout(content, payload);
+      if (jsBreakout) return jsBreakout;
+    } else {
+      // Body-text context (DANGEROUS_CONTEXTS_PAYLOAD_ONLY) is only meaningful
+      // when the payload contains HTML tags — a non-HTML payload in text content
+      // can't create new elements and is harmless. This prevents FPs from browser
+      // DOM re-serialization decoding entities (e.g., &quot; → " in text nodes).
+      const contextsToCheck = hasRawHtml
+        ? [...DANGEROUS_CONTEXTS_ALWAYS, ...DANGEROUS_CONTEXTS_PAYLOAD_ONLY]
+        : DANGEROUS_CONTEXTS_ALWAYS;
+      for (const pattern of contextsToCheck) {
+        const contextPattern = new RegExp(pattern.source.replace('PAYLOAD', escapeRegex(payload)), pattern.flags);
+        if (contextPattern.test(checkContent)) {
+          return `Unencoded reflection in dangerous context`;
+        }
+      }
+
+      // If the raw HTML tag payload appears as-is outside scripts, it's dangerous
+      if (hasRawHtml) {
+        return `Raw HTML tag reflected without encoding`;
+      }
     }
   }
 
@@ -336,11 +417,46 @@ function checkDangerousReflection(content: string, payload: string, marker: stri
       return null; // App encodes output — marker in text is safe
     }
 
+    // Check marker only outside script blocks. A plain marker in a JS string
+    // literal is data, not executable code. This eliminates FPs from Next.js
+    // RSC data, __NEXT_DATA__, and similar framework data.
+    if (!contentNoScripts.includes(marker)) {
+      return null; // Marker only appears inside script blocks — not exploitable
+    }
+
     for (const pattern of DANGEROUS_CONTEXTS_ALWAYS) {
       const contextPattern = new RegExp(pattern.source.replace('PAYLOAD', escapeRegex(marker)), pattern.flags);
-      if (contextPattern.test(content)) {
+      if (contextPattern.test(contentNoScripts)) {
         return `Unencoded reflection in dangerous context`;
       }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if a JS-context payload broke out of a string literal inside a <script> block.
+ * This catches cases where user input is reflected in inline JS like:
+ *   var q = "USER_INPUT";  →  var q = "";alert(1);//";
+ *
+ * Only triggers when the payload starts with a JS string terminator
+ * (", ', `, \") AND appears raw (unescaped) inside a script block.
+ */
+export function checkJsStringBreakout(content: string, payload: string): string | null {
+  const JS_TERMINATORS = ['"', "'", '`', '\\"', "\\'", '\u2028', '\u2029'];
+  const startsWithTerminator = JS_TERMINATORS.some(t => payload.startsWith(t));
+  if (!startsWithTerminator) return null;
+
+  // Extract script block contents
+  const scriptBlockRegex = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+  while ((match = scriptBlockRegex.exec(content)) !== null) {
+    const blockContent = match[1];
+    if (blockContent.includes(payload)) {
+      // Verify this isn't just the payload in a JSON string that's properly escaped elsewhere.
+      // If the raw payload with its quote terminator appears, the server didn't escape it.
+      return 'JS string breakout inside <script> block';
     }
   }
 
@@ -352,25 +468,26 @@ function escapeRegex(str: string): string {
 }
 
 /** Select payloads based on scan profile, excluding DOM-type payloads for non-DOM checks.
- *  Appends polyglot XSS payloads when WAF is detected or profile is 'deep'. */
+ *  Appends polyglot XSS and JS-context payloads when WAF is detected or profile is 'deep'. */
 function selectPayloads(config: ScanConfig, maxQuick: number): XSSPayload[] {
   const nonDomPayloads = XSS_PAYLOADS.filter(p => p.type !== 'dom');
   const base = config.profile === 'deep' ? nonDomPayloads : nonDomPayloads.slice(0, maxQuick);
 
-  // Append polyglot payloads when WAF detected or deep profile —
-  // polyglots work across multiple contexts and can bypass WAF patterns
-  const usePolyglots = config.wafDetection?.detected || config.profile === 'deep';
-  if (usePolyglots) {
+  // Append polyglot + JS-context payloads when WAF detected or deep profile
+  const useExtended = config.wafDetection?.detected || config.profile === 'deep';
+  if (useExtended) {
     const polyglots = getPolyglotXss();
     const polyglotPayloads: XSSPayload[] = polyglots.map((payload, i) => ({
       payload,
       marker: `secbot-polyglot-xss-${i}`,
       type: 'reflected' as const,
     }));
-    return [...base, ...polyglotPayloads];
+    return [...base, ...polyglotPayloads, ...JS_CONTEXT_PAYLOADS];
   }
 
-  return base;
+  // In standard profile, include a subset of JS context payloads (most common breakouts)
+  const jsContextSubset = JS_CONTEXT_PAYLOADS.slice(0, 3); // double-quote, single-quote, template literal
+  return [...base, ...jsContextSubset];
 }
 
 /**
@@ -430,14 +547,19 @@ async function testXssOnForms(
         const formLocator = page.locator('form').nth(formIdx);
         const formExists = await formLocator.count() > 0;
 
-        // Fill inputs within the target form
+        // Fill inputs within the target form (skip hidden/disabled — they cause 30s timeouts)
         for (const input of textInputs) {
           try {
-            if (formExists) {
-              await formLocator.locator(`[name="${input.name}"]`).fill(xssPayload.payload);
-            } else {
-              await page.fill(`[name="${input.name}"]`, xssPayload.payload);
+            const inputLocator = formExists
+              ? formLocator.locator(`[name="${input.name}"]`)
+              : page.locator(`[name="${input.name}"]`);
+            // Quick visibility check — skip hidden elements (custom dropdowns, honeypots)
+            const isVisible = await inputLocator.isVisible({ timeout: 1000 }).catch(() => false);
+            if (!isVisible) {
+              log.debug(`XSS skipping hidden input: ${input.name}`);
+              continue;
             }
+            await inputLocator.fill(xssPayload.payload, { timeout: 5000 });
           } catch (err) {
             log.debug(`XSS fill input: ${(err as Error).message}`);
           }
@@ -804,7 +926,10 @@ async function testXssOnUrls(
       log.debug(`XSS URL parse: ${(err as Error).message}`);
       continue;
     }
-    const params = Array.from(parsedUrl.searchParams.keys());
+    const allParams = Array.from(parsedUrl.searchParams.keys())
+      .filter(p => !INFRA_PARAM_RE.test(p)); // Skip CDN/WAF infrastructure params
+    // In standard/quick profile, limit to first 3 params per URL to avoid explosive test volume
+    const params = config.profile === 'deep' ? allParams : allParams.slice(0, 3);
 
     for (const param of params) {
       let foundForParam = false;
@@ -863,7 +988,9 @@ async function testXssOnUrls(
         // HPP bypass: when WAF detected, duplicate the parameter to bypass
         // WAFs that only inspect the first (or last) occurrence
         if (!foundForParam && config.wafDetection?.detected) {
-          const hppUrls = generateHppVariants(originalUrl, param, xssPayload.payload);
+          const allHppUrls = generateHppVariants(originalUrl, param, xssPayload.payload);
+          // In non-deep profiles, test only 2 HPP variants (append + array) instead of 6
+          const hppUrls = config.profile === 'deep' ? allHppUrls : allHppUrls.slice(0, 2);
           for (const hppUrl of hppUrls) {
             if (foundForParam) break;
 
@@ -955,14 +1082,19 @@ async function testDomXss(
         });
 
         // Check if any sink received a value containing our marker (or URL-decoded variant)
-        const sinkHits = await page.evaluate((marker: string) => {
+        const sinkHits = await page.evaluate((args: { marker: string; payload: string }) => {
           const hits = (window as any).__secbot_dom_xss || [];
           return hits.filter((h: { sink: string; value: string }) => {
-            if (h.value.includes(marker)) return true;
-            try { if (decodeURIComponent(h.value).includes(marker)) return true; } catch {}
-            return false;
+            // innerHTML-mutation fires on normal HTML parsing — require full payload
+            if (h.sink === 'innerHTML-mutation') {
+              return h.value.includes(args.payload);
+            }
+            // For direct JS sinks, marker match is sufficient
+            const hasMarker = h.value.includes(args.marker) ||
+              (() => { try { return decodeURIComponent(h.value).includes(args.marker); } catch { return false; } })();
+            return hasMarker;
           });
-        }, xssPayload.marker);
+        }, { marker: xssPayload.marker, payload: xssPayload.payload });
 
         if (sinkHits.length > 0) {
           const sinkNames = sinkHits.map((h: { sink: string }) => h.sink).join(', ');
@@ -980,6 +1112,76 @@ async function testDomXss(
           });
           break; // One finding per page is enough
         }
+
+        // Also test via query parameter (modern SPAs use ?q= instead of #)
+        // Test both pages WITH existing params (inject into first param) and
+        // pages WITHOUT params (inject common SPA params like q, search, query)
+        {
+          const parsed = new URL(pageUrl);
+          const existingParams = [...parsed.searchParams.keys()];
+          // For pages with params, inject into the first param
+          // For pages without params, try common SPA search/routing params (deep only — too slow for standard)
+          const paramsToTest = existingParams.length > 0
+            ? [existingParams[0]]
+            : config.profile === 'deep' ? ['q', 'search', 'query'] : [];
+
+          for (const paramName of paramsToTest) {
+            const qPage = await context.newPage();
+            try {
+              await qPage.addInitScript(DOM_XSS_INIT_SCRIPT);
+              const testParsed = new URL(pageUrl);
+              testParsed.searchParams.set(paramName, xssPayload.payload);
+              const queryTestUrl = testParsed.toString();
+              await qPage.goto(queryTestUrl, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
+              await delay(500);
+
+              requestLogger?.log({
+                timestamp: new Date().toISOString(),
+                method: 'GET',
+                url: queryTestUrl,
+                phase: 'active-xss-dom-query',
+              });
+
+              const querySinkHits = await qPage.evaluate((marker: string) => {
+                const hits = (window as any).__secbot_dom_xss || [];
+                return hits.filter((h: { sink: string; value: string }) => {
+                  // Skip innerHTML-mutation sinks for query param testing — the
+                  // MutationObserver fires on normal HTML parsing when the browser
+                  // constructs the initial DOM. Server-rendered pages with HTML-encoded
+                  // user input still produce innerHTML values matching the payload text
+                  // due to entity decoding during serialization. Only trust explicit
+                  // JS sinks (innerHTML-set, document.write, eval, etc.) which fire
+                  // solely on JavaScript-driven DOM writes.
+                  if (h.sink === 'innerHTML-mutation') return false;
+                  const hasMarker = h.value.includes(marker) ||
+                    (() => { try { return decodeURIComponent(h.value).includes(marker); } catch { return false; } })();
+                  return hasMarker;
+                });
+              }, xssPayload.marker);
+
+              if (querySinkHits.length > 0) {
+                const sinkNames = querySinkHits.map((h: { sink: string }) => h.sink).join(', ');
+                findings.push({
+                  id: randomUUID(),
+                  category: 'xss',
+                  severity: 'high',
+                  title: `DOM XSS via Query Parameter`,
+                  description: `Payload injected via query parameter '${paramName}' reaches dangerous DOM sink(s): ${sinkNames}. This indicates a DOM-based XSS vulnerability.`,
+                  url: pageUrl,
+                  evidence: `Payload: ${xssPayload.payload}\nParameter: ${paramName}\nSinks: ${sinkNames}\nTest URL: ${queryTestUrl}`,
+                  request: { method: 'GET', url: queryTestUrl },
+                  timestamp: new Date().toISOString(),
+                  confidence: 'medium',
+                });
+                break;
+              }
+            } catch (err) {
+              log.debug(`DOM XSS query test (${paramName}): ${(err as Error).message}`);
+            } finally {
+              await qPage.close();
+            }
+          }
+        }
       } catch (err) {
         log.debug(`DOM XSS test: ${(err as Error).message}`);
       } finally {
@@ -988,6 +1190,116 @@ async function testDomXss(
 
       await delay(config.requestDelay);
     }
+  }
+
+  // ── postMessage XSS testing ──
+  // After DOM XSS tests, check if any page has postMessage listeners without origin validation
+  // and if sending a postMessage with XSS payload reaches any sink.
+  if (config.profile !== 'quick') {
+    const pmFindings = await testPostMessageXss(context, pagesToTest, config, requestLogger);
+    findings.push(...pmFindings);
+  }
+
+  return findings;
+}
+
+/**
+ * postMessage DOM XSS: detect pages with 'message' event listeners that don't
+ * validate event.origin, and test if postMessage data reaches dangerous sinks.
+ */
+async function testPostMessageXss(
+  context: BrowserContext,
+  pageUrls: string[],
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+  const marker = 'secbot-pm-xss-42';
+  const testPayload = `<img src=x onerror="alert('${marker}')">`;
+  const pagesToTest = pageUrls.slice(0, config.profile === 'deep' ? 10 : 3);
+
+  for (const pageUrl of pagesToTest) {
+    const page = await context.newPage();
+    try {
+      await page.addInitScript(DOM_XSS_INIT_SCRIPT);
+      await page.goto(pageUrl, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
+      await delay(500);
+
+      // Check for postMessage listeners
+      const listeners = await page.evaluate(() => {
+        return (window as any).__secbot_postmessage_listeners || [];
+      });
+
+      if (listeners.length === 0) continue;
+
+      // Found postMessage listeners — check if any lack origin validation
+      const unsafeListeners = listeners.filter((l: { checksOrigin: boolean }) => !l.checksOrigin);
+
+      if (unsafeListeners.length > 0) {
+        // Send postMessage with XSS payload and check if it reaches a sink
+        await page.evaluate((payload: string) => {
+          // Clear sink hits from page load
+          (window as any).__secbot_dom_xss = [];
+          // Send postMessage from the page itself (simulates cross-origin message)
+          window.postMessage(payload, '*');
+          // Also try sending as an object (common in SPAs)
+          window.postMessage({ data: payload, type: 'update', html: payload }, '*');
+        }, testPayload);
+
+        await delay(300);
+
+        // Check if any sink received the payload
+        const sinkHits = await page.evaluate((m: string) => {
+          const hits = (window as any).__secbot_dom_xss || [];
+          return hits.filter((h: { sink: string; value: string }) => {
+            if (h.sink === 'innerHTML-mutation') return false;
+            return h.value.includes(m);
+          });
+        }, marker);
+
+        if (sinkHits.length > 0) {
+          const sinkNames = sinkHits.map((h: { sink: string }) => h.sink).join(', ');
+          findings.push({
+            id: randomUUID(),
+            category: 'xss',
+            severity: 'high',
+            title: `DOM XSS via postMessage`,
+            description: `The page registers a 'message' event listener without validating event.origin, and postMessage data reaches dangerous DOM sink(s): ${sinkNames}. An attacker can exploit this from any origin via window.postMessage().`,
+            url: pageUrl,
+            evidence: `Unsafe listeners: ${unsafeListeners.length}\nPayload: ${testPayload}\nSinks: ${sinkNames}\nHandler: ${unsafeListeners[0].handlerSnippet}`,
+            request: { method: 'GET', url: pageUrl },
+            timestamp: new Date().toISOString(),
+            confidence: 'high',
+          });
+        } else {
+          // Even if payload didn't reach a sink, report the unsafe listener as informational
+          findings.push({
+            id: randomUUID(),
+            category: 'xss',
+            severity: 'low',
+            title: `postMessage Handler Without Origin Check`,
+            description: `The page registers ${unsafeListeners.length} postMessage listener(s) without checking event.origin. While no immediate XSS sink was triggered, the handler may process attacker-controlled data in ways not detectable by automated testing (e.g., state manipulation, token theft).`,
+            url: pageUrl,
+            evidence: `Listeners: ${listeners.length} total, ${unsafeListeners.length} without origin check\nHandler snippet: ${unsafeListeners[0].handlerSnippet}`,
+            timestamp: new Date().toISOString(),
+            confidence: 'medium',
+          });
+        }
+      }
+
+      requestLogger?.log({
+        timestamp: new Date().toISOString(),
+        method: 'GET',
+        url: pageUrl,
+        phase: 'active-xss-postmessage',
+      });
+    } catch (err) {
+      log.debug(`postMessage XSS test: ${(err as Error).message}`);
+    } finally {
+      await page.close();
+    }
+
+    await delay(config.requestDelay);
   }
 
   return findings;
@@ -1468,7 +1780,8 @@ async function injectBlindXss(
     } catch {
       continue;
     }
-    const params = Array.from(parsedUrl.searchParams.keys());
+    const params = Array.from(parsedUrl.searchParams.keys())
+      .filter(p => !INFRA_PARAM_RE.test(p));
 
     for (const param of params) {
       for (const payload of blindPayloads) {
@@ -1576,12 +1889,16 @@ async function testMutationXss(
         });
 
         // Check if any sink received a value containing our marker
-        const sinkHits = await page.evaluate((marker: string) => {
+        const sinkHits = await page.evaluate((args: { marker: string; payload: string }) => {
           const hits = (window as any).__secbot_dom_xss || [];
-          return hits.filter((h: { sink: string; value: string }) =>
-            h.value.includes(marker),
-          );
-        }, xssPayload.marker);
+          return hits.filter((h: { sink: string; value: string }) => {
+            // innerHTML-mutation fires on normal HTML parsing — require full payload
+            if (h.sink === 'innerHTML-mutation') {
+              return h.value.includes(args.payload);
+            }
+            return h.value.includes(args.marker);
+          });
+        }, { marker: xssPayload.marker, payload: xssPayload.payload });
 
         if (sinkHits.length > 0) {
           const sinkNames = sinkHits.map((h: { sink: string }) => h.sink).join(', ');
@@ -1658,7 +1975,8 @@ async function testCspBypassXss(
       continue;
     }
 
-    const params = Array.from(parsedUrl.searchParams.keys());
+    const params = Array.from(parsedUrl.searchParams.keys())
+      .filter(p => !INFRA_PARAM_RE.test(p));
     let foundForUrl = false;
 
     for (const param of params) {
@@ -1798,6 +2116,84 @@ async function testCspBypassXss(
       }
 
       await delay(config.requestDelay);
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * Test dangling markup injection payloads on URL parameters.
+ * Scriptless data exfiltration — works even under strict CSP.
+ * Only runs in deep profile.
+ */
+async function testDanglingMarkupXss(
+  context: BrowserContext,
+  targets: ScanTargets,
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+
+  for (const originalUrl of targets.urlsWithParams) {
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(originalUrl);
+    } catch {
+      continue;
+    }
+
+    const params = Array.from(parsedUrl.searchParams.keys())
+      .filter(p => !INFRA_PARAM_RE.test(p));
+    if (params.length === 0) continue;
+    let foundForUrl = false;
+
+    for (const param of params) {
+      if (foundForUrl) break;
+
+      for (const xssPayload of DANGLING_MARKUP_PAYLOADS) {
+        if (foundForUrl) break;
+
+        const testUrl = new URL(originalUrl);
+        testUrl.searchParams.set(param, xssPayload.payload);
+
+        const page = await context.newPage();
+        try {
+          await page.goto(testUrl.href, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
+
+          requestLogger?.log({
+            timestamp: new Date().toISOString(),
+            method: 'GET',
+            url: testUrl.href,
+            phase: 'active-xss-dangling-markup',
+          });
+
+          const content = await page.content();
+          const dangerousContext = checkDangerousReflection(content, xssPayload.payload, xssPayload.marker);
+
+          if (dangerousContext) {
+            findings.push({
+              id: randomUUID(),
+              category: 'xss',
+              severity: 'high',
+              title: `Dangling Markup Injection in URL Parameter "${param}"`,
+              description: `Dangling markup payload reflected without encoding. Scriptless data exfiltration possible — unclosed HTML tags capture subsequent page content (CSRF tokens, user data). Works under strict CSP.`,
+              url: originalUrl,
+              evidence: `Payload: ${xssPayload.payload}\nType: dangling-markup\nParameter: ${param}\nTest URL: ${testUrl.href}\n${dangerousContext}`,
+              request: { method: 'GET', url: testUrl.href },
+              timestamp: new Date().toISOString(),
+              confidence: 'medium',
+            });
+            foundForUrl = true;
+          }
+        } catch (err) {
+          log.debug(`Dangling markup XSS test: ${(err as Error).message}`);
+        } finally {
+          await page.close();
+        }
+
+        await delay(config.requestDelay);
+      }
     }
   }
 

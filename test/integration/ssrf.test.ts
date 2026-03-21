@@ -72,6 +72,26 @@ describe('SSRF Integration Tests', () => {
     expect(findings.length).toBe(0);
   }, 30000);
 
+  it('detects SSRF via JSON body on /api/v1/webhook endpoint', async () => {
+    const targets: ScanTargets = {
+      pages: [`${baseUrl}/api/v1/webhook`],
+      forms: [],
+      urlsWithParams: [],
+      apiEndpoints: [`${baseUrl}/api/v1/webhook`],
+      redirectUrls: [],
+      fileParams: [],
+    };
+
+    const findings = await ssrfCheck.run(context, targets, defaultConfig);
+
+    expect(findings.length).toBeGreaterThanOrEqual(1);
+
+    const ssrfFinding = findings.find((f) => f.category === 'ssrf');
+    expect(ssrfFinding).toBeDefined();
+    expect(ssrfFinding!.title).toContain('JSON Body');
+    expect(ssrfFinding!.evidence).toContain('POST');
+  }, 60000);
+
   it('findings have required RawFinding fields', async () => {
     const targets: ScanTargets = {
       pages: [`${baseUrl}/fetch?url=http://example.com`],

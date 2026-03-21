@@ -7,7 +7,7 @@ import type { ActiveCheck, ScanTargets } from './index.js';
 import { delay } from '../../utils/shared.js';
 
 /** Common GraphQL endpoint paths */
-const GRAPHQL_PATHS = ['/graphql', '/api/graphql', '/graphql/v1', '/gql'];
+const GRAPHQL_PATHS = ['/graphql', '/api/graphql', '/graphql/v1', '/gql', '/v1/graphql', '/query'];
 
 /** Full introspection query to discover schema */
 const INTROSPECTION_QUERY = `{
@@ -109,6 +109,18 @@ export const graphqlCheck: ActiveCheck = {
       // Test batch query support
       const batchFinding = await testBatchQueries(context, endpoint, config, requestLogger);
       if (batchFinding) findings.push(batchFinding);
+
+      // Test field suggestion leakage (when introspection is disabled)
+      if (!introResult) {
+        await delay(config.requestDelay);
+        const suggestionFindings = await testFieldSuggestions(context, endpoint, config, requestLogger);
+        findings.push(...suggestionFindings);
+      }
+
+      // Test alias-based query amplification
+      await delay(config.requestDelay);
+      const aliasFinding = await testAliasAmplification(context, endpoint, config, requestLogger);
+      if (aliasFinding) findings.push(aliasFinding);
     }
 
     log.info(`GraphQL check: ${findings.length} finding(s)`);
@@ -381,6 +393,184 @@ async function testBatchQueries(
     }
   } catch (err) {
     log.debug(`GraphQL batch test: ${(err as Error).message}`);
+  } finally {
+    await page.close();
+  }
+
+  return null;
+}
+
+// ─── Field Suggestion Probing ──────────────────────────────────────────
+
+/** Common field names to probe when introspection is disabled */
+export const PROBE_FIELD_NAMES = [
+  'user', 'users', 'me', 'viewer', 'currentUser',
+  'admin', 'admins', 'account', 'accounts',
+  'email', 'password', 'token', 'secret', 'apiKey',
+  'order', 'orders', 'payment', 'payments', 'invoice',
+  'file', 'files', 'upload', 'uploads',
+  'config', 'configuration', 'settings',
+  'flag', 'flags', 'feature', 'features',
+  'debug', 'internal', 'private', 'hidden',
+  'delete', 'remove', 'destroy', 'drop',
+  'role', 'roles', 'permission', 'permissions',
+];
+
+/** Extract suggested field names from GraphQL error responses */
+export function extractSuggestions(body: string): string[] {
+  const suggestions: string[] = [];
+  // Pattern: Did you mean "user"? or Did you mean \"user\"? (JSON-escaped) or Did you mean 'user'?
+  const didYouMean = /[Dd]id you mean\s+\\?["']([^"'\\]+)\\?["']/g;
+  let match;
+  while ((match = didYouMean.exec(body)) !== null) {
+    suggestions.push(match[1]);
+  }
+  // Also try the "or" pattern: Did you mean "user" or "users"?
+  const didYouMeanOr = /or\s+\\?["']([^"'\\]+)\\?["']/g;
+  while ((match = didYouMeanOr.exec(body)) !== null) {
+    suggestions.push(match[1]);
+  }
+  // Pattern: suggestions: ["user", "users"]
+  const suggestionsArray = /suggestions?["']?\s*:\s*\[([^\]]+)\]/g;
+  while ((match = suggestionsArray.exec(body)) !== null) {
+    const items = match[1].match(/["']([^"']+)["']/g);
+    if (items) {
+      for (const item of items) {
+        suggestions.push(item.replace(/["']/g, ''));
+      }
+    }
+  }
+  return [...new Set(suggestions)];
+}
+
+/**
+ * When introspection is disabled, probe for field names via suggestion errors.
+ * Many GraphQL servers respond with "Did you mean X?" when you query a non-existent field.
+ */
+async function testFieldSuggestions(
+  context: BrowserContext,
+  endpoint: string,
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+  const discoveredFields: string[] = [];
+  const page = await context.newPage();
+
+  try {
+    for (const fieldName of PROBE_FIELD_NAMES.slice(0, 15)) {
+      try {
+        // Intentionally misspell the field to trigger suggestions
+        const probeQuery = `{ ${fieldName}ZZZZZ { id } }`;
+        const response = await page.request.fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          data: JSON.stringify({ query: probeQuery }),
+          timeout: config.timeout,
+        });
+
+        const body = await response.text();
+
+        requestLogger?.log({
+          timestamp: new Date().toISOString(),
+          method: 'POST',
+          url: endpoint,
+          responseStatus: response.status(),
+          phase: 'active-graphql-suggestion',
+        });
+
+        const suggested = extractSuggestions(body);
+        for (const s of suggested) {
+          if (!discoveredFields.includes(s)) {
+            discoveredFields.push(s);
+          }
+        }
+      } catch { continue; }
+    }
+
+    if (discoveredFields.length >= 3) {
+      const sensitiveFields = discoveredFields.filter(f =>
+        /password|secret|token|apikey|api_key|admin|private|internal|debug|hidden|ssn|credit/i.test(f)
+      );
+
+      findings.push({
+        id: randomUUID(),
+        category: 'info-disclosure',
+        severity: sensitiveFields.length > 0 ? 'medium' : 'low',
+        title: 'GraphQL Field Names Leaked via Suggestions',
+        description: `The GraphQL endpoint at ${new URL(endpoint).pathname} has introspection disabled but leaks field names via "Did you mean?" error suggestions. ${discoveredFields.length} fields discovered: ${discoveredFields.join(', ')}. ${sensitiveFields.length > 0 ? `Sensitive fields found: ${sensitiveFields.join(', ')}.` : ''} Attackers can reconstruct the schema incrementally.`,
+        url: endpoint,
+        evidence: `Discovered fields: ${discoveredFields.join(', ')}${sensitiveFields.length > 0 ? `\nSensitive: ${sensitiveFields.join(', ')}` : ''}`,
+        request: { method: 'POST', url: endpoint },
+        timestamp: new Date().toISOString(),
+        confidence: 'high',
+      });
+    }
+  } finally {
+    await page.close();
+  }
+
+  return findings;
+}
+
+// ─── Alias-Based Amplification ─────────────────────────────────────────
+
+/**
+ * Test if the GraphQL endpoint allows alias-based query amplification.
+ * Aliases let an attacker multiply a single query field N times in one request,
+ * bypassing per-request rate limits.
+ */
+async function testAliasAmplification(
+  context: BrowserContext,
+  endpoint: string,
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding | null> {
+  const page = await context.newPage();
+  try {
+    const aliases = Array.from({ length: 50 }, (_, i) => `a${i}: __typename`).join('\n  ');
+    const aliasQuery = `{\n  ${aliases}\n}`;
+
+    const response = await page.request.fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      data: JSON.stringify({ query: aliasQuery }),
+      timeout: config.timeout,
+    });
+
+    const status = response.status();
+    const body = await response.text();
+
+    requestLogger?.log({
+      timestamp: new Date().toISOString(),
+      method: 'POST',
+      url: endpoint,
+      responseStatus: status,
+      phase: 'active-graphql-alias',
+    });
+
+    if (status >= 200 && status < 300) {
+      try {
+        const parsed = JSON.parse(body);
+        if (parsed?.data && Object.keys(parsed.data).length >= 50) {
+          return {
+            id: randomUUID(),
+            category: 'info-disclosure',
+            severity: 'low',
+            title: 'GraphQL Alias-Based Query Amplification',
+            description: `The GraphQL endpoint at ${new URL(endpoint).pathname} allows unlimited aliases in a single query. Sent 50 aliases and received all 50 results. An attacker can use aliases to amplify expensive queries (e.g., 50 password-reset mutations in one request), bypassing per-request rate limits.`,
+            url: endpoint,
+            evidence: `Sent 50 aliases in one query — received ${Object.keys(parsed.data).length} results. No alias limit enforced.`,
+            request: { method: 'POST', url: endpoint },
+            response: { status, bodySnippet: body.slice(0, 200) },
+            timestamp: new Date().toISOString(),
+            confidence: 'medium',
+          };
+        }
+      } catch { /* not valid JSON */ }
+    }
+  } catch (err) {
+    log.debug(`GraphQL alias test: ${(err as Error).message}`);
   } finally {
     await page.close();
   }

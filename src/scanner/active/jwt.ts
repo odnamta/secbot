@@ -38,6 +38,24 @@ export const WEAK_SECRETS = [
   'development',
   'devkey',
   'appkey',
+  // Common framework defaults and boilerplate secrets
+  'AllYourBase',
+  'auth_secret',
+  'JWT_SECRET',
+  'node_secret',
+  'express_secret',
+  'flask_secret',
+  'django_secret',
+  'laravel',
+  'spring_secret',
+  'api_secret',
+  'access_token_secret',
+  'refresh_token_secret',
+  'secret123',
+  'abc123',
+  'qwerty',
+  'admin',
+  'letmein',
 ];
 
 /**
@@ -251,6 +269,34 @@ export function analyzeJwtSecurity(
         break; // One match is enough
       }
     }
+  }
+
+  // Check for "kid" header (Key ID) — often vulnerable to injection
+  if (parsed.header.kid) {
+    const kid = String(parsed.header.kid);
+    issues.push({
+      issue: 'JWT uses "kid" header parameter',
+      severity: 'low',
+      detail: `The JWT header contains kid="${kid}". The "kid" parameter specifies which key to use for verification. If the server uses this value in file path lookups or database queries, it may be vulnerable to directory traversal (kid="../../dev/null") or SQL injection (kid="' UNION SELECT 'secret'--").`,
+    });
+  }
+
+  // Check for "jku" header (JWK Set URL) — SSRF risk
+  if (parsed.header.jku) {
+    issues.push({
+      issue: 'JWT uses "jku" header — potential SSRF',
+      severity: 'medium',
+      detail: `The JWT header contains jku="${parsed.header.jku}". The "jku" parameter specifies a URL for the JSON Web Key Set used to verify the token. If the server fetches this URL without validation, an attacker can point it to their own key server and forge valid tokens.`,
+    });
+  }
+
+  // Check for "x5u" header (X.509 Certificate URL) — SSRF risk
+  if (parsed.header.x5u) {
+    issues.push({
+      issue: 'JWT uses "x5u" header — potential SSRF',
+      severity: 'medium',
+      detail: `The JWT header contains x5u="${parsed.header.x5u}". Similar to "jku", this specifies a URL for the signing certificate. An attacker may redirect this to their own certificate.`,
+    });
   }
 
   return issues;

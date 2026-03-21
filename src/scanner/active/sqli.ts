@@ -7,10 +7,13 @@ import {
   SQL_ERROR_PATTERNS,
   SQLI_BOOLEAN_PAYLOADS,
   SQLI_UNION_ORDER_BY_PROBES,
+  SQLI_STACKED_PAYLOADS,
   NOSQL_PAYLOADS,
   NOSQL_ERROR_PATTERNS,
+  NOSQL_TIMING_PAYLOADS,
+  NOSQL_JSON_PAYLOADS,
 } from '../../config/payloads/sqli.js';
-import type { TimedSqliPayload } from '../../config/payloads/sqli.js';
+import type { TimedSqliPayload, StackedSqliPayload } from '../../config/payloads/sqli.js';
 import type { DatabaseType } from '../../utils/payload-context.js';
 import { getPolyglotSqli } from '../../utils/polyglot-payloads.js';
 import { generateHppVariants } from '../../utils/param-pollution.js';
@@ -18,8 +21,8 @@ import { generateBlindSqliPayloads } from '../oob/blind-payloads.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck, ScanTargets } from './index.js';
-import { delay, measureResponseTime } from '../../utils/shared.js';
-import { mutatePayload, pickStrategies, sqlCommentObfuscate } from '../../utils/payload-mutator.js';
+import { delay, measureResponseTime, INFRA_PARAM_RE } from '../../utils/shared.js';
+import { mutatePayload, pickStrategies, sqlCommentObfuscate, sqlCaseRandomize } from '../../utils/payload-mutator.js';
 
 /** Threshold in ms — if response is this much slower than baseline, it's suspicious.
  *  With SLEEP(5) payloads and median-of-3 reducing jitter, 2500ms gives
@@ -78,6 +81,11 @@ function getSqliWafVariants(payload: string, config: ScanConfig): string[] {
   const obfuscated = sqlCommentObfuscate(payload);
   if (obfuscated !== payload && !variants.includes(obfuscated)) {
     variants.push(obfuscated);
+  }
+  // Add SQL case randomization variant (bypasses case-sensitive WAF rules)
+  const caseRandomized = sqlCaseRandomize(payload);
+  if (caseRandomized !== payload && !variants.includes(caseRandomized)) {
+    variants.push(caseRandomized);
   }
   return variants;
 }
@@ -204,6 +212,18 @@ export const sqliCheck: ActiveCheck = {
       findings.push(...(await testJsonApiSqli(context, targets.apiEndpoints, config, requestLogger)));
     }
 
+    // NoSQL JSON body injection — test API endpoints with MongoDB operator payloads
+    if (targets.apiEndpoints.length > 0) {
+      log.info(`Testing ${targets.apiEndpoints.length} API endpoints for NoSQL JSON body injection...`);
+      findings.push(...(await testNoSqlJsonApi(context, targets.apiEndpoints, config, requestLogger)));
+    }
+
+    // Stacked query SQLi — test for multi-statement execution (RCE potential)
+    if (config.profile !== 'quick' && targets.urlsWithParams.length > 0) {
+      log.info(`Testing ${targets.urlsWithParams.length} URLs for stacked query SQL injection...`);
+      findings.push(...(await testStackedQuerySqli(context, targets.urlsWithParams, config, requestLogger)));
+    }
+
     // Blind SQLi: inject OOB payloads for out-of-band detection
     if (config.callbackUrl) {
       const blindPayloads = generateBlindSqliPayloads(config.callbackUrl);
@@ -255,7 +275,13 @@ async function testSqliOnForms(
 
         for (const input of textInputs) {
           try {
-            await page.fill(`[name="${input.name}"]`, payload);
+            const inputLocator = page.locator(`[name="${input.name}"]`);
+            const isVisible = await inputLocator.isVisible({ timeout: 1000 }).catch(() => false);
+            if (!isVisible) {
+              log.debug(`SQLi skipping hidden input: ${input.name}`);
+              continue;
+            }
+            await inputLocator.fill(payload, { timeout: 5000 });
           } catch (err) {
             log.debug(`SQLi fill input: ${(err as Error).message}`);
           }
@@ -531,7 +557,8 @@ async function testSqliOnUrls(
       log.debug(`SQLi URL parse: ${(err as Error).message}`);
       continue;
     }
-    const params = Array.from(parsedUrl.searchParams.keys());
+    const params = Array.from(parsedUrl.searchParams.keys())
+      .filter(p => !INFRA_PARAM_RE.test(p));
     if (params.length === 0) continue;
 
     for (const param of params) {
@@ -857,6 +884,44 @@ async function testSqliOnUrls(
           }
 
           await delay(config.requestDelay);
+        }
+      }
+
+      // --- NoSQL timing-based blind ($where JavaScript sleep) ---
+      if (!foundForParam && config.profile !== 'quick') {
+        const baselineMedian = await measureResponseTime(context, originalUrl);
+        if (baselineMedian > 0) {
+          for (const { payload } of NOSQL_TIMING_PAYLOADS) {
+            if (foundForParam) break;
+            const testUrl = new URL(originalUrl);
+            testUrl.searchParams.set(param, payload);
+            const payloadMedian = await measureResponseTime(context, testUrl.href);
+            requestLogger?.log({
+              timestamp: new Date().toISOString(),
+              method: 'GET',
+              url: testUrl.href,
+              phase: 'active-nosqli-timing',
+            });
+            if (payloadMedian > 0) {
+              const diff = payloadMedian - baselineMedian;
+              if (diff > BLIND_SQLI_THRESHOLD_MS) {
+                findings.push({
+                  id: randomUUID(),
+                  category: 'sqli',
+                  severity: 'critical',
+                  confidence: 'medium',
+                  title: `NoSQL Injection (Time-Based) via "${param}" Parameter`,
+                  description: `Time-based NoSQL injection detected using $where JavaScript sleep. The median response was ${Math.round(diff)}ms slower when a sleep payload was injected into "${param}". This indicates server-side JavaScript evaluation in a MongoDB $where clause.`,
+                  url: originalUrl,
+                  evidence: `Payload: ${payload}\nBaseline median: ${Math.round(baselineMedian)}ms\nWith payload median: ${payloadMedian}ms\nDifference: ${Math.round(diff)}ms`,
+                  request: { method: 'GET', url: testUrl.href },
+                  timestamp: new Date().toISOString(),
+                });
+                foundForParam = true;
+              }
+            }
+            await delay(config.requestDelay);
+          }
         }
       }
     }
@@ -1314,4 +1379,283 @@ async function injectBlindSqli(
 
   // Blind SQLi findings are detected out-of-band — no immediate findings to return
   return [];
+}
+
+/**
+ * Test JSON API endpoints for NoSQL injection via MongoDB operator payloads.
+ * Modern Express/Mongoose/Fastify apps deserialize JSON bodies directly into
+ * MongoDB queries. If { "username": { "$ne": null } } bypasses auth, the
+ * query is injectable.
+ */
+async function testNoSqlJsonApi(
+  context: BrowserContext,
+  apiEndpoints: string[],
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+  const payloads = config.profile === 'deep' ? NOSQL_JSON_PAYLOADS : NOSQL_JSON_PAYLOADS.slice(0, 4);
+
+  // Fields commonly used in MongoDB queries (auth, search, filters)
+  const probeFields = ['username', 'email', 'password', 'user', 'login', 'query', 'search', 'filter', 'name', 'id'];
+
+  for (const endpoint of apiEndpoints) {
+    if (DESTRUCTIVE_PATH_RE.test(endpoint)) {
+      log.debug(`Skipping destructive API endpoint for NoSQL: ${endpoint}`);
+      continue;
+    }
+
+    let foundForEndpoint = false;
+
+    // Try POST first (most common for auth/search APIs), then PUT
+    const methods = ['POST', 'PUT'];
+
+    for (const method of methods) {
+      if (foundForEndpoint) break;
+
+      // Probe if endpoint accepts JSON
+      const probePage = await context.newPage();
+      let acceptsJson = false;
+      let baselineBody = '';
+      let baselineStatus = 0;
+      try {
+        const probeBody = JSON.stringify({ username: 'test', password: 'test' });
+        const resp = await probePage.request.fetch(endpoint, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          data: probeBody,
+        });
+        baselineStatus = resp.status();
+        baselineBody = await resp.text();
+        acceptsJson = baselineStatus < 400 || baselineStatus === 500;
+      } catch {
+        // skip
+      } finally {
+        await probePage.close();
+      }
+
+      if (!acceptsJson) continue;
+
+      for (const fieldName of probeFields) {
+        if (foundForEndpoint) break;
+
+        for (const nosqlPayload of payloads) {
+          if (foundForEndpoint) break;
+
+          // Build JSON body with operator value replacing the field's string
+          const bodyObj: Record<string, unknown> = {};
+          // Add a normal field to make the request look realistic
+          if (fieldName !== 'password') bodyObj.password = 'test';
+          if (fieldName !== 'username') bodyObj.username = 'test';
+          // Inject the operator payload as the field value
+          bodyObj[fieldName] = JSON.parse(nosqlPayload.valueJson);
+          const jsonBody = JSON.stringify(bodyObj);
+
+          const page = await context.newPage();
+          try {
+            const resp = await page.request.fetch(endpoint, {
+              method,
+              headers: { 'Content-Type': 'application/json' },
+              data: jsonBody,
+            });
+            const body = await resp.text();
+            const status = resp.status();
+
+            requestLogger?.log({
+              timestamp: new Date().toISOString(),
+              method,
+              url: endpoint,
+              responseStatus: status,
+              body: jsonBody,
+              phase: 'active-nosqli-json',
+            });
+
+            // Detection 1: MongoDB error pattern in response
+            for (const pattern of NOSQL_ERROR_PATTERNS) {
+              const match = body.match(pattern);
+              if (match) {
+                findings.push({
+                  id: randomUUID(),
+                  category: 'sqli',
+                  severity: 'high',
+                  confidence: 'medium',
+                  title: `NoSQL Injection in JSON API Field "${fieldName}" (${method})`,
+                  description: `MongoDB error detected when injecting operator payload into JSON body field "${fieldName}" via ${method} ${endpoint}. Technique: ${nosqlPayload.description}. This indicates the field value is used in a MongoDB query without sanitization.`,
+                  url: endpoint,
+                  evidence: `Technique: ${nosqlPayload.technique}\nPayload: ${jsonBody}\nNoSQL error: ${match[0]}`,
+                  request: { method, url: endpoint, body: jsonBody },
+                  response: { status, bodySnippet: body.slice(0, 300) },
+                  timestamp: new Date().toISOString(),
+                });
+                foundForEndpoint = true;
+                break;
+              }
+            }
+
+            // Detection 2: Auth bypass — baseline returned 401/403 but operator payload returns 200
+            if (!foundForEndpoint && (baselineStatus === 401 || baselineStatus === 403) && status === 200 && body.length > 50) {
+              // Check it's not just an error page with 200
+              const looksLikeData = body.includes('"') || body.includes('{') || body.includes('token') || body.includes('session');
+              if (looksLikeData) {
+                findings.push({
+                  id: randomUUID(),
+                  category: 'sqli',
+                  severity: 'critical',
+                  confidence: 'high',
+                  title: `NoSQL Authentication Bypass in JSON API (${method} ${new URL(endpoint).pathname})`,
+                  description: `Authentication bypass via MongoDB operator injection. Normal credentials return ${baselineStatus}, but injecting ${nosqlPayload.technique} into "${fieldName}" returns ${status} with data. This allows login without valid credentials.`,
+                  url: endpoint,
+                  evidence: `Technique: ${nosqlPayload.technique}\nBaseline status: ${baselineStatus}\nBypass status: ${status}\nPayload: ${jsonBody}\nResponse snippet: ${body.slice(0, 200)}`,
+                  request: { method, url: endpoint, body: jsonBody },
+                  response: { status, bodySnippet: body.slice(0, 300) },
+                  timestamp: new Date().toISOString(),
+                });
+                foundForEndpoint = true;
+              }
+            }
+
+            // Detection 3: Response significantly different from baseline (data leak)
+            if (!foundForEndpoint && status === 200 && baselineStatus === 200) {
+              // If response is much larger, operator might have matched more documents
+              const sizeDiff = body.length - baselineBody.length;
+              if (sizeDiff > 500 && body.length > 100) {
+                findings.push({
+                  id: randomUUID(),
+                  category: 'sqli',
+                  severity: 'high',
+                  confidence: 'low',
+                  title: `Potential NoSQL Data Leak in JSON API Field "${fieldName}" (${method})`,
+                  description: `Injecting ${nosqlPayload.technique} into "${fieldName}" returned significantly more data (${body.length} bytes vs baseline ${baselineBody.length} bytes). The MongoDB operator may have matched additional documents, leaking data.`,
+                  url: endpoint,
+                  evidence: `Technique: ${nosqlPayload.technique}\nBaseline response: ${baselineBody.length} bytes\nPayload response: ${body.length} bytes\nDifference: +${sizeDiff} bytes`,
+                  request: { method, url: endpoint, body: jsonBody },
+                  response: { status, bodySnippet: body.slice(0, 300) },
+                  timestamp: new Date().toISOString(),
+                });
+                foundForEndpoint = true;
+              }
+            }
+          } catch (err) {
+            log.debug(`NoSQL JSON API test: ${(err as Error).message}`);
+          } finally {
+            await page.close();
+          }
+
+          await delay(config.requestDelay);
+        }
+      }
+    }
+  }
+
+  return findings;
+}
+
+/**
+ * Test for stacked (multi-statement) SQL injection via URL parameters.
+ * Stacked queries are critical for MSSQL/PostgreSQL where they enable RCE
+ * (e.g., xp_cmdshell on MSSQL, COPY TO on PostgreSQL).
+ *
+ * Detection: uses timing-based verification (same as blind SQLi but with
+ * semicolon-separated statements instead of inline expressions).
+ */
+async function testStackedQuerySqli(
+  context: BrowserContext,
+  urls: string[],
+  config: ScanConfig,
+  requestLogger?: RequestLogger,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+
+  // Select payloads based on detected DB type
+  const dbTypes = config.payloadContext?.databases ?? [];
+  const dbSet = new Set<string>(dbTypes.filter((d: string) => d !== 'unknown'));
+
+  let payloads: StackedSqliPayload[];
+  if (dbSet.size > 0) {
+    const matched = SQLI_STACKED_PAYLOADS.filter((p) => p.dbType === 'generic' || dbSet.has(p.dbType));
+    const rest = SQLI_STACKED_PAYLOADS.filter((p) => p.dbType !== 'generic' && !dbSet.has(p.dbType));
+    payloads = [...matched, ...rest];
+    log.debug(`Stacked SQLi: prioritizing ${matched.length} ${[...dbSet].join('/')} + generic payloads`);
+  } else {
+    payloads = [...SQLI_STACKED_PAYLOADS];
+  }
+
+  if (config.profile !== 'deep') {
+    payloads = payloads.slice(0, 3);
+  }
+
+  const urlLimit = config.profile === 'deep' ? urls.length : Math.min(urls.length, 2);
+
+  for (const originalUrl of urls.slice(0, urlLimit)) {
+    const parsed = new URL(originalUrl);
+    const params = Array.from(parsed.searchParams.keys()).filter((k) => !INFRA_PARAM_RE.test(k));
+    if (params.length === 0) continue;
+
+    // Measure baseline response time (median of 3)
+    const baselineTimes: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      const t = await measureResponseTime(context, originalUrl);
+      if (t > 0) baselineTimes.push(t);
+      await delay(50);
+    }
+    if (baselineTimes.length < 2) continue;
+    baselineTimes.sort((a, b) => a - b);
+    const baselineMedian = baselineTimes[Math.floor(baselineTimes.length / 2)];
+
+    let foundForUrl = false;
+    const paramLimit = config.profile === 'deep' ? 3 : 1;
+
+    for (const param of params.slice(0, paramLimit)) {
+      if (foundForUrl) break;
+
+      for (const stackedPayload of payloads) {
+        if (foundForUrl) break;
+
+        const testUrl = new URL(originalUrl);
+        testUrl.searchParams.set(param, stackedPayload.payload);
+
+        // Measure with payload (median of 3)
+        const payloadTimes: number[] = [];
+        for (let i = 0; i < 3; i++) {
+          const t = await measureResponseTime(context, testUrl.href);
+          if (t > 0) payloadTimes.push(t);
+          await delay(50);
+        }
+        if (payloadTimes.length < 2) continue;
+        payloadTimes.sort((a, b) => a - b);
+        const payloadMedian = payloadTimes[Math.floor(payloadTimes.length / 2)];
+
+        const timeDiff = payloadMedian - baselineMedian;
+
+        requestLogger?.log({
+          timestamp: new Date().toISOString(),
+          method: 'GET',
+          url: testUrl.href,
+          responseStatus: 0,
+          phase: 'active-sqli-stacked',
+        });
+
+        if (timeDiff > BLIND_SQLI_THRESHOLD_MS) {
+          findings.push({
+            id: randomUUID(),
+            category: 'sqli',
+            severity: 'critical',
+            title: `Stacked Query SQL Injection via "${param}" (${stackedPayload.dbType})`,
+            description: `The parameter "${param}" is vulnerable to stacked (multi-statement) SQL injection. The server executed a second SQL statement after a semicolon delimiter, confirmed by a ${(timeDiff / 1000).toFixed(1)}s timing delay. Stacked queries enable data exfiltration, data modification, and potentially remote code execution (e.g., xp_cmdshell on MSSQL, COPY TO on PostgreSQL). Technique: ${stackedPayload.technique}.`,
+            url: originalUrl,
+            evidence: `Payload: ${stackedPayload.payload}\nDB type: ${stackedPayload.dbType}\nTechnique: ${stackedPayload.technique}\nBaseline median: ${baselineMedian.toFixed(0)}ms\nPayload median: ${payloadMedian.toFixed(0)}ms\nTime difference: ${timeDiff.toFixed(0)}ms (threshold: ${BLIND_SQLI_THRESHOLD_MS}ms)`,
+            request: { method: 'GET', url: testUrl.href },
+            response: { status: 0, bodySnippet: '' },
+            timestamp: new Date().toISOString(),
+            confidence: 'high',
+          });
+          foundForUrl = true;
+        }
+
+        await delay(config.requestDelay);
+      }
+    }
+  }
+
+  return findings;
 }

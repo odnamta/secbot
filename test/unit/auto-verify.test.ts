@@ -24,19 +24,8 @@ describe('Auto-verify module', () => {
     expect(upgradeConfidence('low', true)).toBe('medium');
   });
 
-  it('verifyFindings skips non-medium findings', async () => {
+  it('verifyFindings passes through low-confidence findings unchanged', async () => {
     const { verifyFindings } = await import('../../src/scanner/auto-verify.js');
-    const highFinding = {
-      id: 'h1',
-      category: 'xss' as const,
-      severity: 'high' as const,
-      title: 'High XSS',
-      description: '',
-      url: 'https://example.com',
-      evidence: '',
-      timestamp: new Date().toISOString(),
-      confidence: 'high' as const,
-    };
     const lowFinding = {
       id: 'l1',
       category: 'sqli' as const,
@@ -48,12 +37,11 @@ describe('Auto-verify module', () => {
       timestamp: new Date().toISOString(),
       confidence: 'low' as const,
     };
-    // Provide a stub BrowserContext — non-medium findings should pass through unchanged
+    // Provide a stub BrowserContext — low-confidence findings pass through unchanged
     const stubContext = {} as import('playwright').BrowserContext;
-    const results = await verifyFindings([highFinding, lowFinding], stubContext);
-    expect(results).toHaveLength(2);
-    expect(results[0].confidence).toBe('high');
-    expect(results[1].confidence).toBe('low');
+    const results = await verifyFindings([lowFinding], stubContext);
+    expect(results).toHaveLength(1);
+    expect(results[0].confidence).toBe('low');
   });
 
   it('verifyFinding returns unchanged for unknown categories', async () => {

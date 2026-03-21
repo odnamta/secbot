@@ -229,7 +229,68 @@ describe('WEAK_SECRETS', () => {
     expect(WEAK_SECRETS).toContain('changeme');
   });
 
-  it('has at least 20 entries', () => {
-    expect(WEAK_SECRETS.length).toBeGreaterThanOrEqual(20);
+  it('has at least 35 entries', () => {
+    expect(WEAK_SECRETS.length).toBeGreaterThanOrEqual(35);
+  });
+
+  it('includes framework-specific defaults', () => {
+    expect(WEAK_SECRETS).toContain('flask_secret');
+    expect(WEAK_SECRETS).toContain('django_secret');
+    expect(WEAK_SECRETS).toContain('laravel');
+    expect(WEAK_SECRETS).toContain('express_secret');
+  });
+});
+
+describe('analyzeJwtSecurity — kid/jku/x5u headers', () => {
+  it('flags JWT with kid header', () => {
+    const token = createTestJwt(
+      { alg: 'HS256', typ: 'JWT', kid: 'key-001' },
+      { sub: '1234', exp: 9999999999 },
+    );
+    const parsed = parseJwt(token);
+    expect(parsed).not.toBeNull();
+    const issues = analyzeJwtSecurity(parsed!, token);
+    const kidIssue = issues.find(i => i.issue.includes('kid'));
+    expect(kidIssue).toBeDefined();
+    expect(kidIssue!.severity).toBe('low');
+    expect(kidIssue!.detail).toContain('key-001');
+  });
+
+  it('flags JWT with jku header as SSRF risk', () => {
+    const token = createTestJwt(
+      { alg: 'RS256', typ: 'JWT', jku: 'https://example.com/.well-known/jwks.json' },
+      { sub: '1234', exp: 9999999999 },
+    );
+    const parsed = parseJwt(token);
+    expect(parsed).not.toBeNull();
+    const issues = analyzeJwtSecurity(parsed!, token);
+    const jkuIssue = issues.find(i => i.issue.includes('jku'));
+    expect(jkuIssue).toBeDefined();
+    expect(jkuIssue!.severity).toBe('medium');
+  });
+
+  it('flags JWT with x5u header as SSRF risk', () => {
+    const token = createTestJwt(
+      { alg: 'RS256', typ: 'JWT', x5u: 'https://example.com/cert.pem' },
+      { sub: '1234', exp: 9999999999 },
+    );
+    const parsed = parseJwt(token);
+    expect(parsed).not.toBeNull();
+    const issues = analyzeJwtSecurity(parsed!, token);
+    const x5uIssue = issues.find(i => i.issue.includes('x5u'));
+    expect(x5uIssue).toBeDefined();
+    expect(x5uIssue!.severity).toBe('medium');
+  });
+
+  it('does not flag JWT without kid/jku/x5u', () => {
+    const token = createTestJwt(
+      { alg: 'HS256', typ: 'JWT' },
+      { sub: '1234', exp: 9999999999 },
+    );
+    const parsed = parseJwt(token);
+    expect(parsed).not.toBeNull();
+    const issues = analyzeJwtSecurity(parsed!, token);
+    const headerIssues = issues.filter(i => /kid|jku|x5u/.test(i.issue));
+    expect(headerIssues.length).toBe(0);
   });
 });

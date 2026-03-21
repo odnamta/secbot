@@ -7,8 +7,22 @@ Developer-friendly tool that scans web apps for OWASP Top 10 vulnerabilities wit
 
 ## Status
 - Version: v1.0.0 "Bounty Ready"
-- 27 active check types + 6 passive check categories + 5 chain rules
-- 1783 tests (unit + integration + false-positive regression)
+- 43 active check types + 6 passive check categories + 7 chain rules
+- 2412 tests (unit + integration + false-positive regression), 133 files
+- Auto-verify: 12 check types (XSS, SQLi, subdomain-takeover, CORS, open-redirect, CRLF, host-header, security-headers, CSRF, SRI, cookie-flags, info-disclosure)
+- Pre-filter heuristics: cross-origin isolation, same-org SRI, third-party cookies (70+ patterns), CORS on 4xx/5xx, locale page CSP, GDPR/Drift/analytics cookies
+- CORS detection: wildcard-without-credentials, SameSite awareness (explicit Lax/Strict → downgrade), empty response body detection (Content-Length: 0 → downgrade)
+- XSS form filling: skips hidden/disabled inputs to avoid 30s timeouts on custom dropdowns
+- XSS param probing: tests paramless pages using common param names — standard (2 pages × 5 params: q, search, query, s, id) and deep (5 pages × 10 params)
+- XSS always-on: planner includes XSS whenever pages exist (DOM XSS + paramless probing don't need forms/params)
+- XSS script-block awareness: strips `<script>` blocks before marker context checks to prevent RSC/NEXT_DATA FPs
+- XSS context detection: attribute break-out and template injection patterns
+- XSS efficiency: tracking/analytics URL filtering, param cap (3 per URL in standard), HPP variant reduction (2 in standard, 6 in deep)
+- Target filtering: analytics/tracking URLs excluded from active testing (GA, GTM, pixel, beacon + excessive param detection)
+- JS bundle endpoint extraction: scans external JS files for fetch/axios/XHR API URLs (up to 20 files, 1MB each)
+- JS secret scanning: 14 high-confidence patterns (AWS, Google, Stripe, GitHub, Slack, SendGrid, Twilio, PEM keys, Bearer tokens, internal IPs) in inline + external JS
+- HTML comment scanning: detects sensitive info in HTML comments (passwords, API keys, internal IPs, debug flags, security TODOs)
+- CWE mapping: 38 vulnerability types (+ OAuth, cache poisoning, directory listing, business logic, SRI, RCE, hardcoded credentials, BFLA, clickjacking, timing-attack, verbose-errors, xpath-injection)
 - **v1.0 Bounty Ready:** confidence scoring (high/medium/low on every finding), auto-verify (Playwright re-confirmation), two-pass pre-filter, OAuth flow testing, cache poisoning detection, behavioral stealth (Gaussian delay, referrer chains, human simulation), adaptive payload encoding (8 strategies), CAPTCHA detection + aggressive backoff, DNS pinning + SSRF self-defense, autonomous hunting (program registry, scan orchestrator, escalation queue, Nara notification), self-learning loop (outcome tracking, FP memory, tech profiles, payload stats, planner integration)
 - CLI commands: `secbot scan`, `secbot hunt`, `secbot outcome`, `secbot interactive`
 - Parallel active check runner: 10 read-only checks run concurrently via Promise.allSettled
@@ -56,7 +70,7 @@ Phase 1: Crawl         → Playwright browser (crawl + intercept traffic, SPA fr
 Phase 2: Recon         → Tech fingerprinting, enhanced WAF detection, endpoint mapping
 Phase 3: AI Plan       → Claude analyzes recon, recommends which checks to run
 Phase 4: Passive Scan  → Headers, cookies, info leaks, mixed content, cross-origin policy, sensitive URL data
-Phase 5: Active Scan   → AI-selected checks (24 types — see CHECK_REGISTRY)
+Phase 5: Active Scan   → AI-selected checks (32 types — see CHECK_REGISTRY)
 Phase 5b: AI Analysis  → Claude analyzes HTTP responses for subtle vulnerabilities
   ↓ Pre-dedup          → Deduplicate raw findings before AI validation (save tokens)
 Phase 6: AI Validate   → Claude validates each finding (real vuln or false positive?)
@@ -104,7 +118,7 @@ src/
       race.ts                 # Race condition / TOCTOU (concurrent request abuse)
       graphql.ts              # GraphQL deep check (introspection, depth, batch, mutations)
       host-header.ts          # Host header injection (direct Host, X-Forwarded-*, cache poisoning)
-      chain-detector.ts       # Vulnerability chain detection (5 chain rules)
+      chain-detector.ts       # Vulnerability chain detection (7 chain rules)
       cors.ts                 # CORS misconfiguration check
       redirect.ts             # Open redirect check
       traversal.ts            # Directory traversal check
@@ -122,6 +136,22 @@ src/
       websocket.ts            # WebSocket security check (auth bypass, injection)
       access-control.ts       # Broken access control (admin endpoint replay, method override, header bypass)
       subdomain-takeover.ts   # Subdomain takeover (dangling CNAME → 14 service fingerprints)
+      csrf.ts                 # CSRF check (missing token detection, cross-origin POST verification)
+      prototype-pollution.ts  # Prototype pollution (query __proto__, JSON body, client-side)
+      xxe.ts                  # XML External Entity injection (file read, parameter entity, XInclude)
+      insecure-deserialization.ts  # Insecure deserialization (Java, PHP, Python, Node, Ruby, .NET, YAML)
+      request-smuggling.ts    # HTTP request smuggling (CL.TE, TE.CL, TE.TE timing-based detection)
+      ldap-injection.ts       # LDAP injection (error-based + blind auth bypass, 10 payloads)
+      user-enum.ts            # Username enumeration via response discrepancy (CWE-204)
+      mass-assignment.ts      # Mass assignment / over-posting (CWE-915, 22 probe fields)
+      content-type-confusion.ts  # Content-Type confusion / CSRF bypass (CWE-436, 4 content types)
+      method-override.ts      # HTTP method override ACL bypass (CWE-650, 3 headers + 3 params)
+      email-injection.ts      # Email/SMTP header injection (CWE-93, 5 CRLF payloads)
+      bfla.ts                 # Broken Function-Level Authorization (CWE-285, API5:2023, 4-phase probing)
+      clickjacking.ts         # Active clickjacking / UI redressing (CWE-1021, Playwright iframe framing)
+      timing-attack.ts        # Response timing analysis (CWE-208, username enumeration via timing side-channels)
+      verbose-errors.ts       # Verbose error / debug mode detection (CWE-209/215, stack traces, framework debug pages)
+      xpath-injection.ts      # XPath injection (CWE-643, error-based + boolean-based, 15 error patterns)
       subdomain-takeover-fingerprints.ts  # Service fingerprint database (GitHub Pages, Heroku, S3, etc.)
     oob/
       callback-server.ts      # OOB HTTP callback server (binds 127.0.0.1)
@@ -135,7 +165,7 @@ src/
     reporter.ts               # AI generates final report -> InterpretedFinding[] (passedChecks context)
     response-analyzer.ts      # AI HTTP response analysis (Phase 5b — subtle vuln detection)
     fallback.ts               # Rule-based fallback when AI unavailable (all 24 categories mapped)
-    prompts.ts                # Prompt builder with injection sanitization (24 PlannerCheckTypes)
+    prompts.ts                # Prompt builder with injection sanitization (43 PlannerCheckTypes)
   reporter/
     terminal.ts               # Chalk-colored terminal output
     json.ts                   # JSON report
@@ -153,6 +183,8 @@ src/
       ssrf.ts                 # SSRF payloads (callback URLs, internal IPs)
       ssti.ts                 # SSTI payloads (large multiplications for uniqueness)
       cmdi.ts                 # Command injection payloads (Unix + Windows)
+      deserialize.ts          # Deserialization payloads (Java, PHP, Python, Node, Ruby, .NET, YAML)
+      ldap.ts                 # LDAP injection payloads (10 payloads + 17 error patterns)
       index.ts                # Re-exports
   plugins/
     loader.ts                 # Plugin discovery + loading (~/.secbot/plugins/ + npm)
@@ -254,11 +286,12 @@ SECBOT_TIMEOUT=30000          # Per-page timeout (ms)
 SECBOT_TOKEN_BUDGET=          # Max AI tokens per scan
 ```
 
-## CheckCategory (29 types)
+## CheckCategory (32 types, 43 active checks)
 
 **Passive (6):** `security-headers`, `cookie-flags`, `info-leakage`, `mixed-content`, `sensitive-url-data`, `cross-origin-policy`
 
-**Active (27):** `xss`, `sqli`, `open-redirect`, `cors-misconfiguration`, `directory-traversal`, `ssrf`, `ssti`, `command-injection`, `idor`, `tls`, `sri`, `info-disclosure`, `js-cve`, `crlf-injection`, `rate-limit`, `jwt`, `race-condition`, `graphql`, `host-header`, `file-upload`, `broken-access-control`, `business-logic`, `websocket`, `api-versioning`, `subdomain-takeover`, `oauth`, `cache-poisoning`
+**Active (34 categories, 43 checks):** `xss`, `sqli`, `open-redirect`, `cors-misconfiguration`, `directory-traversal`, `ssrf`, `ssti`, `command-injection`, `idor`, `tls`, `sri`, `info-disclosure`, `js-cve`, `crlf-injection`, `rate-limit`, `jwt`, `race-condition`, `graphql`, `host-header`, `file-upload`, `broken-access-control`, `business-logic`, `websocket`, `api-versioning`, `subdomain-takeover`, `oauth`, `cache-poisoning`, `csrf`, `prototype-pollution`, `xxe`, `insecure-deserialization`, `request-smuggling`, `ldap-injection`, `clickjacking`
+Note: Some checks share categories — content-type-confusion→csrf, method-override→broken-access-control, email-injection→crlf-injection, user-enum→info-disclosure, mass-assignment→broken-access-control, bfla→broken-access-control, timing-attack→info-disclosure, verbose-errors→info-disclosure, xpath-injection→sqli
 
 **Meta:** `vuln-chain` (auto-detected from combinations of active findings)
 

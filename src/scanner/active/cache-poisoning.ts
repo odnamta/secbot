@@ -3,6 +3,7 @@ import type { RawFinding, ScanConfig } from '../types.js';
 import type { ActiveCheck, ScanTargets } from './index.js';
 import { randomUUID } from 'node:crypto';
 import type { RequestLogger } from '../../utils/request-logger.js';
+import { log } from '../../utils/logger.js';
 
 const CACHE_HEADERS = ['x-cache', 'cf-cache-status', 'age', 'x-varnish', 'x-cache-hit', 'x-cdn-cache', 'x-proxy-cache'];
 
@@ -101,6 +102,145 @@ export const cachePoisoningCheck: ActiveCheck = {
       } catch { continue; }
     }
 
+    // Web Cache Deception (WCD) — test if user-specific pages can be cached
+    // by appending static file extensions to dynamic URLs
+    const wcdFindings = await testWebCacheDeception(targets, config);
+    findings.push(...wcdFindings);
+
     return findings;
   },
 };
+
+// ─── Web Cache Deception ───────────────────────────────────────────────
+
+/** Path suffixes that trick CDNs into caching dynamic pages as static assets */
+export const WCD_SUFFIXES = [
+  '/nonexistent.css',
+  '/nonexistent.js',
+  '/nonexistent.png',
+  '/nonexistent.svg',
+  '/.css',
+  '/..%2fnonexistent.css',     // Path traversal normalization
+  '%2f.css',                    // Encoded slash
+  '%3b.css',                    // Semicolon path param (Tomcat/Spring)
+  '/;a.css',                    // Semicolon matrix param
+];
+
+/** Indicators that a response contains user-specific content (not a generic page) */
+const USER_CONTENT_PATTERNS = [
+  /logout/i, /sign.?out/i, /my.?account/i, /profile/i,
+  /dashboard/i, /settings/i, /billing/i, /email["':]/i,
+  /username["':]/i, /csrf[_-]?token/i, /api[_-]?key/i,
+];
+
+function containsUserContent(body: string): boolean {
+  return USER_CONTENT_PATTERNS.some(p => p.test(body));
+}
+
+async function testWebCacheDeception(
+  targets: ScanTargets,
+  config: ScanConfig,
+): Promise<RawFinding[]> {
+  const findings: RawFinding[] = [];
+
+  // Only test pages that might have user-specific content
+  // Prefer authenticated pages, account pages, dashboard pages
+  const candidatePages = targets.pages.filter(url => {
+    const path = new URL(url).pathname.toLowerCase();
+    return /\/(account|profile|dashboard|settings|user|me|billing|admin|my)/i.test(path);
+  });
+
+  // Also test the home page — many SPAs serve user content on /
+  if (targets.pages.length > 0 && candidatePages.length === 0) {
+    candidatePages.push(targets.pages[0]);
+  }
+
+  const testPages = candidatePages.slice(0, 5);
+  if (testPages.length === 0) return findings;
+
+  log.info(`Web Cache Deception: testing ${testPages.length} candidate page(s)...`);
+
+  for (const url of testPages) {
+    try {
+      // Step 1: Fetch the original page
+      const baseResp = await fetch(url, {
+        signal: AbortSignal.timeout(config.timeout || 10000),
+      });
+      const baseBody = await baseResp.text();
+      const baseHeaders = Object.fromEntries(baseResp.headers);
+
+      // Only interesting if the page contains user-specific content
+      const hasUserContent = containsUserContent(baseBody);
+
+      // Step 2: Try each WCD suffix
+      for (const suffix of WCD_SUFFIXES) {
+        try {
+          const wcdUrl = url.endsWith('/') ? url.slice(0, -1) + suffix : url + suffix;
+          const cacheBuster = `wcd=${Date.now()}`;
+          const testUrl = wcdUrl.includes('?') ? `${wcdUrl}&${cacheBuster}` : `${wcdUrl}?${cacheBuster}`;
+
+          const wcdResp = await fetch(testUrl, {
+            signal: AbortSignal.timeout(config.timeout || 10000),
+          });
+          const wcdBody = await wcdResp.text();
+          const wcdHeaders = Object.fromEntries(wcdResp.headers);
+          const status = wcdResp.status;
+
+          // Skip if the appended path resulted in 404/301/302 (CDN/app correctly rejected)
+          if (status === 404 || status === 301 || status === 302) continue;
+
+          // Check if the response still contains the original page content
+          // (the server ignored the .css suffix and served the dynamic page)
+          const bodyMatch = baseBody.length > 100 &&
+            wcdBody.length > 100 &&
+            wcdBody.includes(baseBody.slice(100, 200));
+
+          if (!bodyMatch) continue;
+
+          // Check if the response was cached (CDN treated it as a static asset)
+          const wasCached = detectCaching(wcdHeaders);
+          const cacheHit = isCacheHit(wcdHeaders);
+
+          // Verify: re-request without cookies to see if cached content is served
+          let confirmedCached = false;
+          if (wasCached) {
+            try {
+              const verifyResp = await fetch(testUrl, {
+                signal: AbortSignal.timeout(config.timeout || 10000),
+              });
+              const verifyBody = await verifyResp.text();
+              const verifyHeaders = Object.fromEntries(verifyResp.headers);
+              confirmedCached = isCacheHit(verifyHeaders) && verifyBody.includes(baseBody.slice(100, 200));
+            } catch { /* verification failed */ }
+          }
+
+          // Only report if there's evidence the CDN cached a dynamic response
+          if (wasCached || cacheHit || confirmedCached) {
+            const severity = confirmedCached && hasUserContent ? 'critical' as const
+              : confirmedCached ? 'high' as const
+              : hasUserContent ? 'high' as const
+              : 'medium' as const;
+
+            findings.push({
+              id: randomUUID(),
+              category: 'cache-poisoning',
+              severity,
+              title: `Web Cache Deception via ${suffix} on ${new URL(url).pathname}`,
+              description: `Appending "${suffix}" to ${new URL(url).pathname} returns the original dynamic page content, and the response contains cache headers suggesting the CDN treats it as a static asset. ${confirmedCached ? 'A subsequent unauthenticated request confirmed the cached response is served to other users.' : 'Manual verification recommended to confirm cached content is accessible.'} ${hasUserContent ? 'The page contains user-specific content (PII/tokens/session data) which could be stolen by any visitor.' : ''}`,
+              url: wcdUrl,
+              evidence: `Original: ${url}\nWCD URL: ${wcdUrl}\nHTTP ${status}, Cache: ${JSON.stringify(Object.fromEntries(Object.entries(wcdHeaders).filter(([k]) => CACHE_HEADERS.includes(k.toLowerCase()))))}${confirmedCached ? '\nConfirmed: cached response served on re-request' : ''}`,
+              request: { method: 'GET', url: testUrl },
+              response: { status, headers: wcdHeaders, bodySnippet: wcdBody.slice(0, 300) },
+              timestamp: new Date().toISOString(),
+              confidence: confirmedCached ? 'high' : 'medium',
+            });
+
+            break; // One WCD finding per URL is enough
+          }
+        } catch { continue; }
+      }
+    } catch { continue; }
+  }
+
+  return findings;
+}

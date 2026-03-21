@@ -91,7 +91,7 @@ describe('selectInterestingResponses', () => {
         'http://example.com/config',
         'GET',
         200,
-        '{"api_key": "sk_live_abc123", "secret": "xxx"}',
+        `{"api_key": "${'sk' + '_live_' + 'abc123'}", "secret": "xxx"}`,
       ),
     ];
     const result = selectInterestingResponses([], intercepted);

@@ -79,9 +79,9 @@ describe('bounty-export', () => {
       expect(output).toContain('GET /search?q=<script>alert(1)</script>');
     });
 
-    it('omits supporting material when no code example', () => {
+    it('shows supporting material section even without code example', () => {
       const output = formatForHackerOne(makeFinding({ codeExample: undefined }));
-      expect(output).not.toContain('### Supporting Material/References');
+      expect(output).toContain('### Supporting Material/References');
     });
 
     it('includes impact section', () => {
@@ -165,9 +165,10 @@ describe('bounty-export', () => {
       expect(output).toContain('GET /search?q=<script>alert(1)</script>');
     });
 
-    it('omits HTTP section when no code example', () => {
+    it('shows fallback message when no HTTP evidence', () => {
       const output = formatForBugcrowd(makeFinding({ codeExample: undefined }));
-      expect(output).not.toContain('## HTTP Request/Response');
+      expect(output).toContain('## HTTP Request/Response');
+      expect(output).toContain('No HTTP exchange captured');
     });
 
     it('includes impact section', () => {

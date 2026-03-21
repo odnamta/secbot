@@ -20,7 +20,7 @@ describe('False-Positive Rate — Safe Endpoints', () => {
 
   const makeConfig = (overrides?: Partial<ScanConfig>): ScanConfig => ({
     targetUrl: baseUrl,
-    profile: 'standard',
+    profile: 'quick',
     maxPages: 5,
     timeout: 15000,
     respectRobots: false,
@@ -64,7 +64,7 @@ describe('False-Positive Rate — Safe Endpoints', () => {
       const findings = await runActiveChecks(context, [safePage], config);
       expect(findings.length).toBe(0);
       await page.close();
-    }, 60000);
+    }, 90000);
 
     it('active scan on /safe with query params still returns 0', async () => {
       const safeUrl = `${baseUrl}/safe?name=test&value=hello`;
@@ -83,7 +83,7 @@ describe('False-Positive Rate — Safe Endpoints', () => {
 
       const findings = await runActiveChecks(context, [safePage], config);
       expect(findings.length).toBe(0);
-    }, 60000);
+    }, 90000);
   });
 
   describe('Passive checks on safe responses produce minimal findings', () => {

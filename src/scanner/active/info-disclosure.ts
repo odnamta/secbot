@@ -9,6 +9,97 @@ import type { ActiveCheck } from './index.js';
 const SENSITIVE_ROBOTS_PATTERNS = /\b(admin|api|internal|dashboard|secret|private|debug|staging)\b/i;
 
 /**
+ * High-confidence secret patterns in JavaScript files.
+ * Each pattern uses a definitive prefix/format that identifies the secret type.
+ * Generic patterns (api_key=, password=) are intentionally excluded to avoid FPs in minified JS.
+ */
+interface JsSecretPattern {
+  name: string;
+  re: RegExp;
+  severity: 'high' | 'medium';
+  /** If true, the matched value must be at least this long to be considered a real secret */
+  minLength?: number;
+}
+
+const JS_SECRET_PATTERNS: JsSecretPattern[] = [
+  // AWS — AKIA prefix is definitive for access keys
+  { name: 'AWS Access Key', re: /(?:AKIA|A3T|AGPA|AIDA|AROA|AIPA|ANPA|ANVA|ASIA)[A-Z0-9]{16}/g, severity: 'high' },
+  // Google Cloud / Firebase — AIza prefix is definitive
+  { name: 'Google API Key', re: /AIza[0-9A-Za-z_-]{35}/g, severity: 'medium' },
+  // Stripe — sk_live_ is a live secret key (sk_test_ is test, lower risk)
+  { name: 'Stripe Secret Key', re: /sk_live_[0-9a-zA-Z]{24,}/g, severity: 'high' },
+  // GitHub personal/org/user/repo tokens
+  { name: 'GitHub Token', re: /gh[pousr]_[A-Za-z0-9_]{36,}/g, severity: 'high' },
+  // Slack bot/user/app tokens
+  { name: 'Slack Token', re: /xox[baprs]-[0-9]+-[0-9]+-[a-zA-Z0-9]+/g, severity: 'high' },
+  // Slack webhooks
+  { name: 'Slack Webhook URL', re: /hooks\.slack\.com\/services\/T[A-Z0-9]+\/B[A-Z0-9]+\/[a-zA-Z0-9]+/g, severity: 'medium' },
+  // Private keys (PEM format)
+  { name: 'Private Key (PEM)', re: /-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----/g, severity: 'high' },
+  // SendGrid — SG. prefix is definitive
+  { name: 'SendGrid API Key', re: /SG\.[a-zA-Z0-9_-]{22}\.[a-zA-Z0-9_-]{43}/g, severity: 'high' },
+  // Twilio — SK prefix + 32 hex chars
+  { name: 'Twilio API Key', re: /SK[0-9a-fA-F]{32}/g, severity: 'high', minLength: 34 },
+  // Mailchimp — 32 hex chars + -us region suffix
+  { name: 'Mailchimp API Key', re: /[0-9a-f]{32}-us\d{1,2}/g, severity: 'medium' },
+  // Shopify — shppa_/shpat_ prefix
+  { name: 'Shopify Token', re: /shp(?:pa|at|ca|ss)_[a-fA-F0-9]{32,}/g, severity: 'high' },
+  // Square — sq0[ac]sp- prefix
+  { name: 'Square Access Token', re: /sq0[ac]sp-[0-9A-Za-z_-]{22,}/g, severity: 'high' },
+  // Internal IP addresses in URLs — reveals infrastructure
+  { name: 'Internal IP Address', re: /https?:\/\/(?:10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})(?:[:/])/g, severity: 'medium' },
+  // Hardcoded Bearer tokens in fetch/axios calls
+  { name: 'Hardcoded Bearer Token', re: /["']Bearer\s+[A-Za-z0-9_-]{20,}["']/g, severity: 'high' },
+];
+
+/**
+ * Context around a match to help with false positive analysis.
+ */
+function extractMatchContext(content: string, matchIndex: number, matchLength: number): string {
+  const start = Math.max(0, matchIndex - 40);
+  const end = Math.min(content.length, matchIndex + matchLength + 40);
+  return content.slice(start, end).replace(/\n/g, ' ');
+}
+
+/**
+ * Scan JavaScript content for hardcoded secrets.
+ * Returns an array of found secrets with context.
+ */
+export function scanJsForSecrets(content: string, sourceUrl: string): Array<{
+  name: string;
+  severity: 'high' | 'medium';
+  match: string;
+  context: string;
+}> {
+  const results: Array<{ name: string; severity: 'high' | 'medium'; match: string; context: string }> = [];
+  const seen = new Set<string>();
+
+  for (const pattern of JS_SECRET_PATTERNS) {
+    // Reset regex state
+    pattern.re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = pattern.re.exec(content)) !== null) {
+      const matched = m[0];
+      // Skip if too short
+      if (pattern.minLength && matched.length < pattern.minLength) continue;
+      // Deduplicate
+      const key = `${pattern.name}:${matched}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const context = extractMatchContext(content, m.index, matched.length);
+      results.push({
+        name: pattern.name,
+        severity: pattern.severity,
+        match: matched.length > 60 ? matched.slice(0, 60) + '...' : matched,
+        context,
+      });
+    }
+  }
+  return results;
+}
+
+/**
  * Env file key=value pattern. Lines like KEY=value, DB_HOST=localhost, etc.
  * Requires at least a simple alphanumeric key and some value after '='.
  */
@@ -273,6 +364,139 @@ const FILE_PROBES: Probe[] = [
       body.includes('phpinfo()') || body.includes('PHP Version'),
     description:
       'A phpinfo() page is publicly accessible. It exposes the full PHP configuration including server paths, loaded modules, environment variables, and potentially credentials.',
+  },
+  // ── Additional probes for bounty-grade coverage ──
+  {
+    path: '/openapi.json',
+    label: 'Exposed OpenAPI spec',
+    severity: 'medium',
+    matches: (body) =>
+      matchesSwaggerSpec(body),
+    description:
+      'An OpenAPI specification is publicly accessible at /openapi.json. It maps every API endpoint, parameter, and data model.',
+  },
+  {
+    path: '/v3/api-docs',
+    label: 'Exposed Spring Boot 3 API docs',
+    severity: 'medium',
+    matches: (body) =>
+      matchesSwaggerSpec(body),
+    description:
+      'Spring Boot 3 API documentation is publicly accessible. It reveals the full API schema including internal endpoints.',
+  },
+  {
+    path: '/actuator/env',
+    label: 'Exposed Spring Boot env',
+    severity: 'high',
+    matches: (body) => {
+      try {
+        const obj = JSON.parse(body);
+        return obj?.propertySources !== undefined || obj?.activeProfiles !== undefined;
+      } catch {
+        return false;
+      }
+    },
+    description:
+      'The Spring Boot actuator /env endpoint is publicly accessible and exposes ALL environment variables including database credentials, API keys, and secret keys.',
+  },
+  {
+    path: '/actuator/heapdump',
+    label: 'Exposed Spring Boot heapdump',
+    severity: 'high',
+    matches: (body) =>
+      body.startsWith('JAVA PROFILE') || body.charCodeAt(0) === 0x4a,
+    description:
+      'The Spring Boot actuator /heapdump endpoint is publicly accessible. Heap dumps contain in-memory secrets, session tokens, and credentials in cleartext.',
+  },
+  {
+    path: '/actuator/configprops',
+    label: 'Exposed Spring Boot config properties',
+    severity: 'high',
+    matches: (body) => {
+      try {
+        const obj = JSON.parse(body);
+        return obj?.contexts !== undefined || obj?.beans !== undefined;
+      } catch {
+        return false;
+      }
+    },
+    description:
+      'The Spring Boot actuator /configprops endpoint is publicly accessible. It reveals all configuration properties, potentially including credentials masked with ******.',
+  },
+  {
+    path: '/debug/pprof/',
+    label: 'Exposed Go pprof profiler',
+    severity: 'medium',
+    matches: (body) =>
+      body.includes('/debug/pprof/') && (body.includes('goroutine') || body.includes('heap') || body.includes('profile')),
+    description:
+      'The Go pprof debug endpoint is publicly accessible. It exposes CPU/memory profiling data, goroutine dumps, and heap analysis — useful for DoS planning and information gathering.',
+  },
+  {
+    path: '/elmah.axd',
+    label: 'Exposed ELMAH error log',
+    severity: 'high',
+    matches: (body) =>
+      body.includes('Error Log for') || body.includes('ELMAH') || body.includes('errorLog'),
+    description:
+      'The ELMAH (Error Logging Modules and Handlers) page is publicly accessible. It exposes application error logs including stack traces, SQL queries, internal paths, and potentially credentials.',
+  },
+  {
+    path: '/trace.axd',
+    label: 'Exposed ASP.NET trace',
+    severity: 'high',
+    matches: (body) =>
+      body.includes('Application Trace') || body.includes('Request Details'),
+    description:
+      'The ASP.NET trace endpoint is publicly accessible. It exposes request/response details, session state, cookies, form data, and server variables for recent requests.',
+  },
+  {
+    path: '/web.config',
+    label: 'Exposed web.config (IIS)',
+    severity: 'high',
+    matches: (body) =>
+      body.includes('<configuration>') && (body.includes('connectionStrings') || body.includes('appSettings')),
+    description:
+      'The IIS web.config file is publicly accessible. It typically contains database connection strings, authentication settings, and application secrets.',
+  },
+  {
+    path: '/crossdomain.xml',
+    label: 'Permissive crossdomain.xml',
+    severity: 'medium',
+    matches: (body) =>
+      body.includes('<cross-domain-policy') && body.includes('domain="*"'),
+    description:
+      'A Flash crossdomain.xml policy allows any domain (domain="*"). Although Flash is deprecated, this indicates a lax cross-origin security posture that may extend to CORS configuration.',
+  },
+  {
+    path: '/.well-known/openid-configuration',
+    label: 'OpenID Connect discovery endpoint',
+    severity: 'low',
+    matches: (body) => {
+      try {
+        const obj = JSON.parse(body);
+        return obj?.issuer !== undefined && obj?.authorization_endpoint !== undefined;
+      } catch {
+        return false;
+      }
+    },
+    description:
+      'The OpenID Connect discovery endpoint reveals the authentication infrastructure: issuer, token endpoint, supported scopes, and signing algorithms. Useful for planning OAuth attacks.',
+  },
+  {
+    path: '/.well-known/jwks.json',
+    label: 'JWKS endpoint exposed',
+    severity: 'low',
+    matches: (body) => {
+      try {
+        const obj = JSON.parse(body);
+        return obj?.keys !== undefined && Array.isArray(obj.keys);
+      } catch {
+        return false;
+      }
+    },
+    description:
+      'The JSON Web Key Set endpoint is exposed. While public by design, it reveals key algorithms, key IDs, and signing methods — useful for JWT attack planning.',
   },
 ];
 
@@ -703,6 +927,115 @@ export const infoDisclosureCheck: ActiveCheck = {
       }
     } catch (err) {
       log.debug(`Info disclosure: failed to probe robots.txt: ${(err as Error).message}`);
+    }
+
+    // ── 4. JS secret scanning ──
+    // Download JS files from the first page and scan for hardcoded secrets
+    if (targets.pages.length > 0) {
+      const firstPage = targets.pages[0];
+      try {
+        const page = await context.newPage();
+        try {
+          await page.goto(firstPage, {
+            waitUntil: 'domcontentloaded',
+            timeout: config.timeout,
+          });
+
+          // Get all JS URLs from the page
+          const jsUrls: string[] = await page.evaluate(() => {
+            const urls: string[] = [];
+            const scripts = document.querySelectorAll('script[src]');
+            for (const el of scripts) {
+              const src = el.getAttribute('src');
+              if (src) {
+                try {
+                  const resolved = new URL(src, window.location.href);
+                  if (resolved.pathname.endsWith('.js')) {
+                    urls.push(resolved.href);
+                  }
+                } catch {
+                  // skip invalid
+                }
+              }
+            }
+            return urls;
+          });
+
+          // Also check inline scripts
+          const inlineScripts: string[] = await page.evaluate(() => {
+            const scripts = document.querySelectorAll('script:not([src])');
+            return Array.from(scripts).map((s) => s.textContent ?? '').filter((t) => t.length > 50);
+          });
+
+          // Scan inline scripts
+          for (const script of inlineScripts.slice(0, 10)) {
+            const secrets = scanJsForSecrets(script, firstPage);
+            for (const secret of secrets) {
+              findings.push({
+                id: randomUUID(),
+                category: 'info-disclosure',
+                severity: secret.severity,
+                title: `Hardcoded ${secret.name} in Inline Script`,
+                description:
+                  `A ${secret.name} was found hardcoded in an inline JavaScript block on ${firstPage}. ` +
+                  'Hardcoded secrets in client-side JavaScript are accessible to any visitor and should be rotated immediately.',
+                url: firstPage,
+                evidence: `Pattern: ${secret.name}\nMatch: ${secret.match}\nContext: ...${secret.context}...`,
+                timestamp: new Date().toISOString(),
+                confidence: 'high',
+              });
+            }
+          }
+
+          // Scan external JS files (limit to 15 to control scan time)
+          let jsSecretsFound = 0;
+          for (const jsUrl of jsUrls.slice(0, 15)) {
+            try {
+              const jsResult = await page.evaluate(async (url: string) => {
+                try {
+                  const resp = await fetch(url, { method: 'GET', redirect: 'follow' });
+                  if (!resp.ok) return null;
+                  const text = await resp.text();
+                  // Cap at 1MB to avoid scanning massive bundles
+                  return text.slice(0, 1_000_000);
+                } catch {
+                  return null;
+                }
+              }, jsUrl);
+
+              if (jsResult) {
+                const secrets = scanJsForSecrets(jsResult, jsUrl);
+                for (const secret of secrets) {
+                  jsSecretsFound++;
+                  findings.push({
+                    id: randomUUID(),
+                    category: 'info-disclosure',
+                    severity: secret.severity,
+                    title: `Hardcoded ${secret.name} in JavaScript`,
+                    description:
+                      `A ${secret.name} was found hardcoded in the JavaScript file at ${jsUrl}. ` +
+                      'Secrets embedded in client-side JavaScript are accessible to any visitor and can be extracted trivially.',
+                    url: jsUrl,
+                    evidence: `Pattern: ${secret.name}\nMatch: ${secret.match}\nContext: ...${secret.context}...`,
+                    timestamp: new Date().toISOString(),
+                    confidence: 'high',
+                  });
+                }
+              }
+            } catch (err) {
+              log.debug(`JS secret scan: failed to fetch ${jsUrl}: ${(err as Error).message}`);
+            }
+          }
+
+          if (jsSecretsFound > 0) {
+            log.info(`JS secret scan: found ${jsSecretsFound} hardcoded secret(s) in external JS files`);
+          }
+        } finally {
+          await page.close();
+        }
+      } catch (err) {
+        log.debug(`JS secret scan: failed: ${(err as Error).message}`);
+      }
     }
 
     log.info(`Info disclosure check: ${findings.length} finding(s)`);

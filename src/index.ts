@@ -38,6 +38,8 @@ import { waitForDelayedCallbacks, getDefaultWaitMs } from './scanner/oob/delayed
 import { convertHitsToFindings } from './scanner/oob/hit-converter.js';
 import { startInteractiveMode } from './interactive/repl.js';
 import { authenticate } from './scanner/auth/authenticator.js';
+import { SessionManager } from './scanner/auth/session-manager.js';
+import { SessionGuard } from './scanner/auth/session-guard.js';
 import { enumerateSubdomains } from './scanner/recon/subdomain.js';
 import { parseScopeFile, scopeToScanConfig } from './utils/scope-parser.js';
 import { detectChains } from './scanner/active/chain-detector.js';
@@ -54,6 +56,7 @@ import { TechProfiler } from './learning/tech-profiles.js';
 import { PayloadStats } from './learning/payload-stats.js';
 import type { LearningContext } from './learning/types.js';
 import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, AuthOptions } from './scanner/types.js';
+import { enrichAllFindings } from './utils/evidence.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
 
@@ -102,6 +105,7 @@ program
   .option('--oob-wait <seconds>', 'How long to wait for delayed OOB callbacks (default: 30)')
   .option('--no-ai', 'Skip AI interpretation (use rule-based fallback)')
   .option('--auth-cookie <cookies>', 'Pre-set cookies for authenticated scanning (name1=value1;name2=value2)')
+  .option('--auth-header <header>', 'Inject auth header into every request (e.g. "Authorization: Bearer token123")')
   .option('--auth-supabase <email:pass>', 'Authenticate via Supabase (email:password) — auto-detects project from target URL')
   .option('-y, --yes', 'Auto-confirm consent for non-interactive environments (CI/CD)', false)
   .option('--scope-file <path>', 'Bug bounty scope file (one domain/pattern per line)')
@@ -322,14 +326,22 @@ program
         const html = await discoverResp.text();
 
         // Look for NEXT_PUBLIC_SUPABASE_URL or similar patterns
-        const supabaseUrlMatch = html.match(/https:\/\/[a-z0-9]+\.supabase\.co/);
-        if (!supabaseUrlMatch) {
+        // Supports both Supabase Cloud (*.supabase.co) and self-hosted instances
+        const supabaseUrlMatch = html.match(/https?:\/\/[a-zA-Z0-9._-]+(?:\.supabase\.co|:\d{4})/);
+        // Also try NEXT_PUBLIC_SUPABASE_URL="..." pattern for self-hosted
+        const envVarMatch = html.match(/NEXT_PUBLIC_SUPABASE_URL["':\s]*["']?(https?:\/\/[^"'\s,]+)/);
+        const detectedUrl = supabaseUrlMatch?.[0] ?? envVarMatch?.[1];
+        if (!detectedUrl) {
           console.error(chalk.red('Could not auto-detect Supabase URL from target. Use --auth <storage-state.json> instead.'));
           process.exit(2);
         }
 
-        const supabaseUrl = supabaseUrlMatch[0];
-        const supabaseRef = new URL(supabaseUrl).hostname.split('.')[0];
+        const supabaseUrl = detectedUrl;
+        // For cloud: ref is the subdomain. For self-hosted: use the full hostname
+        const supabaseHostname = new URL(supabaseUrl).hostname;
+        const supabaseRef = supabaseHostname.endsWith('.supabase.co')
+          ? supabaseHostname.split('.')[0]
+          : supabaseHostname.replace(/\./g, '-');
 
         // Authenticate via Supabase REST API (gotrue)
         const authResp = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
@@ -437,6 +449,18 @@ program
       ...(options.callbackServer ? { callbackServerPort: parseInt(options.callbackServer as string, 10) } : {}),
       ...(options.oobWait ? { oobWaitMs: parseInt(options.oobWait as string, 10) * 1000 } : {}),
       ...(fileConfig?.rateLimits ? { rateLimits: fileConfig.rateLimits } : {}),
+      ...(options.authHeader ? (() => {
+        const headerStr = options.authHeader as string;
+        const colonIdx = headerStr.indexOf(':');
+        if (colonIdx === -1) {
+          console.error(chalk.red('--auth-header requires format: "Header-Name: value" (e.g. "Authorization: Bearer token123")'));
+          process.exit(1);
+        }
+        const name = headerStr.substring(0, colonIdx).trim();
+        const value = headerStr.substring(colonIdx + 1).trim();
+        log.info(`Auth header: injecting ${name} header into all requests`);
+        return { extraHeaders: { [name]: value } };
+      })() : {}),
     });
 
     if (config.callbackUrl) {
@@ -565,19 +589,18 @@ program
           log.info(`Threading framework to active checks: ${crawledFramework.name}${crawledFramework.version ? ` v${crawledFramework.version}` : ''}`);
         }
 
-        // Build payload context from recon for intelligent payload selection
-        const payloadContext = buildPayloadContext(recon);
-        config.payloadContext = payloadContext;
-        log.info(`Payload context: ${summarizePayloadContext(payloadContext)}`);
-
         // ─── Load Learning Data ──────────────────────────────────
         let learningContext: LearningContext | undefined;
+        let loadedFpMemory: FPMemory | undefined;
+        let loadedPayloadStats: PayloadStats | undefined;
         try {
           const techProfiler = new TechProfiler();
           const fpMemory = new FPMemory();
           const payloadStatsTracker = new PayloadStats();
           const outcomeTracker = new OutcomeTracker();
           await Promise.all([techProfiler.load(), fpMemory.load(), payloadStatsTracker.load(), outcomeTracker.load()]);
+          loadedFpMemory = fpMemory;
+          loadedPayloadStats = payloadStatsTracker;
 
           const techStack = [
             recon.techStack.server,
@@ -614,11 +637,16 @@ program
           log.debug(`Learning data not available: ${(err as Error).message}`);
         }
 
+        // Build payload context from recon (+ learned payload stats) for intelligent payload selection
+        const payloadContext = buildPayloadContext(recon, loadedPayloadStats);
+        config.payloadContext = payloadContext;
+        log.info(`Payload context: ${summarizePayloadContext(payloadContext)}`);
+
         // ─── Phase 3: AI Attack Plan ─────────────────────────────
         let attackPlan;
         if (config.useAI) {
           log.info('Phase 3: AI planning attack strategy...');
-          attackPlan = await planAttack(targetUrl, recon, pages, config.profile, payloadContext, learningContext);
+          attackPlan = await planAttack(targetUrl, recon, pages, config.profile, payloadContext, learningContext, responses);
         } else {
           log.info('Phase 3: Skipping AI planning (--no-ai)');
         }
@@ -626,6 +654,21 @@ program
         // ─── Phase 4: Passive Scanning ───────────────────────────
         log.info('Phase 4: Running passive security checks...');
         const passiveFindings = runPassiveChecks(pages, responses, recon);
+
+        // ─── Session Guard: monitor for session expiry during active scanning ─
+        let sessionGuard: SessionGuard | undefined;
+        const sessionManager = new SessionManager();
+        if (config.auth) {
+          // Credentials available — full auto-refresh capability
+          sessionGuard = new SessionGuard(context, sessionManager, config.auth);
+          sessionGuard.attach();
+          log.info('SessionGuard attached — will auto-refresh session if it expires during scanning');
+        } else if (config.authStorageState) {
+          // Storage-state-only auth — warn-only mode (no credentials to re-authenticate)
+          sessionGuard = new SessionGuard(context, sessionManager);
+          sessionGuard.attach();
+          log.debug('SessionGuard attached in warn-only mode (no credentials for re-auth)');
+        }
 
         // ─── Phase 5: Active Scanning ────────────────────────────
         log.info('Phase 5: Running active security checks...');
@@ -635,6 +678,7 @@ program
           config,
           attackPlan,
           requestLogger,
+          responses,
         );
 
         // ─── Phase 5b: AI Response Analysis ──────────────────────
@@ -648,7 +692,24 @@ program
           }
         }
 
-        const allRawFindings = [...passiveFindings, ...activeFindings, ...aiResponseFindings];
+        // ─── Detach Session Guard ──────────────────────────────────
+        if (sessionGuard) {
+          sessionGuard.detach();
+          if (sessionGuard.refreshCount > 0) {
+            log.info(`Session was refreshed ${sessionGuard.refreshCount} time(s) during active scanning`);
+          }
+        }
+
+        let allRawFindings = [...passiveFindings, ...activeFindings, ...aiResponseFindings];
+
+        // ─── Evidence Enrichment ─────────────────────────────────
+        // Enrich ALL raw findings before dedup so evidence packs are preserved
+        // in the scan result (bounty report looks up raw findings by ID)
+        allRawFindings = enrichAllFindings(allRawFindings);
+        const enrichedCount = allRawFindings.filter(f => f.evidencePack?.curlCommand).length;
+        if (enrichedCount > 0) {
+          log.info(`Evidence enrichment: ${enrichedCount} finding(s) now have curl reproduction commands`);
+        }
 
         // Deduplicate before AI validation to save tokens
         log.info(`Raw findings before dedup: ${allRawFindings.length}`);
@@ -662,9 +723,12 @@ program
         }
 
         // ─── Pre-filter: drop low-confidence findings ──────────
-        const { passed: filteredFindings, dropped: droppedFindings } = preFilterFindings(dedupedFindings);
+        const { passed: filteredFindings, dropped: droppedFindings, downgraded: fpDowngraded } = preFilterFindings(dedupedFindings, 'medium', loadedFpMemory);
         if (droppedFindings.length > 0) {
           log.info(`Pre-filter: dropped ${droppedFindings.length} low-confidence finding(s)`);
+        }
+        if (fpDowngraded > 0) {
+          log.info(`FP memory: downgraded confidence on ${fpDowngraded} finding(s) matching known false positive patterns`);
         }
 
         // ─── Auto-verify: re-confirm medium-confidence findings ─
@@ -813,6 +877,7 @@ program
           checksRun,
           ...(tokenUsage.totalTokens > 0 ? { tokenUsage } : {}),
           ...(config.callbackUrl ? { callbackUrl: config.callbackUrl } : {}),
+          ...(sessionGuard && sessionGuard.refreshCount > 0 ? { sessionRefreshes: sessionGuard.refreshCount } : {}),
         };
 
         // ─── Phase 8: Output Reports ─────────────────────────────

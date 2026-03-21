@@ -96,6 +96,55 @@ describe('TAKEOVER_FINGERPRINTS', () => {
       expect(typeof fp.exploitable).toBe('boolean');
     }
   });
+
+  it('has at least 20 services after expansion', () => {
+    expect(TAKEOVER_FINGERPRINTS.length).toBeGreaterThanOrEqual(20);
+  });
+
+  it('includes Bitbucket', () => {
+    const svc = TAKEOVER_FINGERPRINTS.find((f) => f.service === 'Bitbucket');
+    expect(svc).toBeDefined();
+    expect(svc!.exploitable).toBe(true);
+    expect(svc!.cnamePatterns.some(p => p.test('example.bitbucket.io'))).toBe(true);
+  });
+
+  it('includes Ghost', () => {
+    const svc = TAKEOVER_FINGERPRINTS.find((f) => f.service === 'Ghost');
+    expect(svc).toBeDefined();
+    expect(svc!.exploitable).toBe(true);
+    expect(svc!.cnamePatterns.some(p => p.test('blog.ghost.io'))).toBe(true);
+  });
+
+  it('includes HubSpot', () => {
+    const svc = TAKEOVER_FINGERPRINTS.find((f) => f.service === 'HubSpot');
+    expect(svc).toBeDefined();
+    expect(svc!.exploitable).toBe(true);
+  });
+
+  it('includes AWS Elastic Beanstalk', () => {
+    const svc = TAKEOVER_FINGERPRINTS.find((f) => f.service === 'AWS Elastic Beanstalk');
+    expect(svc).toBeDefined();
+    expect(svc!.exploitable).toBe(true);
+    expect(svc!.cnamePatterns.some(p => p.test('myapp.elasticbeanstalk.com'))).toBe(true);
+  });
+
+  it('includes Readme.io', () => {
+    const svc = TAKEOVER_FINGERPRINTS.find((f) => f.service === 'Readme.io');
+    expect(svc).toBeDefined();
+    expect(svc!.exploitable).toBe(true);
+  });
+
+  it('includes Tilda', () => {
+    const svc = TAKEOVER_FINGERPRINTS.find((f) => f.service === 'Tilda');
+    expect(svc).toBeDefined();
+    expect(svc!.exploitable).toBe(true);
+  });
+
+  it('includes Unbounce', () => {
+    const svc = TAKEOVER_FINGERPRINTS.find((f) => f.service === 'Unbounce');
+    expect(svc).toBeDefined();
+    expect(svc!.exploitable).toBe(true);
+  });
 });
 
 // ─── matchFingerprint ────────────────────────────────────────────────
@@ -180,6 +229,30 @@ describe('matchFingerprint', () => {
     const result = matchFingerprint('site.example.com', body, 404);
     expect(result).not.toBeNull();
     expect(result!.service).toBe('Netlify');
+  });
+
+  it('detects Elastic Beanstalk via CNAME', () => {
+    const result = matchFingerprint('api.example.com', '', 404, 'myapp.elasticbeanstalk.com');
+    expect(result).not.toBeNull();
+    expect(result!.service).toBe('AWS Elastic Beanstalk');
+  });
+
+  it('detects Bitbucket via CNAME', () => {
+    const result = matchFingerprint('docs.example.com', '', 404, 'myorg.bitbucket.io');
+    expect(result).not.toBeNull();
+    expect(result!.service).toBe('Bitbucket');
+  });
+
+  it('detects Ghost via CNAME', () => {
+    const result = matchFingerprint('blog.example.com', '', 404, 'myblog.ghost.io');
+    expect(result).not.toBeNull();
+    expect(result!.service).toBe('Ghost');
+  });
+
+  it('detects Unbounce via CNAME', () => {
+    const result = matchFingerprint('lp.example.com', '', 404, 'mypage.unbouncepages.com');
+    expect(result).not.toBeNull();
+    expect(result!.service).toBe('Unbounce');
   });
 });
 

@@ -29,7 +29,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * Query parameter names that are typically ID fields.
  * Matched case-insensitively.
  */
-const ID_PARAM_NAMES = /^(?:id|user_id|account_id|order_id|invoice_id|item_id|product_id|doc_id|record_id|uid|pid|oid|cid|profile_id|customer_id|employee_id|member_id|ticket_id|case_id|file_id)$/i;
+const ID_PARAM_NAMES = /^(?:id|user_id|account_id|order_id|invoice_id|item_id|product_id|doc_id|record_id|uid|pid|oid|cid|profile_id|customer_id|employee_id|member_id|ticket_id|case_id|file_id|resource_id|project_id|team_id|org_id|organization_id|group_id|post_id|comment_id|message_id|session_id|transaction_id|payment_id|subscription_id|report_id)$/i;
 
 /** A query parameter containing an ID-like value */
 export interface QueryParamId {
@@ -69,9 +69,30 @@ export function extractQueryParamIds(url: string): QueryParamId[] {
 }
 
 /**
+ * Detect UUID version from its format.
+ * UUID format: xxxxxxxx-xxxx-Vxxx-xxxx-xxxxxxxxxxxx (V = version nibble at position 14)
+ * Returns version number (1-5) or 0 if unknown/invalid.
+ */
+export function detectUuidVersion(uuid: string): number {
+  if (!UUID_RE.test(uuid)) return 0;
+  const versionChar = uuid.charAt(14); // The version nibble
+  const version = parseInt(versionChar, 16);
+  return (version >= 1 && version <= 5) ? version : 0;
+}
+
+/**
+ * Check if a UUID is v1 (timestamp-based, predictable).
+ * UUID v1 encodes: timestamp (60-bit), clock sequence (14-bit), MAC address (48-bit).
+ * Knowing the MAC address (from any single v1 UUID) + approximate time → predict other UUIDs.
+ */
+export function isUuidV1(uuid: string): boolean {
+  return detectUuidVersion(uuid) === 1;
+}
+
+/**
  * Generate adjacent IDs for horizontal enumeration probing.
  * - numeric: returns [value-1, value+1], skipping 0
- * - uuid: returns [] (UUIDs cannot be enumerated)
+ * - uuid: returns [] (UUIDs cannot be enumerated via simple increment)
  */
 export function generateAdjacentIds(value: string, type: 'numeric' | 'uuid'): number[] {
   if (type === 'uuid') return [];
@@ -152,15 +173,24 @@ export const idorCheck: ActiveCheck = {
   name: 'idor',
   category: 'idor',
   async run(context, targets, config, requestLogger) {
+    let findings: RawFinding[] = [];
+
+    // --- UUID v1 detection (no auth required — predictable IDs are a weakness) ---
+    const allUrlsForUuid = [...new Set([
+      ...targets.pages, ...targets.apiEndpoints, ...targets.urlsWithParams,
+    ])];
+    const uuidV1Findings = detectUuidV1Usage(allUrlsForUuid);
+    findings = findings.concat(uuidV1Findings);
+
     // IDOR requires two different auth sessions to be meaningful.
     // Single-session testing only proves resources exist — not a vulnerability.
     if (!config.authStorageState) {
       log.info('IDOR check skipped: no --auth provided (requires authentication)');
-      return [];
+      return findings; // still return UUID v1 findings
     }
     if (!config.idorAltAuthState) {
       log.info('IDOR check skipped: no --idor-alt-auth provided. Single-session IDOR detection produces false positives. Provide a second user\'s auth state to enable meaningful IDOR testing.');
-      return [];
+      return findings; // still return UUID v1 findings
     }
 
     // --- Path-based IDOR (numeric IDs only — replaceIdInUrl requires a number) ---
@@ -178,11 +208,10 @@ export const idorCheck: ActiveCheck = {
       return true;
     });
 
-    let findings: RawFinding[] = [];
-
     if (uniqueNumericPatterns.length > 0) {
       log.info(`Testing ${uniqueNumericPatterns.length} path ID patterns for IDOR vulnerabilities...`);
-      findings = await testIdor(context, uniqueNumericPatterns, config, requestLogger);
+      const pathFindings = await testIdor(context, uniqueNumericPatterns, config, requestLogger);
+      findings = findings.concat(pathFindings);
     } else {
       log.info('IDOR check: no sequential ID patterns found in URLs');
     }
@@ -212,6 +241,92 @@ export const idorCheck: ActiveCheck = {
     return findings;
   },
 };
+
+/**
+ * Scan URLs for UUID v1 usage — predictable identifiers (CWE-330).
+ * UUID v1 encodes timestamp + MAC address, making them guessable.
+ * One UUID v1 reveals the MAC, so an attacker can predict other IDs from the same source.
+ * Emits one finding per unique resource+origin that uses UUID v1.
+ */
+function detectUuidV1Usage(urls: string[]): RawFinding[] {
+  const findings: RawFinding[] = [];
+  const seen = new Set<string>();
+
+  for (const url of urls) {
+    // Check path-based UUIDs
+    const pathPatterns = extractIdPatterns(url);
+    for (const pattern of pathPatterns) {
+      if (typeof pattern.id !== 'string') continue; // numeric, not UUID
+      if (!isUuidV1(pattern.id)) continue;
+
+      const key = `path:${pattern.resource}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      findings.push({
+        id: randomUUID(),
+        category: 'idor',
+        severity: 'low',
+        title: `Predictable UUID v1 in /${pattern.resource}/:id path`,
+        description:
+          `The endpoint uses UUID v1 identifiers for /${pattern.resource}/ resources. ` +
+          `UUID v1 encodes a timestamp and MAC address, making identifiers predictable. ` +
+          `An attacker who obtains one UUID v1 can derive the MAC address and guess other ` +
+          `resource IDs created around the same time. ` +
+          `CWE-330: Use of Insufficiently Random Values.`,
+        url,
+        evidence:
+          `UUID found: ${pattern.id}\n` +
+          `Version: 1 (timestamp-based)\n` +
+          `Version nibble at position 14: '${pattern.id.charAt(14)}'\n` +
+          `Resource: /${pattern.resource}/\n` +
+          `Recommendation: Use UUID v4 (random) or ULID instead.`,
+        timestamp: new Date().toISOString(),
+        affectedUrls: [url],
+        confidence: 'medium',
+      });
+    }
+
+    // Check query-param UUIDs
+    const queryParams = extractQueryParamIds(url);
+    for (const qp of queryParams) {
+      if (qp.type !== 'uuid') continue;
+      if (!isUuidV1(qp.value)) continue;
+
+      const key = `param:${qp.param}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      findings.push({
+        id: randomUUID(),
+        category: 'idor',
+        severity: 'low',
+        title: `Predictable UUID v1 in ?${qp.param}= parameter`,
+        description:
+          `The parameter "${qp.param}" uses UUID v1 identifiers. ` +
+          `UUID v1 encodes a timestamp and MAC address, making identifiers predictable. ` +
+          `An attacker who obtains one UUID v1 can derive the MAC address and guess other ` +
+          `resource IDs created around the same time. ` +
+          `CWE-330: Use of Insufficiently Random Values.`,
+        url,
+        evidence:
+          `UUID found: ${qp.value}\n` +
+          `Version: 1 (timestamp-based)\n` +
+          `Parameter: ${qp.param}\n` +
+          `Recommendation: Use UUID v4 (random) or ULID instead.`,
+        timestamp: new Date().toISOString(),
+        affectedUrls: [url],
+        confidence: 'medium',
+      });
+    }
+  }
+
+  if (findings.length > 0) {
+    log.info(`Found ${findings.length} UUID v1 usage(s) — predictable identifiers`);
+  }
+
+  return findings;
+}
 
 async function testIdor(
   primaryContext: BrowserContext,

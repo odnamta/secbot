@@ -53,6 +53,35 @@ describe('buildPayloadContext', () => {
     expect(ctx.backendLanguages).toContain('java');
     expect(ctx.databases).toContain('oracle');
     expect(ctx.templateEngines).toContain('freemarker');
+    expect(ctx.templateEngines).toContain('thymeleaf');
+  });
+
+  it('detects Thymeleaf + Smarty + Mako for Spring/PHP/Python', () => {
+    const springRecon = makeRecon({
+      techStack: { languages: [], detected: ['Spring'] },
+      framework: { name: 'Spring', confidence: 'high', evidence: [] },
+    });
+    expect(buildPayloadContext(springRecon).templateEngines).toContain('thymeleaf');
+
+    const phpRecon = makeRecon({
+      techStack: { languages: ['PHP'], detected: [] },
+    });
+    expect(buildPayloadContext(phpRecon).templateEngines).toContain('smarty');
+
+    const pyramidRecon = makeRecon({
+      techStack: { languages: ['Python'], detected: ['Pyramid'] },
+      framework: { name: 'Pyramid', confidence: 'high', evidence: [] },
+    });
+    expect(buildPayloadContext(pyramidRecon).templateEngines).toContain('mako');
+  });
+
+  it('detects Nunjucks for Express/Node', () => {
+    const recon = makeRecon({
+      framework: { name: 'Express', confidence: 'high', evidence: [] },
+      techStack: { languages: [], detected: [] },
+    });
+    const ctx = buildPayloadContext(recon);
+    expect(ctx.templateEngines).toContain('nunjucks');
   });
 
   it('sets preferDomXss for SPA frameworks', () => {

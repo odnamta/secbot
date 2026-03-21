@@ -41,6 +41,7 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
     <li><a href="/safe-redirect?to=https://example.com">Safe Redirect</a></li>
     <li><a href="/files?path=etc/passwd">Directory Traversal</a></li>
     <li><a href="/fetch?url=http://example.com">SSRF</a></li>
+    <li><a href="/api/v1/webhook">SSRF (JSON body)</a></li>
     <li><a href="/template?name=World">SSTI</a></li>
     <li><a href="/exec?cmd=whoami">Command Injection</a></li>
     <li><a href="/cors-api">CORS Misconfiguration</a></li>
@@ -51,6 +52,7 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
     <li><a href="/api/v1/blind-search?q=test">Blind Search (time-based SQLi)</a></li>
     <li><a href="/api/crlf-redirect?url=https://example.com">CRLF Redirect</a></li>
     <li><a href="/api/crlf-header?name=test">CRLF Header</a></li>
+    <li><a href="/transfer">Transfer (CSRF)</a></li>
     <li><a href="/safe">Safe Page</a></li>
   </ul>
 </body>
@@ -240,6 +242,22 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
 <h1>Fetch Error</h1>
 <p>Could not fetch ${url}: ${(err as Error).message}</p>
 </body></html>`);
+    }
+  });
+
+  // SSRF via JSON body — accepts URL in POST body
+  app.post('/api/v1/webhook', async (req, res) => {
+    const url = req.body?.url || req.body?.callback || req.body?.webhookUrl || '';
+    if (!url) {
+      res.status(400).json({ error: 'url field required in body' });
+      return;
+    }
+    try {
+      const response = await fetch(url);
+      const text = await response.text();
+      res.json({ status: 'ok', fetched: url, preview: text.substring(0, 200) });
+    } catch (err) {
+      res.json({ status: 'error', message: `Could not fetch ${url}: ${(err as Error).message}` });
     }
   });
 
@@ -513,6 +531,65 @@ export async function createVulnerableServer(): Promise<{ server: Server; url: s
     const rawResponse = `HTTP/1.1 302 Found\r\nLocation: ${sanitized}\r\nConnection: close\r\n\r\n`;
     socket.write(rawResponse);
     socket.end();
+  });
+
+  // CSRF vulnerable — money transfer form with no CSRF token
+  app.get('/transfer', (_req, res) => {
+    res.type('html').send(`<!DOCTYPE html>
+<html>
+<head><title>Transfer Money</title></head>
+<body>
+  <h1>Transfer Money</h1>
+  <form method="POST" action="/transfer">
+    <label for="to">Recipient:</label>
+    <input type="text" id="to" name="to" />
+    <label for="amount">Amount:</label>
+    <input type="number" id="amount" name="amount" />
+    <button type="submit">Transfer</button>
+  </form>
+</body>
+</html>`);
+  });
+
+  app.post('/transfer', (req, res) => {
+    const to = req.body?.to || '';
+    const amount = req.body?.amount || '0';
+    // Accepts POST from any origin — no CSRF token, no Origin check
+    res.type('html').send(`<!DOCTYPE html>
+<html><body>
+<h1>Transfer Complete</h1>
+<p>Sent $${amount} to ${to}</p>
+</body></html>`);
+  });
+
+  // CSRF protected — form with CSRF token
+  app.get('/transfer-safe', (_req, res) => {
+    const csrfToken = 'abc123def456ghi789jkl012mno345pqr678';
+    res.type('html').send(`<!DOCTYPE html>
+<html>
+<head><title>Transfer Money (Safe)</title></head>
+<body>
+  <h1>Transfer Money</h1>
+  <form method="POST" action="/transfer-safe">
+    <input type="hidden" name="_csrf" value="${csrfToken}" />
+    <label for="to">Recipient:</label>
+    <input type="text" id="to" name="to" />
+    <label for="amount">Amount:</label>
+    <input type="number" id="amount" name="amount" />
+    <button type="submit">Transfer</button>
+  </form>
+</body>
+</html>`);
+  });
+
+  app.post('/transfer-safe', (req, res) => {
+    const token = req.body?._csrf;
+    if (token !== 'abc123def456ghi789jkl012mno345pqr678') {
+      res.status(403).send('CSRF token validation failed');
+      return;
+    }
+    res.type('html').send(`<!DOCTYPE html>
+<html><body><p>Transfer complete (CSRF protected)</p></body></html>`);
   });
 
   return new Promise((resolve) => {

@@ -39,10 +39,55 @@ export class SessionManager {
     /\/sign-in/i,
     /\/auth\//i,
     /\/sso\//i,
+    /\/login\.php/i,
+    /\/wp-login/i,
   ];
 
   constructor(maxRefreshes = 3) {
     this.maxRefreshes = maxRefreshes;
+  }
+
+  /**
+   * Check if a response indicates the browser was redirected to a login page.
+   *
+   * This handles the common case where Playwright follows redirects automatically,
+   * so the response status is 200 but the final URL is a login page.
+   *
+   * Returns false if the original request was already to a login URL (to avoid
+   * false positives when checks intentionally probe login pages).
+   */
+  isLoginPageResponse(requestUrl: string, responseUrl: string, body?: string): boolean {
+    // If the request was already targeting a login page, ignore it
+    if (SessionManager.LOGIN_REDIRECT_PATTERNS.some((p) => p.test(requestUrl))) {
+      return false;
+    }
+
+    // If the response URL differs from request URL and matches a login pattern
+    if (requestUrl !== responseUrl && SessionManager.LOGIN_REDIRECT_PATTERNS.some((p) => p.test(responseUrl))) {
+      return true;
+    }
+
+    // Heuristic: response body contains a password input inside a form
+    // (catches cases where redirect was followed and we got a 200 with login HTML)
+    if (body && /<form\b/i.test(body) && /<input[^>]+type\s*=\s*["']password["']/i.test(body)) {
+      // Only flag this if the URL also changed (otherwise we might be on a page
+      // that legitimately has a form with a password field)
+      if (requestUrl !== responseUrl) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  /** Expose login redirect patterns for use by SessionGuard */
+  static get loginRedirectPatterns(): readonly RegExp[] {
+    return SessionManager.LOGIN_REDIRECT_PATTERNS;
+  }
+
+  /** Expose expiry patterns for use by SessionGuard */
+  static get expiryPatterns(): readonly RegExp[] {
+    return SessionManager.EXPIRY_PATTERNS;
   }
 
   /**
@@ -66,7 +111,7 @@ export class SessionManager {
     // Check status code
     if (!SessionManager.EXPIRY_STATUSES.has(response.status)) {
       // Also check for 302/303 redirects to login pages
-      if (response.status === 302 || response.status === 303) {
+      if (response.status === 301 || response.status === 302 || response.status === 303) {
         const location = response.headers['location'] ?? '';
         if (SessionManager.LOGIN_REDIRECT_PATTERNS.some((p) => p.test(location))) {
           return true;
