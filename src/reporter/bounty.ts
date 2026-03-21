@@ -3,6 +3,8 @@ import { dirname } from 'node:path';
 import type { ScanResult, InterpretedFinding, RawFinding, EvidencePack } from '../scanner/types.js';
 import { log } from '../utils/logger.js';
 import { severityOrder, formatDuration } from '../utils/shared.js';
+import { generateCurlCommand, generateReproductionUrl } from '../utils/evidence.js';
+import { getCvssForFinding, inferCategoryFromTitle } from '../utils/cvss.js';
 
 export function writeBountyReport(result: ScanResult, outputPath: string): void {
   const md = generateBountyMarkdown(result);
@@ -130,10 +132,17 @@ function renderBountyFinding(
 
   lines.push(`## ${index}. [${finding.severity.toUpperCase()}] ${finding.title}`);
   lines.push('');
+  // Determine category from raw findings or infer from title
+  const category = rawFindings.length > 0
+    ? rawFindings[0].category
+    : inferCategoryFromTitle(finding.title);
+  const cvss = getCvssForFinding(category, finding.severity);
+
   lines.push(`**Asset:** ${finding.affectedUrls?.[0] ?? 'N/A'}`);
   lines.push(`**Weakness:** ${cwe}`);
   lines.push(`**OWASP Category:** ${finding.owaspCategory}`);
   lines.push(`**Confidence:** ${finding.confidence}`);
+  lines.push(`**CVSS Score:** ${cvss.score} (${cvss.rating}) — ${cvss.vector}`);
   lines.push('');
 
   // Description
@@ -246,12 +255,24 @@ function renderBountyFinding(
   }
 
   // Curl reproduction command
-  if (bestPack?.curlCommand) {
+  let curlCommand = bestPack?.curlCommand;
+  if (!curlCommand && rawFindings.length > 0 && rawFindings[0].request) {
+    curlCommand = generateCurlCommand(rawFindings[0]);
+  }
+  if (curlCommand) {
     lines.push('**Reproduce with curl:**');
     lines.push('');
     lines.push('```bash');
-    lines.push(bestPack.curlCommand);
+    lines.push(curlCommand);
     lines.push('```');
+    lines.push('');
+  }
+
+  // Reproduction URL
+  const reproductionUrl = bestPack?.reproductionUrl
+    ?? (rawFindings.length > 0 ? generateReproductionUrl(rawFindings[0]) : undefined);
+  if (reproductionUrl) {
+    lines.push(`**Reproduction URL:** \`${reproductionUrl}\``);
     lines.push('');
   }
 

@@ -200,6 +200,27 @@ function extractIndicators(finding: RawFinding): string[] {
 }
 
 /**
+ * Generate a reproduction URL from a RawFinding.
+ * For GET requests with query parameters, returns the URL with the payload embedded.
+ * For other methods or findings without request data, returns the finding URL.
+ */
+export function generateReproductionUrl(finding: RawFinding): string | undefined {
+  const req = finding.request ?? finding.evidencePack?.httpExchange?.request;
+
+  // If we have request data, use its URL directly (it should already contain the payload)
+  if (req?.url) {
+    return req.url;
+  }
+
+  // Fall back to finding.url if available
+  if (finding.url) {
+    return finding.url;
+  }
+
+  return undefined;
+}
+
+/**
  * Escape a string for safe use in a shell single-quoted context.
  */
 function escapeShell(str: string): string {

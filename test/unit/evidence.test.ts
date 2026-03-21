@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateCurlCommand, enrichFindingEvidence, enrichAllFindings } from '../../src/utils/evidence.js';
+import { generateCurlCommand, generateReproductionUrl, enrichFindingEvidence, enrichAllFindings } from '../../src/utils/evidence.js';
 import type { RawFinding } from '../../src/scanner/types.js';
 
 function makeFinding(overrides: Partial<RawFinding> = {}): RawFinding {
@@ -85,6 +85,57 @@ describe('generateCurlCommand', () => {
     const curl = generateCurlCommand(finding);
     expect(curl).toBeDefined();
     expect(curl).toContain("'\\''");
+  });
+});
+
+describe('generateReproductionUrl', () => {
+  it('returns request URL when request data exists', () => {
+    const finding = makeFinding({
+      request: { method: 'GET', url: 'https://example.com/search?q=<script>alert(1)</script>' },
+    });
+    const url = generateReproductionUrl(finding);
+    expect(url).toBe('https://example.com/search?q=<script>alert(1)</script>');
+  });
+
+  it('returns finding URL when no request data', () => {
+    const finding = makeFinding();
+    const url = generateReproductionUrl(finding);
+    expect(url).toBe('https://example.com/search?q=test');
+  });
+
+  it('returns evidence pack reproduction URL when available', () => {
+    const finding = makeFinding({
+      evidencePack: {
+        httpExchange: {
+          request: { method: 'POST', url: 'https://example.com/api/login' },
+          response: { status: 200 },
+        },
+      },
+    });
+    const url = generateReproductionUrl(finding);
+    expect(url).toBe('https://example.com/api/login');
+  });
+
+  it('prefers request.url over evidencePack URL', () => {
+    const finding = makeFinding({
+      request: { method: 'GET', url: 'https://example.com/direct' },
+      evidencePack: {
+        httpExchange: {
+          request: { method: 'GET', url: 'https://example.com/pack' },
+          response: { status: 200 },
+        },
+      },
+    });
+    const url = generateReproductionUrl(finding);
+    expect(url).toBe('https://example.com/direct');
+  });
+
+  it('returns undefined when no URL data at all', () => {
+    const finding = makeFinding({ url: '' });
+    delete (finding as Record<string, unknown>).request;
+    const url = generateReproductionUrl(finding);
+    // Empty string is falsy, so it should return undefined
+    expect(url).toBeUndefined();
   });
 });
 

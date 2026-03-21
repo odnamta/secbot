@@ -67,6 +67,128 @@ function applyHeuristicDowngrades(finding: RawFinding): { downgrade: boolean; re
     }
   }
 
+  // 6. OPTIONS method allowed on public endpoints — bounty programs don't consider
+  //    OPTIONS exposure as a vulnerability since it's required for CORS preflight
+  if (category === 'broken-access-control' && /options/i.test(evidence)) {
+    // Only downgrade if the finding is exclusively about OPTIONS method
+    const methodMentions = evidence.match(/\b(GET|POST|PUT|DELETE|PATCH|TRACE|CONNECT)\b/gi);
+    if (!methodMentions || methodMentions.length === 0) {
+      return { downgrade: true, reason: 'OPTIONS-only method exposure (CORS preflight, not exploitable)' };
+    }
+  }
+
+  // 7. Missing CSP/headers on error pages — error pages are not interactive,
+  //    bounty programs consistently reject header findings on 404/500/error pages
+  if (category === 'security-headers' && finding.url) {
+    try {
+      const urlPath = new URL(finding.url).pathname.toLowerCase();
+      if (/\/(404|500|error|not-found|not_found)\b/.test(urlPath)) {
+        return { downgrade: true, reason: 'missing headers on error page (non-interactive)' };
+      }
+    } catch { /* ignore URL parse errors */ }
+  }
+
+  // 8. CORS wildcard on non-authenticated endpoints — Access-Control-Allow-Origin: *
+  //    is safe when the endpoint returns no user-specific data (401/403 = no session)
+  if (category === 'cors-misconfiguration') {
+    const hasWildcard = evidence.includes('*') || evidence.includes('wildcard');
+    if (hasWildcard) {
+      const status401or403 = /\b(401|403)\b/.test(evidence) || /unauthorized|forbidden/i.test(evidence);
+      const noUserData = /no\s+user\s+data|empty\s+body|content-length:\s*0/i.test(evidence);
+      if (status401or403 || noUserData) {
+        return { downgrade: true, reason: 'CORS wildcard on non-authenticated endpoint (no user data exposure)' };
+      }
+    }
+  }
+
+  // 9. Missing HSTS on staging/preview/dev domains — non-production environments
+  //    are explicitly out of scope or low priority for all major bounty platforms
+  if (category === 'security-headers' && /hsts|strict-transport-security/i.test(title)) {
+    if (finding.url) {
+      try {
+        const hostname = new URL(finding.url).hostname.toLowerCase();
+        if (/\b(staging|preview|dev|test|sandbox|demo)\b/.test(hostname) ||
+            hostname.startsWith('staging.') || hostname.startsWith('preview.') ||
+            hostname.startsWith('dev.') || hostname.startsWith('test.') ||
+            hostname.startsWith('sandbox.') || hostname.startsWith('demo.')) {
+          return { downgrade: true, reason: 'missing HSTS on non-production domain' };
+        }
+      } catch { /* ignore URL parse errors */ }
+    }
+  }
+
+  // 10. Localhost-only CORS — allowing localhost/127.0.0.1 origins is not exploitable
+  //     in production; bounty programs reject these as development artifacts
+  if (category === 'cors-misconfiguration') {
+    if (/localhost|127\.0\.0\.1/i.test(evidence) && !/reflect/i.test(evidence)) {
+      return { downgrade: true, reason: 'CORS allows localhost only (not exploitable in production)' };
+    }
+  }
+
+  // 11. X-XSS-Protection informational — this header is deprecated and ignored by
+  //     modern browsers; bounty programs treat it as informational, never accepted
+  if (/x-xss-protection/i.test(title) || /x-xss-protection/i.test(evidence)) {
+    return { downgrade: true, reason: 'X-XSS-Protection is deprecated (informational only)' };
+  }
+
+  // 12. Missing visual headers on API-only endpoints — X-Frame-Options and CSP
+  //     protect against UI-based attacks; APIs don't render HTML so these are noise
+  if (category === 'security-headers' && finding.url) {
+    try {
+      const urlPath = new URL(finding.url).pathname.toLowerCase();
+      if (/^\/api(\/|$)/.test(urlPath)) {
+        if (/x-frame-options|content-security-policy|frame-options/i.test(title)) {
+          return { downgrade: true, reason: 'missing visual headers on API endpoint (no HTML rendering)' };
+        }
+      }
+    } catch { /* ignore URL parse errors */ }
+  }
+
+  // 13. Info-disclosure on dev/staging URLs — dev environments intentionally expose
+  //     debug info; bounty programs exclude non-production assets from scope
+  if (category === 'info-disclosure' && finding.url) {
+    try {
+      const hostname = new URL(finding.url).hostname.toLowerCase();
+      if (/\b(dev|staging|test|sandbox)\b/.test(hostname) ||
+          hostname.startsWith('dev.') || hostname.startsWith('staging.') ||
+          hostname.startsWith('test.') || hostname.startsWith('sandbox.')) {
+        return { downgrade: true, reason: 'info-disclosure on non-production domain' };
+      }
+    } catch { /* ignore URL parse errors */ }
+  }
+
+  // 14. SRI missing for first-party (same-origin) scripts — SRI protects against
+  //     CDN compromise; same-origin scripts are already trusted, bounty programs reject
+  if (category === 'sri' && finding.url && evidence) {
+    try {
+      const targetHost = new URL(finding.url).hostname.replace(/^www\./, '');
+      // Check if all referenced scripts in the evidence are same-origin
+      const scriptUrls = evidence.match(/https?:\/\/[^\s"'<>]+/gi) ?? [];
+      if (scriptUrls.length > 0) {
+        const allSameOrigin = scriptUrls.every(su => {
+          try {
+            const scriptHost = new URL(su).hostname.replace(/^www\./, '');
+            return scriptHost === targetHost;
+          } catch { return false; }
+        });
+        if (allSameOrigin) {
+          return { downgrade: true, reason: 'SRI missing for same-origin scripts (not a CDN integrity risk)' };
+        }
+      }
+    } catch { /* ignore URL parse errors */ }
+  }
+
+  // 15. Rate-limit missing on non-auth endpoints — bounty programs only care about
+  //     rate limiting on auth/login/registration flows to prevent brute-force
+  if (category === 'rate-limit' && finding.url) {
+    try {
+      const urlLower = new URL(finding.url).pathname.toLowerCase() + new URL(finding.url).search.toLowerCase();
+      if (!/\b(auth|login|log-in|signin|sign-in|register|signup|sign-up|password|forgot|reset|otp|verify|mfa|2fa)\b/.test(urlLower)) {
+        return { downgrade: true, reason: 'rate-limit missing on non-auth endpoint (low bounty impact)' };
+      }
+    } catch { /* ignore URL parse errors */ }
+  }
+
   return { downgrade: false };
 }
 

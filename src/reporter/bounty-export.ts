@@ -1,4 +1,5 @@
-import type { InterpretedFinding, RawFinding, EvidencePack } from '../scanner/types.js';
+import type { InterpretedFinding, RawFinding, EvidencePack, CheckCategory } from '../scanner/types.js';
+import { getCvssForFinding, inferCategoryFromTitle } from '../utils/cvss.js';
 
 interface ExportContext {
   rawFindings?: RawFinding[];
@@ -16,7 +17,10 @@ export function formatForHackerOne(finding: InterpretedFinding, ctx?: ExportCont
   lines.push('');
 
   const h1Severity = mapToHackerOneSeverity(finding.severity);
+  const category = resolveCategory(finding, ctx);
+  const cvss = getCvssForFinding(category, finding.severity);
   lines.push(`**Severity:** ${h1Severity}`);
+  lines.push(`**CVSS Score:** ${cvss.score} (${cvss.rating}) — ${cvss.vector}`);
   lines.push(`**Weakness:** ${finding.owaspCategory}`);
   lines.push(`**Asset:** ${finding.affectedUrls?.[0] ?? 'N/A'}`);
   lines.push('');
@@ -142,7 +146,10 @@ export function formatForBugcrowd(finding: InterpretedFinding, ctx?: ExportConte
   lines.push('');
 
   const bcPriority = mapToBugcrowdPriority(finding.severity);
+  const bcCategory = resolveCategory(finding, ctx);
+  const bcCvss = getCvssForFinding(bcCategory, finding.severity);
   lines.push(`**Priority:** ${bcPriority}`);
+  lines.push(`**CVSS Score:** ${bcCvss.score} (${bcCvss.rating}) — ${bcCvss.vector}`);
   lines.push(`**Vulnerability Type:** ${finding.owaspCategory}`);
   lines.push(`**URL:** ${finding.affectedUrls?.[0] ?? 'N/A'}`);
   lines.push(`**Confidence:** ${finding.confidence}`);
@@ -249,6 +256,24 @@ export function formatForBugcrowd(finding: InterpretedFinding, ctx?: ExportConte
   lines.push('');
 
   return lines.join('\n');
+}
+
+/**
+ * Resolve the CheckCategory for a finding. Uses the raw finding's category
+ * when available via context, otherwise infers from the finding title.
+ */
+function resolveCategory(finding: InterpretedFinding, ctx?: ExportContext): CheckCategory {
+  if (ctx?.rawFindings && finding.rawFindingIds?.length) {
+    const rawMap = new Map<string, RawFinding>();
+    for (const raw of ctx.rawFindings) {
+      rawMap.set(raw.id, raw);
+    }
+    for (const id of finding.rawFindingIds) {
+      const raw = rawMap.get(id);
+      if (raw) return raw.category;
+    }
+  }
+  return inferCategoryFromTitle(finding.title);
 }
 
 /**
