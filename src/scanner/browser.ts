@@ -10,7 +10,14 @@ import type {
 } from './types.js';
 import { log } from '../utils/logger.js';
 import { normalizeUrl, delay } from '../utils/shared.js';
-import { getRandomUserAgent, jitteredDelay } from '../utils/stealth.js';
+import {
+  getRandomUserAgent,
+  gaussianDelay,
+  generateRefererChain,
+  simulateHumanBehavior,
+  buildConsistentProfile,
+  type BrowserProfile,
+} from '../utils/stealth.js';
 import {
   MiddlewarePipeline,
   createCustomHeaderMiddleware,
@@ -82,11 +89,30 @@ export async function crawl(
     log.debug(`Middleware pipeline: ${mwPipeline.requestCount} request, ${mwPipeline.responseCount} response`);
   }
 
+  // Stealth: build a consistent browser profile (UA + viewport + locale + timezone)
+  // so fingerprint attributes don't contradict each other across the session.
+  let stealthProfile: BrowserProfile | undefined;
+  if (isStealth) {
+    try {
+      stealthProfile = buildConsistentProfile();
+      log.debug(`Stealth profile: ${stealthProfile.userAgent.slice(0, 60)}... ${stealthProfile.viewport.width}x${stealthProfile.viewport.height}`);
+    } catch (err) {
+      log.debug(`Stealth profile setup failed, falling back to random UA: ${(err as Error).message}`);
+    }
+  }
+
   const contextOptions: Parameters<Browser['newContext']>[0] = {
-    userAgent: isStealth
-      ? getRandomUserAgent()
-      : (config.userAgent ?? DEFAULT_USER_AGENT),
+    userAgent: stealthProfile
+      ? stealthProfile.userAgent
+      : isStealth
+        ? getRandomUserAgent()
+        : (config.userAgent ?? DEFAULT_USER_AGENT),
     ignoreHTTPSErrors: true,
+    ...(stealthProfile ? {
+      viewport: stealthProfile.viewport,
+      locale: stealthProfile.locale,
+      timezoneId: stealthProfile.timezoneId,
+    } : {}),
     ...(config.extraHeaders ? { extraHTTPHeaders: config.extraHeaders } : {}),
   };
 
@@ -115,6 +141,7 @@ export async function crawl(
   }
 
   const concurrency = Math.min(config.concurrency, 5); // Cap at 5 to be safe
+  let isFirstBatch = true;
 
   while (toVisit.length > 0 && visited.size < config.maxPages) {
     // Collect a batch of URLs to crawl concurrently
@@ -138,11 +165,13 @@ export async function crawl(
 
     // Crawl batch concurrently
     const results = await Promise.allSettled(
-      batch.map(async (normalized) => {
+      batch.map(async (normalized, idx) => {
         log.info(`Crawling [${visited.size}/${config.maxPages}]: ${normalized}`);
-        return crawlPage(context, normalized, config, responses, mwPipeline);
+        const isFirst = isFirstBatch && idx === 0;
+        return crawlPage(context, normalized, config, responses, mwPipeline, isFirst);
       }),
     );
+    isFirstBatch = false;
 
     for (const result of results) {
       if (result.status === 'fulfilled') {
@@ -169,9 +198,10 @@ export async function crawl(
       }
     }
 
-    // Rate limiting between batches — stealth mode uses randomized jitter
+    // Rate limiting between batches — stealth mode uses Gaussian delay (bell curve)
     if (isStealth) {
-      await jitteredDelay(config.requestDelay);
+      const delayMs = gaussianDelay(config.requestDelay);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
     } else {
       await delay(config.requestDelay);
     }
@@ -205,12 +235,23 @@ async function crawlPage(
   config: ScanConfig,
   responses: InterceptedResponse[],
   mwPipeline: MiddlewarePipeline,
+  isFirstPage = false,
 ): Promise<CrawledPage> {
   const page = await context.newPage();
+  const isStealth = config.profile === 'stealth';
 
-  // Stealth: rotate User-Agent per page to reduce fingerprinting
-  if (config.profile === 'stealth') {
-    await page.setExtraHTTPHeaders({ 'User-Agent': getRandomUserAgent() });
+  // Stealth: set referrer chain on first page to simulate search-engine arrival
+  if (isStealth && isFirstPage) {
+    try {
+      const refererChain = generateRefererChain(url);
+      // Use the search-engine URL (first in chain) as the Referer header
+      if (refererChain.length > 0) {
+        await page.setExtraHTTPHeaders({ 'Referer': refererChain[0] });
+        log.debug(`Stealth referer: ${refererChain[0]}`);
+      }
+    } catch (err) {
+      log.debug(`Stealth referer chain failed: ${(err as Error).message}`);
+    }
   }
 
   // Wire request middleware via page.route() — intercept all HTTP(S) traffic
@@ -352,6 +393,16 @@ async function crawlPage(
       await waitForHydration(page, framework);
     }
     const hints = getFrameworkHints(framework);
+
+    // Stealth: simulate human behavior (mouse movement, scroll, pause)
+    // to reduce bot-detection signals. Runs after hydration so the page is interactive.
+    if (isStealth) {
+      try {
+        await simulateHumanBehavior(page);
+      } catch (err) {
+        log.debug(`Stealth human simulation failed: ${(err as Error).message}`);
+      }
+    }
 
     // Extract page info
     const title = await page.title();

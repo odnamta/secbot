@@ -1,4 +1,5 @@
 import type { WafDetection } from '../scanner/types.js';
+import type { PayloadStats } from '../learning/payload-stats.js';
 
 export type EncodingStrategy = 'none' | 'url' | 'double-url' | 'html-entity' | 'unicode' | 'mixed' | 'from-char-code' | 'json-unicode' | 'sql-space-bypass';
 
@@ -23,8 +24,12 @@ export function mutatePayload(payload: string, strategies: EncodingStrategy[]): 
 /**
  * Pick encoding strategies based on WAF detection results.
  * No WAF = just original. WAF detected = add encoding variants.
+ *
+ * When `payloadStats` is provided and the WAF has historical data,
+ * strategies are reordered: historically successful strategies come first,
+ * historically failing strategies are pushed to the end.
  */
-export function pickStrategies(waf: WafDetection | undefined): EncodingStrategy[] {
+export function pickStrategies(waf: WafDetection | undefined, payloadStats?: PayloadStats): EncodingStrategy[] {
   if (!waf?.detected) return ['none'];
 
   const strategies: EncodingStrategy[] = ['none', 'url', 'double-url'];
@@ -48,7 +53,21 @@ export function pickStrategies(waf: WafDetection | undefined): EncodingStrategy[
       strategies.push('html-entity', 'unicode', 'sql-space-bypass');
   }
 
-  return [...new Set(strategies)];
+  const deduped = [...new Set(strategies)];
+
+  // Reorder by historical success rate when payload stats are available
+  if (payloadStats && waf.name) {
+    const stats = payloadStats.getStatsForWaf(waf.name);
+    if (Object.keys(stats).length > 0) {
+      deduped.sort((a, b) => {
+        const rateA = stats[a]?.rate ?? 0.5; // unknown strategies get neutral score
+        const rateB = stats[b]?.rate ?? 0.5;
+        return rateB - rateA; // higher success rate first
+      });
+    }
+  }
+
+  return deduped;
 }
 
 function applyEncoding(payload: string, strategy: EncodingStrategy): string {

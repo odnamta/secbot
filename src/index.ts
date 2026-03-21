@@ -611,6 +611,7 @@ program
           const techProfile = techProfiler.recommend(techStack);
           const fpPatterns = fpMemory.getPatterns().map(p => `${p.category}:${p.pattern}`);
           const outcomeRates = outcomeTracker.successRateByCategory();
+          const fpCountByCategory = fpMemory.getFpCountByCategory();
 
           // Build payload stats per detected WAF
           const wafName = recon.waf?.name;
@@ -628,6 +629,7 @@ program
             fpPatterns: fpPatterns.length > 0 ? fpPatterns : undefined,
             payloadStats: Object.keys(payloadStatsMap).length > 0 ? payloadStatsMap : undefined,
             outcomeRates: Object.keys(outcomeRates).length > 0 ? outcomeRates : undefined,
+            fpCountByCategory: Object.keys(fpCountByCategory).length > 0 ? fpCountByCategory : undefined,
           };
 
           if (techProfile.prioritize.length > 0 || techProfile.deprioritize.length > 0) {
@@ -640,6 +642,9 @@ program
         // Build payload context from recon (+ learned payload stats) for intelligent payload selection
         const payloadContext = buildPayloadContext(recon, loadedPayloadStats);
         config.payloadContext = payloadContext;
+        if (loadedPayloadStats) {
+          config.payloadStats = loadedPayloadStats;
+        }
         log.info(`Payload context: ${summarizePayloadContext(payloadContext)}`);
 
         // ─── Phase 3: AI Attack Plan ─────────────────────────────

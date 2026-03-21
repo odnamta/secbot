@@ -502,7 +502,7 @@ function selectPayloads(config: ScanConfig, maxQuick: number): XSSPayload[] {
  * The marker stays the same since the server will decode the payload.
  */
 function getWafVariants(payload: string, config: ScanConfig): string[] {
-  const strategies = pickStrategies(config.wafDetection);
+  const strategies = pickStrategies(config.wafDetection, config.payloadStats);
   const variants = mutatePayload(payload, strategies);
   // Also add case-randomized variant for HTML tag payloads
   if (payload.includes('<')) {

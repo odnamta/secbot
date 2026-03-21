@@ -75,7 +75,7 @@ function selectSqliPayloads(config: ScanConfig, maxNonDeep: number): string[] {
  * Returns array including original + encoded variants + SQL comment obfuscated.
  */
 function getSqliWafVariants(payload: string, config: ScanConfig): string[] {
-  const strategies = pickStrategies(config.wafDetection);
+  const strategies = pickStrategies(config.wafDetection, config.payloadStats);
   const variants = mutatePayload(payload, strategies);
   // Add SQL comment obfuscation variant (breaks up keywords WAFs pattern-match)
   const obfuscated = sqlCommentObfuscate(payload);

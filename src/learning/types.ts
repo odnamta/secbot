@@ -41,4 +41,6 @@ export interface LearningContext {
   fpPatterns?: string[];
   payloadStats?: Record<string, { best: string; worst: string }>;
   outcomeRates?: Record<string, number>;
+  /** FP count per check category (from FPMemory) — used to deprioritize noisy checks */
+  fpCountByCategory?: Record<string, number>;
 }

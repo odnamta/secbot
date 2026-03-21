@@ -163,6 +163,8 @@ export interface ScanConfig {
   payloadContext?: import('../utils/payload-context.js').PayloadContext;
   /** AI planner focus areas for the current check — URLs, forms, or patterns to prioritize */
   aiFocusAreas?: string[];
+  /** Historical payload encoding stats — drives WAF bypass strategy ordering in active checks */
+  payloadStats?: import('../learning/payload-stats.js').PayloadStats;
   /** Subdomain enumeration results from recon phase — used by subdomain-takeover check */
   subdomainResults?: import('./recon/subdomain.js').SubdomainResult[];
   /** Extra HTTP headers to inject into every request (e.g. Authorization: Bearer <token>) */

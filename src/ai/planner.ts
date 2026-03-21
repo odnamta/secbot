@@ -387,6 +387,9 @@ export async function planAttack(
   if (response) {
     const parsed = parseJsonResponse<AttackPlan>(response);
     if (parsed?.recommendedChecks) {
+      // Apply FP memory deprioritization to AI-generated plan too
+      applyFpDeprioritization(parsed.recommendedChecks, learningContext);
+
       log.info(
         `AI plan: ${parsed.recommendedChecks.length} checks recommended` +
         (Object.keys(parsed.skipReasons ?? {}).length > 0
@@ -970,9 +973,13 @@ export function buildDefaultPlan(
         check.reason += ' [learning: historically ineffective]';
       }
     }
-    checks.sort((a, b) => a.priority - b.priority);
     log.info(`Learning context applied: prioritize=[${prioritize.join(',')}], deprioritize=[${deprioritize.join(',')}]`);
   }
+
+  // ─── FP memory deprioritization ─────────────────────────────────────
+  // If a check category has accumulated many FP observations AND the
+  // outcome acceptance rate is low, deprioritize it (but never skip).
+  applyFpDeprioritization(checks, learningContext);
 
   // Limit by profile — each check is individually gated, so the limit is a speed budget
   // Quick: top 6 (fast scan). Standard: all gated checks. Deep: all gated checks.
@@ -985,4 +992,60 @@ export function buildDefaultPlan(
       (learningContext?.techProfile ? ' (adjusted by learning data)' : ''),
     skipReasons,
   };
+}
+
+/**
+ * Deprioritize checks that have high FP counts and low outcome acceptance rates.
+ * Checks are never skipped — only moved down in priority order.
+ *
+ * Logic:
+ * - If outcomeRates shows acceptance rate <30% for a category, deprioritize by +3
+ * - If fpCountByCategory shows >=5 FP observations for a category, deprioritize by +2
+ * - Both conditions stack (max +5 deprioritization)
+ * - Never reduces priority below 1
+ */
+export function applyFpDeprioritization(
+  checks: Array<{ name: string; priority: number; reason: string }>,
+  learningContext?: LearningContext,
+): void {
+  if (!learningContext) return;
+
+  const { outcomeRates, fpCountByCategory } = learningContext;
+  if (!outcomeRates && !fpCountByCategory) return;
+
+  let applied = false;
+
+  for (const check of checks) {
+    let deprioritizeAmount = 0;
+    const notes: string[] = [];
+
+    // Low acceptance rate → likely produces false positives
+    if (outcomeRates && outcomeRates[check.name] !== undefined) {
+      const acceptanceRate = outcomeRates[check.name];
+      if (acceptanceRate < 0.3) {
+        deprioritizeAmount += 3;
+        notes.push(`${(acceptanceRate * 100).toFixed(0)}% acceptance rate`);
+      }
+    }
+
+    // High FP count → historically noisy check
+    if (fpCountByCategory && fpCountByCategory[check.name] !== undefined) {
+      const fpCount = fpCountByCategory[check.name];
+      if (fpCount >= 5) {
+        deprioritizeAmount += 2;
+        notes.push(`${fpCount} historical FPs`);
+      }
+    }
+
+    if (deprioritizeAmount > 0) {
+      check.priority += deprioritizeAmount;
+      check.reason += ` [learning: deprioritized — ${notes.join(', ')}]`;
+      applied = true;
+    }
+  }
+
+  if (applied) {
+    checks.sort((a, b) => a.priority - b.priority);
+    log.info('FP memory applied: deprioritized checks with high historical FP rates');
+  }
 }

@@ -52,4 +52,16 @@ export class FPMemory {
   getPatternsForCategory(category: string): FPPattern[] {
     return this.patterns.filter(p => p.category === category);
   }
+
+  /**
+   * Count total FP observations per category.
+   * Returns a map of category → total FP count across all patterns.
+   */
+  getFpCountByCategory(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const p of this.patterns) {
+      counts[p.category] = (counts[p.category] ?? 0) + p.count;
+    }
+    return counts;
+  }
 }
