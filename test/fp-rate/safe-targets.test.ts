@@ -61,8 +61,8 @@ describe('False-Positive Rate — Safe Endpoints', () => {
         cookies: [],
       };
 
-      const findings = await runActiveChecks(context, [safePage], config);
-      expect(findings.length).toBe(0);
+      const result = await runActiveChecks(context, [safePage], config);
+      expect(result.findings.length).toBe(0);
       await page.close();
     }, 90000);
 
@@ -81,8 +81,8 @@ describe('False-Positive Rate — Safe Endpoints', () => {
         cookies: [],
       };
 
-      const findings = await runActiveChecks(context, [safePage], config);
-      expect(findings.length).toBe(0);
+      const result = await runActiveChecks(context, [safePage], config);
+      expect(result.findings.length).toBe(0);
     }, 90000);
   });
 

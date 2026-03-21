@@ -45,9 +45,9 @@ describe('Full scan integration', () => {
       const passiveFindings = runPassiveChecks(pages, responses);
 
       // Phase 5: Active checks (no attack plan = run all)
-      const activeFindings = await runActiveChecks(context, pages, config);
+      const activeResult = await runActiveChecks(context, pages, config);
 
-      const allRawFindings = [...passiveFindings, ...activeFindings];
+      const allRawFindings = [...passiveFindings, ...activeResult.findings];
 
       // Dedup
       const dedupedFindings = deduplicateFindings(allRawFindings);

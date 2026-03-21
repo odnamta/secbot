@@ -197,9 +197,9 @@ describe('--exclude-checks filtering', () => {
       excludeChecks: allCheckNames,
     });
 
-    const findings = await runActiveChecks(mockContext, mockPages, config);
+    const result = await runActiveChecks(mockContext, mockPages, config);
 
-    expect(findings).toEqual([]);
+    expect(result.findings).toEqual([]);
     for (const check of CHECK_REGISTRY) {
       expect(check.run).not.toHaveBeenCalled();
     }

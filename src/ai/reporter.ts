@@ -9,10 +9,46 @@ import { askClaude, parseJsonResponse } from './client.js';
 import { REPORTER_SYSTEM_PROMPT, buildReporterUserPrompt, buildReducedReporterUserPrompt } from './prompts.js';
 import { fallbackInterpretation } from './fallback.js';
 import { log } from '../utils/logger.js';
+import { getCvssForFinding, inferCategoryFromTitle } from '../utils/cvss.js';
+import { generateCurlCommand } from '../utils/evidence.js';
 
 interface ReportResult {
   findings: InterpretedFinding[];
   summary: ScanSummary;
+}
+
+/**
+ * Enrich InterpretedFindings with curlCommand, cvssScore, cvssVector, and detectionMethod
+ * by correlating each finding back to its raw findings.
+ */
+function enrichInterpretedFindings(
+  findings: InterpretedFinding[],
+  rawFindings: RawFinding[],
+): InterpretedFinding[] {
+  const rawById = new Map(rawFindings.map(r => [r.id, r]));
+
+  for (const finding of findings) {
+    const matchingRaw = finding.rawFindingIds
+      .map(id => rawById.get(id))
+      .filter((r): r is RawFinding => r !== undefined);
+    const bestRaw = matchingRaw[0];
+    if (bestRaw) {
+      finding.curlCommand = bestRaw.evidencePack?.curlCommand ?? generateCurlCommand(bestRaw);
+      finding.detectionMethod = bestRaw.evidencePack?.detectionMethod;
+      const category = bestRaw.category;
+      const cvss = getCvssForFinding(category, finding.severity);
+      finding.cvssScore = cvss.score;
+      finding.cvssVector = cvss.vector;
+    } else {
+      // No raw finding match — infer category from title for CVSS
+      const category = inferCategoryFromTitle(finding.title);
+      const cvss = getCvssForFinding(category, finding.severity);
+      finding.cvssScore = cvss.score;
+      finding.cvssVector = cvss.vector;
+    }
+  }
+
+  return findings;
 }
 
 /**
@@ -50,6 +86,7 @@ export async function generateReport(
       if (passedChecks) {
         parsed.summary.passedChecks = passedChecks;
       }
+      enrichInterpretedFindings(parsed.findings, rawFindings);
       log.info(
         `AI report: ${rawFindings.length} raw → ${validFindings.length} validated → ${parsed.findings.length} actionable`,
       );
@@ -70,6 +107,7 @@ export async function generateReport(
         if (passedChecks) {
           retryParsed.summary.passedChecks = passedChecks;
         }
+        enrichInterpretedFindings(retryParsed.findings, rawFindings);
         log.info(
           `AI report (retry): ${rawFindings.length} raw → ${validFindings.length} validated → ${retryParsed.findings.length} actionable`,
         );
@@ -82,5 +120,7 @@ export async function generateReport(
     log.warn('AI unavailable — using rule-based report generation (set ANTHROPIC_API_KEY for AI-powered reports)');
   }
 
-  return fallbackInterpretation(validFindings, passedChecks);
+  const fallbackResult = fallbackInterpretation(validFindings, passedChecks);
+  enrichInterpretedFindings(fallbackResult.findings, rawFindings);
+  return fallbackResult;
 }

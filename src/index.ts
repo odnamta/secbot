@@ -55,7 +55,7 @@ import { FPMemory } from './learning/fp-memory.js';
 import { TechProfiler } from './learning/tech-profiles.js';
 import { PayloadStats } from './learning/payload-stats.js';
 import type { LearningContext } from './learning/types.js';
-import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, AuthOptions } from './scanner/types.js';
+import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, CheckAuditEntry, AuthOptions } from './scanner/types.js';
 import { enrichAllFindings } from './utils/evidence.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
@@ -672,14 +672,32 @@ program
 
         // ─── Phase 5: Active Scanning ────────────────────────────
         log.info('Phase 5: Running active security checks...');
-        const activeFindings = await runActiveChecks(
-          context,
-          pages,
-          config,
-          attackPlan,
-          requestLogger,
-          responses,
-        );
+
+        // Verify browser context is still alive before active checks
+        let browserDead = false;
+        try {
+          const healthPage = await context.newPage();
+          await healthPage.close();
+        } catch (err) {
+          browserDead = true;
+          log.error('Browser context is dead — cannot run active checks. Scan results will be incomplete.');
+        }
+
+        let checkAudit: CheckAuditEntry[] = [];
+        let activeFindings: import('./scanner/types.js').RawFinding[] = [];
+
+        if (!browserDead) {
+          const activeResult = await runActiveChecks(
+            context,
+            pages,
+            config,
+            attackPlan,
+            requestLogger,
+            responses,
+          );
+          activeFindings = activeResult.findings;
+          checkAudit = activeResult.audit;
+        }
 
         // ─── Phase 5b: AI Response Analysis ──────────────────────
         let aiResponseFindings: import('./scanner/types.js').RawFinding[] = [];
@@ -876,6 +894,7 @@ program
           exitCode,
           scanDuration,
           checksRun,
+          ...(checkAudit.length > 0 ? { checkAudit } : {}),
           ...(tokenUsage.totalTokens > 0 ? { tokenUsage } : {}),
           ...(config.callbackUrl ? { callbackUrl: config.callbackUrl } : {}),
           ...(sessionGuard && sessionGuard.refreshCount > 0 ? { sessionRefreshes: sessionGuard.refreshCount } : {}),

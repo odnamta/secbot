@@ -112,6 +112,14 @@ export interface InterpretedFinding {
   codeExample?: string;
   affectedUrls: string[];
   rawFindingIds: string[];
+  /** Auto-generated curl command for reproduction */
+  curlCommand?: string;
+  /** CVSS 3.1 base score */
+  cvssScore?: number;
+  /** CVSS 3.1 vector string */
+  cvssVector?: string;
+  /** Detection method used by the scanner */
+  detectionMethod?: string;
 }
 
 export interface ScanConfig {
@@ -211,6 +219,14 @@ export interface InterceptedResponse {
   body?: string;
 }
 
+export interface CheckAuditEntry {
+  name: string;
+  status: 'completed' | 'failed' | 'skipped';
+  findingsCount: number;
+  durationMs: number;
+  error?: string;
+}
+
 export interface ScanResult {
   targetUrl: string;
   profile: ScanProfile;
@@ -226,6 +242,8 @@ export interface ScanResult {
   exitCode: number;
   scanDuration: number; // ms
   checksRun: string[];
+  /** Audit of which checks ran, crashed, or were skipped */
+  checkAudit?: CheckAuditEntry[];
   tokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
   callbackUrl?: string;
   sessionRefreshes?: number;

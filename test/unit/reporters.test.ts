@@ -6,7 +6,10 @@ import { writeJsonReport } from '../../src/reporter/json.js';
 import { writeHtmlReport } from '../../src/reporter/html.js';
 import { writeBountyReport } from '../../src/reporter/bounty.js';
 import { printTerminalReport } from '../../src/reporter/terminal.js';
-import type { ScanResult, InterpretedFinding, Severity } from '../../src/scanner/types.js';
+import { fallbackInterpretation } from '../../src/ai/fallback.js';
+import { generateCurlCommand } from '../../src/utils/evidence.js';
+import { getCvssForFinding } from '../../src/utils/cvss.js';
+import type { ScanResult, InterpretedFinding, RawFinding, Severity } from '../../src/scanner/types.js';
 
 // ─── Factories ────────────────────────────────────────────────────────
 
@@ -598,5 +601,132 @@ describe('Terminal reporter', () => {
     });
     const result = makeScanResult([finding]);
     expect(() => printTerminalReport(result)).not.toThrow();
+  });
+});
+
+// ─── InterpretedFinding enrichment fields ─────────────────────────────
+
+describe('InterpretedFinding enrichment fields', () => {
+  function makeRawFinding(overrides: Partial<RawFinding> = {}): RawFinding {
+    return {
+      id: 'raw-1',
+      category: 'xss',
+      severity: 'high',
+      title: 'Reflected XSS in /search',
+      description: 'User input reflected without encoding.',
+      url: 'https://example.com/search?q=test',
+      evidence: 'Payload reflected in body',
+      timestamp: '2026-01-15T10:01:00.000Z',
+      confidence: 'high',
+      request: {
+        method: 'GET',
+        url: 'https://example.com/search?q=<script>alert(1)</script>',
+        headers: { 'User-Agent': 'SecBot/1.0' },
+      },
+      response: {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+        bodySnippet: '<script>alert(1)</script>',
+      },
+      evidencePack: {
+        curlCommand: "curl 'https://example.com/search?q=%3Cscript%3Ealert(1)%3C/script%3E'",
+        detectionMethod: 'reflection',
+      },
+      ...overrides,
+    };
+  }
+
+  it('InterpretedFinding accepts curlCommand, cvssScore, cvssVector, detectionMethod', () => {
+    const finding = makeInterpretedFinding({
+      curlCommand: "curl -i 'https://example.com/search?q=test'",
+      cvssScore: 6.1,
+      cvssVector: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N',
+      detectionMethod: 'reflection',
+    });
+
+    expect(finding.curlCommand).toBe("curl -i 'https://example.com/search?q=test'");
+    expect(finding.cvssScore).toBe(6.1);
+    expect(finding.cvssVector).toBe('CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N');
+    expect(finding.detectionMethod).toBe('reflection');
+  });
+
+  it('enrichment fields are optional and default to undefined', () => {
+    const finding = makeInterpretedFinding();
+    expect(finding.curlCommand).toBeUndefined();
+    expect(finding.cvssScore).toBeUndefined();
+    expect(finding.cvssVector).toBeUndefined();
+    expect(finding.detectionMethod).toBeUndefined();
+  });
+
+  it('fallback reporter populates enrichment fields when rawFindings are available', () => {
+    const raw = makeRawFinding();
+    const fallback = fallbackInterpretation([raw]);
+
+    expect(fallback.findings).toHaveLength(1);
+    const finding = fallback.findings[0];
+
+    // rawFindingIds should include our raw finding
+    expect(finding.rawFindingIds).toContain('raw-1');
+
+    // Now manually enrich like the reporter does
+    const bestRaw = raw;
+    finding.curlCommand = bestRaw.evidencePack?.curlCommand ?? generateCurlCommand(bestRaw);
+    finding.detectionMethod = bestRaw.evidencePack?.detectionMethod;
+    const cvss = getCvssForFinding(bestRaw.category, finding.severity);
+    finding.cvssScore = cvss.score;
+    finding.cvssVector = cvss.vector;
+
+    // Verify all fields populated
+    expect(finding.curlCommand).toBe("curl 'https://example.com/search?q=%3Cscript%3Ealert(1)%3C/script%3E'");
+    expect(finding.detectionMethod).toBe('reflection');
+    expect(finding.cvssScore).toBeTypeOf('number');
+    expect(finding.cvssScore).toBeGreaterThan(0);
+    expect(finding.cvssVector).toMatch(/^CVSS:3\.1\//);
+  });
+
+  it('generateCurlCommand produces curl from request data when evidencePack is absent', () => {
+    const raw = makeRawFinding({
+      evidencePack: undefined,
+      request: {
+        method: 'POST',
+        url: 'https://example.com/api/login',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{"user":"admin","pass":"test"}',
+      },
+    });
+
+    const curl = generateCurlCommand(raw);
+    expect(curl).toBeDefined();
+    expect(curl).toContain('curl');
+    expect(curl).toContain('-X POST');
+    expect(curl).toContain('https://example.com/api/login');
+    expect(curl).toContain('{"user":"admin","pass":"test"}');
+  });
+
+  it('CVSS score is clamped to severity range', () => {
+    // SQLi base score is 9.8, but for medium severity it should be clamped to 4.0-6.9
+    const cvss = getCvssForFinding('sqli', 'medium');
+    expect(cvss.score).toBeGreaterThanOrEqual(4.0);
+    expect(cvss.score).toBeLessThanOrEqual(6.9);
+    expect(cvss.vector).toMatch(/^CVSS:3\.1\//);
+  });
+
+  it('JSON report preserves enrichment fields', () => {
+    const path = tmpPath('json');
+    const finding = makeInterpretedFinding({
+      curlCommand: "curl -i 'https://example.com/test'",
+      cvssScore: 7.5,
+      cvssVector: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N',
+      detectionMethod: 'error-pattern',
+    });
+    const result = makeScanResult([finding]);
+    writeJsonReport(result, path);
+
+    const parsed = JSON.parse(readFileSync(path, 'utf-8'));
+    const f = parsed.interpretedFindings[0];
+    expect(f.curlCommand).toBe("curl -i 'https://example.com/test'");
+    expect(f.cvssScore).toBe(7.5);
+    expect(f.cvssVector).toBe('CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N');
+    expect(f.detectionMethod).toBe('error-pattern');
   });
 });

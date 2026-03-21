@@ -6,6 +6,7 @@ import type {
   FormInfo,
   AttackPlan,
   CheckCategory,
+  CheckAuditEntry,
   ScanScope,
 } from '../types.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
@@ -301,10 +302,18 @@ export function buildTargets(
   };
 }
 
+/** Result of running active checks — includes findings and an audit trail */
+export interface ActiveCheckResult {
+  findings: RawFinding[];
+  audit: CheckAuditEntry[];
+}
+
 /**
  * Run active security checks.
  * If an attack plan is provided, only run recommended checks in priority order.
  * Otherwise, run all checks (except traversal on quick profile).
+ *
+ * Returns both findings and a per-check audit trail (status, duration, error).
  */
 export async function runActiveChecks(
   context: BrowserContext,
@@ -313,10 +322,12 @@ export async function runActiveChecks(
   attackPlan?: AttackPlan,
   requestLogger?: RequestLogger,
   interceptedResponses?: Array<{ url: string; status: number; headers: Record<string, string> }>,
-): Promise<RawFinding[]> {
+): Promise<ActiveCheckResult> {
+  const audit: CheckAuditEntry[] = [];
+
   if (config.profile === 'quick' && !attackPlan) {
     log.info('Quick profile — skipping active checks');
-    return [];
+    return { findings: [], audit };
   }
 
   const targets = buildTargets(pages, config.targetUrl, config.scope, interceptedResponses);
@@ -377,6 +388,10 @@ export async function runActiveChecks(
 
     if (excluded.length > 0) {
       log.info(`Excluded checks: ${excluded.map((c) => c.name).join(', ')}`);
+      // Record skipped checks in audit
+      for (const check of excluded) {
+        audit.push({ name: check.name, status: 'skipped', findingsCount: 0, durationMs: 0 });
+      }
     }
 
     // Warn about invalid exclude names (names that don't match any registered check)
@@ -396,18 +411,37 @@ export async function runActiveChecks(
     return { ...config, aiFocusAreas: areas };
   };
 
+  // Helper: run a single check with audit tracking
+  const runWithAudit = async (check: ActiveCheck): Promise<RawFinding[]> => {
+    const startMs = Date.now();
+    try {
+      const result = await check.run(context, targets, configForCheck(check.name), requestLogger);
+      audit.push({
+        name: check.name,
+        status: 'completed',
+        findingsCount: result.length,
+        durationMs: Date.now() - startMs,
+      });
+      return result;
+    } catch (err) {
+      const errorMsg = (err as Error).message;
+      log.warn(`Active check "${check.name}" failed: ${errorMsg}`);
+      audit.push({
+        name: check.name,
+        status: 'failed',
+        findingsCount: 0,
+        durationMs: Date.now() - startMs,
+        error: errorMsg,
+      });
+      return [];
+    }
+  };
+
   // Phase A: Run parallel checks concurrently (read-only, no state mutation)
   if (parallel.length > 0) {
     log.info(`Running ${parallel.length} checks in parallel: ${parallel.map((c) => c.name).join(', ')}`);
     const parallelResults = await Promise.allSettled(
-      parallel.map(async (check) => {
-        try {
-          return await check.run(context, targets, configForCheck(check.name), requestLogger);
-        } catch (err) {
-          log.warn(`Active check "${check.name}" failed: ${(err as Error).message}`);
-          return [];
-        }
-      }),
+      parallel.map(async (check) => runWithAudit(check)),
     );
     for (const result of parallelResults) {
       if (result.status === 'fulfilled') {
@@ -421,15 +455,11 @@ export async function runActiveChecks(
     log.info(`Running ${sequential.length} checks sequentially: ${sequential.map((c) => c.name).join(', ')}`);
     for (let i = 0; i < sequential.length; i++) {
       const check = sequential[i];
-      try {
-        if (i > 0) {
-          await rateLimiter.acquire();
-        }
-        const checkFindings = await check.run(context, targets, configForCheck(check.name), requestLogger);
-        findings.push(...checkFindings);
-      } catch (err) {
-        log.warn(`Active check "${check.name}" failed: ${(err as Error).message}`);
+      if (i > 0) {
+        await rateLimiter.acquire();
       }
+      const checkFindings = await runWithAudit(check);
+      findings.push(...checkFindings);
     }
   }
 
@@ -437,6 +467,17 @@ export async function runActiveChecks(
   const stats = rateLimiter.getStats();
   log.info(`Rate limiter: ${stats.totalRequests} inter-check delays, ${stats.backoffs} backoffs, final delay ${stats.currentDelayMs}ms`);
 
-  log.info(`Active scan: ${findings.length} raw findings`);
-  return findings;
+  // Warn if majority of checks failed — scan results may be incomplete
+  const failedCount = audit.filter((a) => a.status === 'failed').length;
+  const totalAttempted = audit.filter((a) => a.status !== 'skipped').length;
+  if (totalAttempted > 0 && failedCount > totalAttempted * 0.5) {
+    log.error(
+      `WARNING: ${failedCount}/${totalAttempted} active checks failed (>${Math.round((failedCount / totalAttempted) * 100)}%). ` +
+      `Scan results may be incomplete — browser crash or target instability suspected. ` +
+      `Failed: ${audit.filter((a) => a.status === 'failed').map((a) => a.name).join(', ')}`,
+    );
+  }
+
+  log.info(`Active scan: ${findings.length} raw findings (${audit.filter((a) => a.status === 'completed').length} completed, ${failedCount} failed, ${audit.filter((a) => a.status === 'skipped').length} skipped)`);
+  return { findings, audit };
 }

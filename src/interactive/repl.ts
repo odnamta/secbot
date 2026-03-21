@@ -226,12 +226,12 @@ export async function startInteractiveMode(
           // Active checks
           if (state.crawlResult) {
             console.log(chalk.blue('  Step 4/4: Active checks...'));
-            const activeFindings = await runActiveChecks(
+            const activeResult = await runActiveChecks(
               state.crawlResult.context,
               state.pages,
               config,
             );
-            state.rawFindings.push(...activeFindings);
+            state.rawFindings.push(...activeResult.findings);
           }
 
           const deduped = deduplicateFindings(state.rawFindings);
