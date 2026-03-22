@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { BrowserContext } from 'playwright';
 import type { RawFinding, ScanConfig } from '../types.js';
-import { TRAVERSAL_PAYLOADS, TRAVERSAL_SUCCESS_PATTERNS } from '../../config/payloads/traversal.js';
+import { TRAVERSAL_PAYLOADS, isRealTraversalContent } from '../../config/payloads/traversal.js';
 import { log } from '../../utils/logger.js';
 import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck } from './index.js';
@@ -99,23 +99,21 @@ async function testTraversalUrl(
       phase: 'active-traversal',
     });
 
-    for (const pattern of TRAVERSAL_SUCCESS_PATTERNS) {
-      if (pattern.test(body)) {
-        return {
-          id: randomUUID(),
-          category: 'directory-traversal',
-          severity: 'critical',
-          title: 'Directory Traversal',
-          description: `The endpoint is vulnerable to directory traversal, allowing access to system files.`,
-          url: originalEndpoint,
-          evidence: `Payload: ${payload}\nTest URL: ${testUrl}\nResponse contains system file content`,
-          request: { method: 'GET', url: testUrl },
-          response: { status: response.status(), bodySnippet: body.slice(0, 200) },
-          timestamp: new Date().toISOString(),
-          confidence: 'high',
-          evidencePack: { detectionMethod: 'path-traversal-response' },
-        };
-      }
+    if (isRealTraversalContent(body, payload)) {
+      return {
+        id: randomUUID(),
+        category: 'directory-traversal',
+        severity: 'critical',
+        title: 'Directory Traversal',
+        description: `The endpoint is vulnerable to directory traversal, allowing access to system files.`,
+        url: originalEndpoint,
+        evidence: `Payload: ${payload}\nTest URL: ${testUrl}\nResponse contains system file content`,
+        request: { method: 'GET', url: testUrl },
+        response: { status: response.status(), bodySnippet: body.slice(0, 200) },
+        timestamp: new Date().toISOString(),
+        confidence: 'high',
+        evidencePack: { detectionMethod: 'path-traversal-response' },
+      };
     }
   } catch (err) {
     log.debug(`Traversal test: ${(err as Error).message}`);

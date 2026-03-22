@@ -121,6 +121,23 @@ async function probeUnauthenticatedAdminPaths(
 
   log.info(`Probing ${paths.length} common admin paths (unauthenticated)...`);
 
+  // Fetch a baseline response from a non-existent path to detect catch-all routing
+  // (e.g., Next.js returns 200 with a generic page for all routes)
+  let baselineBodyLength = 0;
+  const baselinePage = await context.newPage();
+  try {
+    const baselineUrl = `${origin}/__secbot_nonexistent_baseline_${Date.now()}`;
+    const baselineResp = await baselinePage.request.fetch(baselineUrl, { maxRedirects: 0 });
+    if (baselineResp.status() >= 200 && baselineResp.status() < 300) {
+      const baselineBody = await baselineResp.text();
+      baselineBodyLength = baselineBody.length;
+    }
+  } catch {
+    // Ignore — baseline check is best-effort
+  } finally {
+    await baselinePage.close();
+  }
+
   for (const path of paths) {
     const url = `${origin}${path}`;
     const page = await context.newPage();
@@ -147,6 +164,28 @@ async function probeUnauthenticatedAdminPaths(
 
       // 200 on an admin/debug path without auth = finding
       if (status >= 200 && status < 300 && body.length > 100) {
+        const bodyLower = body.toLowerCase();
+
+        // Next.js / SPA catch-all check: if response looks like a 404 page, skip
+        if (/not found|page not found|404|doesn't exist|does not exist|no page|this page could not be found/i.test(bodyLower)) continue;
+
+        // Very short body is likely an error page, not a real admin panel
+        if (body.length < 500) continue;
+
+        // Catch-all route check: if body length matches the baseline non-existent
+        // page response (within 10%), this is a generic catch-all — not a real endpoint
+        if (baselineBodyLength > 0) {
+          const ratio = Math.abs(body.length - baselineBodyLength) / baselineBodyLength;
+          if (ratio < 0.1) continue;
+        }
+
+        // Content check: look for admin panel indicators in the body
+        const hasAdminIndicators = /login|sign.?in|password|dashboard|admin.?panel|settings|user.?management|configuration/i.test(bodyLower)
+          && (/<form/i.test(bodyLower) || /<table/i.test(bodyLower) || /<nav/i.test(bodyLower));
+
+        // If no admin indicators and body looks like a generic page, downgrade confidence
+        const confidence = hasAdminIndicators ? 'high' as const : 'medium' as const;
+
         // Deduplicate by path prefix
         const pathPrefix = path.replace(/\/$/, '').split('/').slice(0, 2).join('/');
         if (seen.has(pathPrefix)) continue;
@@ -167,7 +206,7 @@ async function probeUnauthenticatedAdminPaths(
           request: { method: 'GET', url },
           response: { status, bodySnippet: body.slice(0, 200) },
           timestamp: new Date().toISOString(),
-          confidence: 'high',
+          confidence,
           evidencePack: { detectionMethod: 'endpoint-replay' },
         });
       }
@@ -246,7 +285,10 @@ async function testPathNormalizationBypass(
         });
 
         // If bypass returns 200 with real content, the ACL is broken
-        if (status >= 200 && status < 300 && body.length > 100) {
+        // Skip catch-all / 404 pages that return 200
+        const bypassBodyLower = body.toLowerCase();
+        const isCatchAll = /not found|page not found|404|doesn't exist|does not exist|no page|this page could not be found/i.test(bypassBodyLower);
+        if (status >= 200 && status < 300 && body.length > 100 && !isCatchAll) {
           findings.push({
             id: randomUUID(),
             category: 'broken-access-control',

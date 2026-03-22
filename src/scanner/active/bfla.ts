@@ -58,7 +58,8 @@ const DANGEROUS_METHODS = ['DELETE', 'PUT', 'PATCH'] as const;
  *  e.g., /api/v1/users/123 → { base: '/api/v1/users', resource: 'users', hasId: true }
  *  e.g., /api/orders → { base: '/api/orders', resource: 'orders', hasId: false }
  */
-function parseApiEndpoint(url: string): { base: string; resource: string; hasId: boolean } | null {
+function parseApiEndpoint(url: string | undefined | null): { base: string; resource: string; hasId: boolean } | null {
+  if (!url || typeof url !== 'string') return null;
   try {
     const parsed = new URL(url);
     const segments = parsed.pathname.split('/').filter(Boolean);
@@ -101,7 +102,11 @@ export const bflaCheck: ActiveCheck = {
     const testedUrls = new Set<string>();
 
     // Parse all API endpoints to understand the API structure
-    const parsedEndpoints = targets.apiEndpoints
+    // Filter out undefined/empty entries that may come from JS bundle extraction
+    const validEndpoints = (targets.apiEndpoints || []).filter(
+      (ep): ep is string => typeof ep === 'string' && ep.length > 0,
+    );
+    const parsedEndpoints = validEndpoints
       .map((ep) => ({ url: ep, ...parseApiEndpoint(ep) }))
       .filter((ep): ep is { url: string; base: string; resource: string; hasId: boolean } =>
         ep.base !== null);
@@ -199,7 +204,7 @@ export const bflaCheck: ActiveCheck = {
         if (adminPath === ep.base) continue;
 
         // Reconstruct: use origin + api version prefix (if any) + admin pattern
-        const versionMatch = ep.base.match(/^(\/api\/v\d+)\//);
+        const versionMatch = ep.base?.match(/^(\/api\/v\d+)\//);
         const fullPath = versionMatch
           ? `${origin}${versionMatch[1]}${adminPath}`
           : `${origin}${adminPath}`;

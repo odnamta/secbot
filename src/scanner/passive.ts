@@ -147,6 +147,9 @@ export function runPassiveChecks(
   // Track reported missing headers across all pages for dedup
   const reportedHeaders = new Map<string, RawFinding>();
 
+  // Track reported cookie findings across all pages for dedup (cookie:issueType)
+  const reportedCookieIssues = new Set<string>();
+
   const detectedFramework = recon?.framework?.name;
 
   // Determine the target origin from the first page — skip external pages
@@ -165,7 +168,7 @@ export function runPassiveChecks(
       } catch { /* check anyway if URL parse fails */ }
     }
     findings.push(...checkSecurityHeaders(page, reportedHeaders, detectedFramework, recon));
-    findings.push(...checkCookieFlags(page));
+    findings.push(...checkCookieFlags(page, reportedCookieIssues));
     findings.push(...checkInfoLeakage(page, responses));
     findings.push(...checkMixedContent(page, responses));
     findings.push(...checkSensitiveUrlData(page));
@@ -458,7 +461,7 @@ function checkSecurityHeaders(
   return findings;
 }
 
-function checkCookieFlags(page: CrawledPage): RawFinding[] {
+function checkCookieFlags(page: CrawledPage, reportedCookieIssues: Set<string>): RawFinding[] {
   const findings: RawFinding[] = [];
 
   // Separate first-party (app) cookies from third-party (analytics/marketing) cookies
@@ -466,79 +469,108 @@ function checkCookieFlags(page: CrawledPage): RawFinding[] {
   const thirdPartyCookies = page.cookies.filter(c => isThirdPartyCookie(c.name));
 
   // Report individual findings for first-party app cookies (these matter for security)
+  // Deduplicate by cookie name + issue type — same cookie on multiple pages = one finding
   for (const cookie of appCookies) {
     if (!cookie.httpOnly && shouldCheckHttpOnly(cookie.name)) {
-      findings.push({
-        id: randomUUID(),
-        category: 'cookie-flags',
-        severity: 'medium',
-        confidence: 'medium',
-        title: `Cookie "${cookie.name}" Missing HttpOnly Flag`,
-        description: `The cookie "${cookie.name}" is accessible via JavaScript, increasing XSS impact.`,
-        url: page.url,
-        evidence: `Cookie: ${cookie.name}; HttpOnly=false`,
-        timestamp: new Date().toISOString(),
-      });
+      const key = `${cookie.name}:httponly`;
+      if (!reportedCookieIssues.has(key)) {
+        reportedCookieIssues.add(key);
+        findings.push({
+          id: randomUUID(),
+          category: 'cookie-flags',
+          severity: 'medium',
+          confidence: 'medium',
+          title: `Cookie "${cookie.name}" Missing HttpOnly Flag`,
+          description: `The cookie "${cookie.name}" is accessible via JavaScript, increasing XSS impact.`,
+          url: page.url,
+          evidence: `Cookie: ${cookie.name}; HttpOnly=false`,
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
 
     if (!cookie.secure && page.url.startsWith('https://')) {
-      findings.push({
-        id: randomUUID(),
-        category: 'cookie-flags',
-        severity: 'medium',
-        confidence: 'medium',
-        title: `Cookie "${cookie.name}" Missing Secure Flag`,
-        description: `The cookie "${cookie.name}" can be transmitted over unencrypted connections.`,
-        url: page.url,
-        evidence: `Cookie: ${cookie.name}; Secure=false`,
-        timestamp: new Date().toISOString(),
-      });
+      const key = `${cookie.name}:secure`;
+      if (!reportedCookieIssues.has(key)) {
+        reportedCookieIssues.add(key);
+        findings.push({
+          id: randomUUID(),
+          category: 'cookie-flags',
+          severity: 'medium',
+          confidence: 'medium',
+          title: `Cookie "${cookie.name}" Missing Secure Flag`,
+          description: `The cookie "${cookie.name}" can be transmitted over unencrypted connections.`,
+          url: page.url,
+          evidence: `Cookie: ${cookie.name}; Secure=false`,
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
 
     if (cookie.sameSite === 'None' || cookie.sameSite === '') {
-      findings.push({
-        id: randomUUID(),
-        category: 'cookie-flags',
-        severity: 'low',
-        confidence: 'low',
-        title: `Cookie "${cookie.name}" Weak SameSite Setting`,
-        description: `The cookie "${cookie.name}" has SameSite=${cookie.sameSite || 'not set'}, allowing cross-site usage.`,
-        url: page.url,
-        evidence: `Cookie: ${cookie.name}; SameSite=${cookie.sameSite || 'not set'}`,
-        timestamp: new Date().toISOString(),
-      });
+      const key = `${cookie.name}:samesite`;
+      if (!reportedCookieIssues.has(key)) {
+        reportedCookieIssues.add(key);
+        findings.push({
+          id: randomUUID(),
+          category: 'cookie-flags',
+          severity: 'low',
+          confidence: 'low',
+          title: `Cookie "${cookie.name}" Weak SameSite Setting`,
+          description: `The cookie "${cookie.name}" has SameSite=${cookie.sameSite || 'not set'}, allowing cross-site usage.`,
+          url: page.url,
+          evidence: `Cookie: ${cookie.name}; SameSite=${cookie.sameSite || 'not set'}`,
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
   }
 
   // Group third-party analytics cookies into a SINGLE low-severity finding per issue type
+  // Deduplicate across pages — only report once for the entire scan
   if (thirdPartyCookies.length > 0) {
     const missingHttpOnly = thirdPartyCookies.filter(c => !c.httpOnly && shouldCheckHttpOnly(c.name));
     const missingSecure = thirdPartyCookies.filter(c => !c.secure && page.url.startsWith('https://'));
 
-    if (missingHttpOnly.length > 0) {
-      const names = missingHttpOnly.map(c => c.name).join(', ');
+    // Filter to only cookies not yet reported
+    const newMissingHttpOnly = missingHttpOnly.filter(c => {
+      const key = `${c.name}:httponly`;
+      if (reportedCookieIssues.has(key)) return false;
+      reportedCookieIssues.add(key);
+      return true;
+    });
+
+    if (newMissingHttpOnly.length > 0) {
+      const names = newMissingHttpOnly.map(c => c.name).join(', ');
       findings.push({
         id: randomUUID(),
         category: 'cookie-flags',
         severity: 'low',
         confidence: 'low',
-        title: `${missingHttpOnly.length} Third-Party Cookies Missing HttpOnly`,
-        description: `${missingHttpOnly.length} analytics/marketing cookies are accessible via JavaScript. These are third-party tracking cookies with limited security impact.`,
+        title: `${newMissingHttpOnly.length} Third-Party Cookies Missing HttpOnly`,
+        description: `${newMissingHttpOnly.length} analytics/marketing cookies are accessible via JavaScript. These are third-party tracking cookies with limited security impact.`,
         url: page.url,
         evidence: `Cookies: ${names}`,
         timestamp: new Date().toISOString(),
       });
     }
 
-    if (missingSecure.length > 0) {
-      const names = missingSecure.map(c => c.name).join(', ');
+    const newMissingSecure = missingSecure.filter(c => {
+      const key = `${c.name}:secure`;
+      if (reportedCookieIssues.has(key)) return false;
+      reportedCookieIssues.add(key);
+      return true;
+    });
+
+    if (newMissingSecure.length > 0) {
+      const names = newMissingSecure.map(c => c.name).join(', ');
       findings.push({
         id: randomUUID(),
         category: 'cookie-flags',
         severity: 'low',
         confidence: 'low',
-        title: `${missingSecure.length} Third-Party Cookies Missing Secure Flag`,
-        description: `${missingSecure.length} analytics/marketing cookies can be transmitted over unencrypted connections. These are third-party tracking cookies with limited security impact.`,
+        title: `${newMissingSecure.length} Third-Party Cookies Missing Secure Flag`,
+        description: `${newMissingSecure.length} analytics/marketing cookies can be transmitted over unencrypted connections. These are third-party tracking cookies with limited security impact.`,
         url: page.url,
         evidence: `Cookies: ${names}`,
         timestamp: new Date().toISOString(),

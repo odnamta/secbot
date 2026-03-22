@@ -56,14 +56,89 @@ export const TRAVERSAL_PAYLOADS = [
   '....//....//etc/passwd%00.png',
 ];
 
-/** Patterns indicating directory traversal / LFI success */
+/** Patterns indicating directory traversal / LFI success — keyed by target file */
+export const TRAVERSAL_FILE_PATTERNS: Record<string, RegExp[]> = {
+  '/etc/passwd': [/root:[x*]:0:0:/],
+  '/etc/hosts': [/127\.0\.0\.1\s+localhost/],
+  '/etc/shadow': [/root:\$[0-9a-z]\$/i],
+  'win.ini': [/\[fonts\]/i, /\[extensions\]/i, /\[boot loader\]/i],
+  'hosts': [/127\.0\.0\.1\s+localhost/],
+  '/proc/self/environ': [/PATH=|HOME=|USER=/],
+};
+
+/** Legacy array — kept for backwards compatibility but no longer used for detection */
 export const TRAVERSAL_SUCCESS_PATTERNS = [
-  /root:.*?:0:0/,              // /etc/passwd format
+  /root:[x*]:0:0:/,              // /etc/passwd format (strict)
   /\[boot loader\]/i,          // Windows win.ini
   /\[extensions\]/i,           // Windows win.ini
   /\[fonts\]/i,                // Windows win.ini
-  /localhost/,                  // Windows hosts file
+  /127\.0\.0\.1\s+localhost/,  // hosts file (strict: IP + localhost together)
   /PATH=|HOME=|USER=/,         // /proc/self/environ variables
   // PHP wrapper base64 output (starts with PD for <?php)
   /^[A-Za-z0-9+/]{40,}={0,2}$/m,
 ];
+
+/**
+ * Determine which target file a traversal payload is trying to read.
+ * Returns the file key for TRAVERSAL_FILE_PATTERNS lookup.
+ */
+export function getTargetFile(payload: string): string | null {
+  const decoded = decodeURIComponent(payload).replace(/%00.*$/, '');
+  if (/etc\/passwd/i.test(decoded)) return '/etc/passwd';
+  if (/etc\/shadow/i.test(decoded)) return '/etc/shadow';
+  if (/etc\/hosts/i.test(decoded)) return '/etc/hosts';
+  if (/win\.ini/i.test(decoded)) return 'win.ini';
+  if (/drivers[/\\]etc[/\\]hosts/i.test(decoded)) return 'hosts';
+  if (/proc\/self\/environ/i.test(decoded)) return '/proc/self/environ';
+  return null;
+}
+
+/**
+ * Verify the response body actually contains file content matching the traversal target.
+ * Returns false for HTML error pages / framework not-found pages that happen to return 200.
+ */
+export function isRealTraversalContent(body: string, payload: string): boolean {
+  // If body is clearly an HTML page (error/not-found), it's not real file content
+  if (isHtmlErrorPage(body)) return false;
+
+  const targetFile = getTargetFile(payload);
+  if (!targetFile) {
+    // PHP wrappers / unknown targets: check for base64 output pattern
+    if (/php:\/\/filter/i.test(payload)) {
+      return /^[A-Za-z0-9+/]{40,}={0,2}$/m.test(body);
+    }
+    // Unknown payload type — require body to NOT be HTML and be non-empty
+    return body.length > 0 && !/<html[\s>]/i.test(body);
+  }
+
+  const patterns = TRAVERSAL_FILE_PATTERNS[targetFile];
+  if (!patterns) return body.length > 0 && !/<html[\s>]/i.test(body);
+  return patterns.some((p) => p.test(body));
+}
+
+/**
+ * Detect HTML error pages / framework rendered pages that are NOT real file content.
+ * Next.js, Nuxt, Express, etc. return 200 with an HTML error page for invalid paths.
+ */
+function isHtmlErrorPage(body: string): boolean {
+  const lower = body.toLowerCase();
+  // Must look like an HTML page
+  const isHtml = /<html[\s>]/i.test(body) || /<head[\s>]/i.test(body) || /<body[\s>]/i.test(body);
+  if (!isHtml) return false;
+
+  // Framework error page indicators
+  const errorIndicators = [
+    /not\s*found/i,
+    /404/,
+    /error/i,
+    /__next/i,           // Next.js
+    /__nuxt/i,           // Nuxt
+    /page not found/i,
+    /this page could not be found/i,
+    /cannot GET/i,
+    /cannot be found/i,
+    /<title>[^<]*(?:error|not found|404)[^<]*<\/title>/i,
+  ];
+
+  return errorIndicators.some((p) => p.test(body));
+}
