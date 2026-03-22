@@ -1009,12 +1009,12 @@ async function testPostFormSqli(
 
         const page = await context.newPage();
         try {
-          const resp = await page.request.fetch(form.action, {
+          let resp = await page.request.fetch(form.action, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             data: bodyParams,
           });
-          const body = await resp.text();
+          let body = await resp.text();
 
           requestLogger?.log({
             timestamp: new Date().toISOString(),
@@ -1024,6 +1024,34 @@ async function testPostFormSqli(
             responseStatus: resp.status(),
             phase: 'active-sqli-post-form',
           });
+
+          // WAF adaptive retry: if the response is WAF-blocked, try mutated payloads
+          if (isWafBlock(resp.status(), body) && config.wafDetection?.detected) {
+            const retryStrategies = pickStrategies(config.wafDetection, config.payloadStats).filter(s => s !== 'none');
+            for (const strategy of retryStrategies.slice(0, 2)) {
+              const mutated = mutatePayload(payload, [strategy])[0];
+              if (!mutated || mutated === payload) continue;
+              try {
+                const retryParams = textInputs.map((i) => {
+                  const val = i.name === input.name ? mutated : (i.value || 'test');
+                  return `${encodeURIComponent(i.name)}=${encodeURIComponent(val)}`;
+                }).join('&');
+                const retryResp = await page.request.fetch(form.action, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  data: retryParams,
+                  timeout: config.timeout,
+                });
+                const retryBody = await retryResp.text();
+                if (!isWafBlock(retryResp.status(), retryBody)) {
+                  resp = retryResp;
+                  body = retryBody;
+                  log.info(`WAF bypass: ${strategy} worked for POST SQLi on ${form.action}`);
+                  break;
+                }
+              } catch { continue; }
+            }
+          }
 
           for (const pattern of SQL_ERROR_PATTERNS) {
             const match = body.match(pattern);
@@ -1195,16 +1223,16 @@ async function testJsonApiSqli(
         for (const payload of payloads) {
           if (foundForEndpoint) break;
 
-          const jsonBody = JSON.stringify({ [fieldName]: payload });
+          let jsonBody = JSON.stringify({ [fieldName]: payload });
 
           const page = await context.newPage();
           try {
-            const resp = await page.request.fetch(endpoint, {
+            let resp = await page.request.fetch(endpoint, {
               method,
               headers: { 'Content-Type': 'application/json' },
               data: jsonBody,
             });
-            const body = await resp.text();
+            let body = await resp.text();
 
             requestLogger?.log({
               timestamp: new Date().toISOString(),
@@ -1214,6 +1242,32 @@ async function testJsonApiSqli(
               responseStatus: resp.status(),
               phase: 'active-sqli-json-api',
             });
+
+            // WAF adaptive retry: if the response is WAF-blocked, try mutated payloads
+            if (isWafBlock(resp.status(), body) && config.wafDetection?.detected) {
+              const retryStrategies = pickStrategies(config.wafDetection, config.payloadStats).filter(s => s !== 'none');
+              for (const strategy of retryStrategies.slice(0, 2)) {
+                const mutated = mutatePayload(payload, [strategy])[0];
+                if (!mutated || mutated === payload) continue;
+                try {
+                  const retryJsonBody = JSON.stringify({ [fieldName]: mutated });
+                  const retryResp = await page.request.fetch(endpoint, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    data: retryJsonBody,
+                    timeout: config.timeout,
+                  });
+                  const retryBody = await retryResp.text();
+                  if (!isWafBlock(retryResp.status(), retryBody)) {
+                    resp = retryResp;
+                    body = retryBody;
+                    jsonBody = retryJsonBody;
+                    log.info(`WAF bypass: ${strategy} worked for JSON SQLi on ${endpoint}`);
+                    break;
+                  }
+                } catch { continue; }
+              }
+            }
 
             for (const pattern of SQL_ERROR_PATTERNS) {
               const match = body.match(pattern);

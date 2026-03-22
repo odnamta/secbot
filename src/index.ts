@@ -63,6 +63,8 @@ import { autoTriageFindings } from './hunting/auto-triage.js';
 import type { TriageInfo } from './hunting/notify.js';
 import { submitReport as h1SubmitReport, mapCategoryToH1Weakness, getCredentialsFromEnv as getH1Credentials } from './hunting/platforms/hackerone.js';
 import type { H1ReportSubmission } from './hunting/platforms/hackerone.js';
+import { submitReport as bcSubmitReport, mapSeverityToBC, mapCategoryToCWE, getBCCredentials } from './hunting/platforms/bugcrowd.js';
+import type { BCSubmission } from './hunting/platforms/bugcrowd.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
 
@@ -1209,7 +1211,7 @@ program
   .option('--dry-run', 'Show which programs would be scanned without scanning', false)
   .option('--continuous', 'Run hunt in continuous loop mode', false)
   .option('--interval <minutes>', 'Sleep interval between hunt cycles in minutes (default: 60)', '60')
-  .option('--auto-submit', 'Auto-submit staged findings to HackerOne (requires HACKERONE_USERNAME + HACKERONE_API_TOKEN)', false)
+  .option('--auto-submit', 'Auto-submit staged findings to HackerOne or Bugcrowd (requires platform API credentials)', false)
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (options: Record<string, unknown>) => {
     if (options.verbose) setLogLevel('debug');
@@ -1335,6 +1337,44 @@ program
                   }
                 } catch (submitErr) {
                   log.warn(`H1 submission error: ${(submitErr as Error).message}`);
+                }
+              }
+            }
+          }
+
+          // Auto-submit to Bugcrowd (opt-in only via --auto-submit flag)
+          if (autoSubmit && prog.platform === 'bugcrowd' && interpreted.length > 0) {
+            const bcCreds = getBCCredentials();
+            if (!bcCreds) {
+              log.warn('--auto-submit set but BUGCROWD_API_TOKEN not found — skipping');
+            } else {
+              // Submit only high-confidence, medium+ severity findings (same filter as H1)
+              const submittable = interpreted.filter(
+                (f: { confidence: string; severity: string }) =>
+                  f.confidence === 'high' && ['critical', 'high', 'medium'].includes(f.severity),
+              );
+              for (const finding of submittable) {
+                const rawCategory = rawFindings.find(
+                  (r: { id: string }) => finding.rawFindingIds?.includes(r.id),
+                )?.category;
+                const cweRef = rawCategory ? mapCategoryToCWE(rawCategory) : undefined;
+                const submission: BCSubmission = {
+                  programId: prog.name,
+                  title: finding.title,
+                  description: finding.description + '\n\n## Steps to Reproduce\n' +
+                    finding.reproductionSteps.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n'),
+                  severity: mapSeverityToBC(finding.severity),
+                  vulnerabilityRefs: cweRef ? [cweRef] : [],
+                };
+                try {
+                  const result = await bcSubmitReport(submission, bcCreds);
+                  if (result.success) {
+                    log.info(`Bugcrowd submission created: ${result.submissionUrl}`);
+                  } else {
+                    log.warn(`Bugcrowd submission failed for "${finding.title}": ${result.error}`);
+                  }
+                } catch (submitErr) {
+                  log.warn(`Bugcrowd submission error: ${(submitErr as Error).message}`);
                 }
               }
             }

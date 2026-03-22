@@ -812,8 +812,43 @@ async function testPostFormXss(
             continue; // Only check HTML responses for reflected XSS
           }
 
-          const content = await response.text();
-          const dangerousContext = checkDangerousReflection(content, xssPayload.payload, xssPayload.marker);
+          let content = await response.text();
+          let usedPayload = xssPayload.payload;
+
+          // WAF adaptive retry: if the response is WAF-blocked, try mutated payloads
+          if (isWafBlock(response.status(), content) && config.wafDetection?.detected) {
+            const retryStrategies = pickStrategies(config.wafDetection, config.payloadStats).filter(s => s !== 'none');
+            for (const strategy of retryStrategies.slice(0, 2)) {
+              const mutated = mutatePayload(xssPayload.payload, [strategy])[0];
+              if (!mutated || mutated === xssPayload.payload) continue;
+              try {
+                const retryFormData: Record<string, string> = {};
+                for (const other of textInputs) {
+                  retryFormData[other.name] = other.name === input.name
+                    ? mutated
+                    : (other.value || 'test');
+                }
+                const retryBody = Object.entries(retryFormData)
+                  .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+                  .join('&');
+                const retryResp = await page.request.fetch(actionUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                  data: retryBody,
+                  timeout: config.timeout,
+                });
+                const retryContent = await retryResp.text();
+                if (!isWafBlock(retryResp.status(), retryContent)) {
+                  content = retryContent;
+                  usedPayload = mutated;
+                  log.info(`WAF bypass: ${strategy} worked for POST XSS on ${actionUrl}`);
+                  break;
+                }
+              } catch { continue; }
+            }
+          }
+
+          const dangerousContext = checkDangerousReflection(content, usedPayload, xssPayload.marker);
 
           if (dangerousContext) {
             // SPA framework downgrade: React/Vue/Angular/Svelte auto-escape output by default.
@@ -832,7 +867,7 @@ async function testPostFormXss(
               title: `Reflected XSS in POST Body Parameter "${input.name}"`,
               description,
               url: form.pageUrl,
-              evidence: `Payload: ${xssPayload.payload}\nType: ${xssPayload.type}\nParameter: ${input.name}\nMethod: POST\nAction: ${actionUrl}\n${dangerousContext}`,
+              evidence: `Payload: ${usedPayload}\nType: ${xssPayload.type}\nParameter: ${input.name}\nMethod: POST\nAction: ${actionUrl}\n${dangerousContext}`,
               confidence: spaDowngrade ? 'low' : 'medium',
               request: {
                 method: 'POST',
