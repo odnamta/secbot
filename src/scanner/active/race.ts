@@ -14,12 +14,178 @@ const STATE_CHANGE_RE = /\/(apply|redeem|coupon|discount|transfer|withdraw|depos
 /** Patterns for transaction-like form actions */
 const TRANSACTION_FORM_RE = /\/(pay|transfer|send|order|checkout|submit|apply|redeem|claim|withdraw|deposit)/i;
 
+// ─── Burst Result Types ───────────────────────────────────────────────
+
+/** A single response captured during a concurrent burst */
+export interface BurstResponseEntry {
+  status: number;
+  body: string;
+  timeMs: number;
+}
+
+/** Result of a concurrent burst test against a single endpoint */
+export interface BurstResult {
+  responses: BurstResponseEntry[];
+  raceDetected: boolean;
+  indicators: string[];
+}
+
+// ─── Analysis (exported for testing) ─────────────────────────────────
+
+/**
+ * Analyze a set of burst responses for race condition indicators.
+ *
+ * Indicators checked:
+ * 1. Multiple 2xx successes when only one should succeed (double-processing)
+ * 2. Status code inconsistency (mix of 2xx and 5xx — fragile concurrency handling)
+ * 3. High body variation (inconsistent state across concurrent requests)
+ * 4. Duplicate transaction/order IDs across responses
+ *
+ * Exported so unit tests can exercise the logic without Playwright.
+ */
+export function analyzeBurstResults(responses: BurstResponseEntry[]): Pick<BurstResult, 'raceDetected' | 'indicators'> {
+  const indicators: string[] = [];
+
+  if (responses.length < 2) {
+    return { raceDetected: false, indicators };
+  }
+
+  const successCount = responses.filter((r) => r.status >= 200 && r.status < 300).length;
+  const totalResponses = responses.length;
+
+  // ── Indicator 1: Multiple successes on a state-changing endpoint ──
+  // A properly protected endpoint should let at most 1 succeed and reject
+  // duplicates with 409 Conflict or 429 Too Many Requests.
+  if (successCount > 1) {
+    indicators.push(`${successCount}/${totalResponses} requests succeeded (expected at most 1)`);
+  }
+
+  // ── Indicator 2: Status code inconsistency ──
+  // Some 2xx + some 5xx suggests the server's concurrency handling is
+  // fragile — sometimes it catches the race, sometimes it doesn't.
+  const has2xx = responses.some((r) => r.status >= 200 && r.status < 300);
+  const hasServerError = responses.some((r) => r.status >= 500);
+  if (has2xx && hasServerError) {
+    const statusCounts = new Map<number, number>();
+    for (const r of responses) {
+      statusCounts.set(r.status, (statusCounts.get(r.status) ?? 0) + 1);
+    }
+    const breakdown = [...statusCounts.entries()]
+      .map(([code, count]) => `${code}x${count}`)
+      .join(', ');
+    indicators.push(`Mixed success/error statuses under concurrency (${breakdown})`);
+  }
+
+  // ── Indicator 3: High body variation (inconsistent state) ──
+  // If concurrent requests return many different bodies, the server state
+  // is not stable under concurrency — classic TOCTOU symptom.
+  const nonEmptyBodies = responses.map((r) => r.body).filter(Boolean);
+  const uniqueBodies = new Set(nonEmptyBodies);
+  if (uniqueBodies.size > 2 && totalResponses >= 5) {
+    indicators.push(
+      `${uniqueBodies.size} different response bodies across ${totalResponses} concurrent requests (inconsistent state)`,
+    );
+  }
+
+  // ── Indicator 4: Duplicate IDs in responses ──
+  // If the server returns the same transaction/order ID in multiple responses,
+  // the same resource was processed more than once.
+  const allBodiesConcat = responses.map((r) => r.body).join('\n');
+  const idPattern = /"(?:id|order_id|transaction_id|txn_id|confirmation_id|reference_id|ref_id|booking_id)":\s*"?([A-Za-z0-9_-]+)"?/g;
+  const extractedIds: string[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = idPattern.exec(allBodiesConcat)) !== null) {
+    if (match[1]) extractedIds.push(match[1]);
+  }
+  if (extractedIds.length > 1) {
+    const uniqueIds = new Set(extractedIds);
+    if (uniqueIds.size < extractedIds.length) {
+      indicators.push(
+        `Duplicate IDs in responses: ${extractedIds.length} total, ${uniqueIds.size} unique`,
+      );
+    }
+  }
+
+  return {
+    raceDetected: indicators.length > 0,
+    indicators,
+  };
+}
+
+// ─── Concurrent Burst ────────────────────────────────────────────────
+
+/**
+ * Fire N concurrent requests to a state-changing endpoint and analyze
+ * the responses for race condition indicators.
+ *
+ * Uses a single Playwright page per request (isolated cookie jars) and
+ * fires them all at once via Promise.all to maximize timing overlap.
+ */
+async function testConcurrentBurst(
+  context: BrowserContext,
+  url: string,
+  method: string,
+  body: string | undefined,
+  headers: Record<string, string>,
+  concurrency: number,
+  timeout: number,
+  requestLogger?: RequestLogger,
+): Promise<BurstResult> {
+  const results: BurstResponseEntry[] = [];
+
+  // Fire N requests simultaneously — each on its own page for isolation
+  const promises = Array.from({ length: concurrency }, async (_, i) => {
+    const page = await context.newPage();
+    try {
+      const start = Date.now();
+      const resp = await page.request.fetch(url, {
+        method,
+        data: body,
+        headers: Object.keys(headers).length > 0 ? headers : undefined,
+        timeout,
+      });
+      const entry: BurstResponseEntry = {
+        status: resp.status(),
+        body: (await resp.text().catch(() => '')).slice(0, 1000),
+        timeMs: Date.now() - start,
+      };
+      results.push(entry);
+
+      requestLogger?.log({
+        timestamp: new Date().toISOString(),
+        method,
+        url,
+        responseStatus: entry.status,
+        phase: `active-race-burst-${i}`,
+      });
+    } catch (err) {
+      log.debug(`Race burst ${i}: ${(err as Error).message}`);
+    } finally {
+      await page.close();
+    }
+  });
+
+  await Promise.allSettled(promises);
+
+  const analysis = analyzeBurstResults(results);
+
+  return {
+    responses: results,
+    ...analysis,
+  };
+}
+
+// ─── Check Implementation ─────────────────────────────────────────────
+
 /**
  * Race Condition / TOCTOU (Time-of-Check to Time-of-Use) check.
  *
  * Tests state-changing endpoints for race condition vulnerabilities by sending
- * multiple concurrent requests. If all requests succeed when only one should,
- * the endpoint lacks proper concurrency control.
+ * multiple concurrent requests. Detects:
+ * - Double-processing (multiple 2xx when only one should succeed)
+ * - Inconsistent state (different response bodies under concurrency)
+ * - Duplicate transaction IDs in responses
+ * - Mixed success/error status codes (fragile concurrency handling)
  *
  * Common bounty findings:
  * - Double-spend (apply coupon twice, transfer money twice)
@@ -27,7 +193,7 @@ const TRANSACTION_FORM_RE = /\/(pay|transfer|send|order|checkout|submit|apply|re
  * - Race-condition privilege escalation
  * - Inventory oversell
  *
- * OWASP: A04:2021 – Insecure Design
+ * OWASP: A04:2021 - Insecure Design
  */
 export const raceCheck: ActiveCheck = {
   name: 'race',
@@ -48,19 +214,41 @@ export const raceCheck: ActiveCheck = {
       return findings;
     }
 
-    log.info(`Testing ${raceTargets.length} endpoint(s) for race conditions...`);
+    const concurrency = config.profile === 'deep' ? 15 : RACE_CONCURRENCY;
+    log.info(`Testing ${raceTargets.length} endpoint(s) for race conditions (concurrency=${concurrency})...`);
 
     for (const target of raceTargets) {
-      const finding = target.method === 'POST'
-        ? await testPostRace(context, target, config, requestLogger)
-        : await testGetRace(context, target, config, requestLogger);
-      if (finding) findings.push(finding);
+      try {
+        const headers: Record<string, string> = {};
+        if (target.contentType) {
+          headers['Content-Type'] = target.contentType;
+        }
+
+        const burst = await testConcurrentBurst(
+          context,
+          target.url,
+          target.method,
+          target.body,
+          headers,
+          concurrency,
+          config.timeout,
+          requestLogger,
+        );
+
+        if (burst.raceDetected) {
+          findings.push(burstToFinding(target, burst, concurrency));
+        }
+      } catch (err) {
+        log.debug(`Race check for ${target.url}: ${(err as Error).message}`);
+      }
     }
 
     log.info(`Race condition check: ${findings.length} finding(s)`);
     return findings;
   },
 };
+
+// ─── Helpers ──────────────────────────────────────────────────────────
 
 interface RaceTarget {
   url: string;
@@ -125,139 +313,72 @@ function identifyRaceTargets(targets: ScanTargets): RaceTarget[] {
 }
 
 /**
- * Test a POST endpoint for race conditions by sending concurrent requests.
+ * Convert a BurstResult into a RawFinding with structured evidence.
  */
-async function testPostRace(
-  context: BrowserContext,
+function burstToFinding(
   target: RaceTarget,
-  config: ScanConfig,
-  requestLogger?: RequestLogger,
-): Promise<RawFinding | null> {
-  const statuses: number[] = [];
-  const bodies: string[] = [];
+  burst: BurstResult,
+  concurrency: number,
+): RawFinding {
+  const successCount = burst.responses.filter((r) => r.status >= 200 && r.status < 300).length;
+  const allIdentical = new Set(burst.responses.map((r) => r.body).filter(Boolean)).size <= 1;
+  const avgTimeMs = burst.responses.length > 0
+    ? Math.round(burst.responses.reduce((sum, r) => sum + r.timeMs, 0) / burst.responses.length)
+    : 0;
 
-  // Send RACE_CONCURRENCY requests simultaneously
-  const promises = Array.from({ length: RACE_CONCURRENCY }, async (_, i) => {
-    const page = await context.newPage();
-    try {
-      const response = await page.request.fetch(target.url, {
-        method: 'POST',
-        headers: target.contentType ? { 'Content-Type': target.contentType } : undefined,
-        data: target.body,
-        timeout: config.timeout,
-      });
-      const status = response.status();
-      const body = await response.text().catch(() => '');
-      statuses.push(status);
-      bodies.push(body.slice(0, 500));
+  // Severity: high if duplicate IDs found (concrete double-processing), medium otherwise
+  const hasDuplicateIds = burst.indicators.some((i) => i.includes('Duplicate IDs'));
+  const severity = hasDuplicateIds ? 'high' : 'medium';
 
-      requestLogger?.log({
-        timestamp: new Date().toISOString(),
-        method: 'POST',
-        url: target.url,
-        responseStatus: status,
-        phase: `active-race-${i}`,
-      });
-    } catch (err) {
-      log.debug(`Race test ${i}: ${(err as Error).message}`);
-    } finally {
-      await page.close();
-    }
-  });
-
-  await Promise.allSettled(promises);
-
-  return analyzeRaceResults(target, statuses, bodies);
-}
-
-/**
- * Test a GET endpoint for race conditions.
- */
-async function testGetRace(
-  context: BrowserContext,
-  target: RaceTarget,
-  config: ScanConfig,
-  requestLogger?: RequestLogger,
-): Promise<RawFinding | null> {
-  const statuses: number[] = [];
-  const bodies: string[] = [];
-
-  const promises = Array.from({ length: RACE_CONCURRENCY }, async (_, i) => {
-    const page = await context.newPage();
-    try {
-      const response = await page.request.fetch(target.url, {
-        timeout: config.timeout,
-      });
-      const status = response.status();
-      const body = await response.text().catch(() => '');
-      statuses.push(status);
-      bodies.push(body.slice(0, 500));
-
-      requestLogger?.log({
-        timestamp: new Date().toISOString(),
-        method: 'GET',
-        url: target.url,
-        responseStatus: status,
-        phase: `active-race-${i}`,
-      });
-    } catch (err) {
-      log.debug(`Race test ${i}: ${(err as Error).message}`);
-    } finally {
-      await page.close();
-    }
-  });
-
-  await Promise.allSettled(promises);
-
-  return analyzeRaceResults(target, statuses, bodies);
-}
-
-/**
- * Analyze race condition test results.
- * If all concurrent requests succeeded (2xx), the endpoint likely lacks proper
- * concurrency control (no mutex/lock, no idempotency key, no optimistic locking).
- */
-function analyzeRaceResults(
-  target: RaceTarget,
-  statuses: number[],
-  bodies: string[],
-): RawFinding | null {
-  if (statuses.length < RACE_CONCURRENCY / 2) return null; // Too many failures
-
-  const successCount = statuses.filter((s) => s >= 200 && s < 300).length;
-  const uniqueBodies = new Set(bodies.filter(Boolean));
-
-  // If ALL concurrent requests succeeded → likely vulnerable
-  // A properly protected endpoint would let only one through (or return 409/429 for the rest)
-  if (successCount >= RACE_CONCURRENCY - 1) {
-    // Additional signal: if all responses are identical, the server processed each independently
-    const allIdentical = uniqueBodies.size <= 1;
-
-    return {
-      id: randomUUID(),
-      category: 'race-condition',
-      severity: 'medium',
-      title: `Potential Race Condition on ${target.description}`,
-      description: `Sent ${RACE_CONCURRENCY} concurrent ${target.method} requests to ${new URL(target.url).pathname} — all ${successCount} returned success (HTTP 2xx).${allIdentical ? ' All responses were identical, suggesting each request was processed independently without concurrency control.' : ''} This may allow double-spend, coupon reuse, vote manipulation, or other TOCTOU attacks. The endpoint should use database-level locks, idempotency keys, or optimistic concurrency control.`,
-      url: target.url,
-      evidence: [
-        `Concurrent requests: ${RACE_CONCURRENCY}`,
-        `Successful responses: ${successCount}/${statuses.length}`,
-        `Status codes: ${statuses.join(', ')}`,
-        `Unique response bodies: ${uniqueBodies.size}`,
-        allIdentical ? 'All responses identical (no concurrency control detected)' : 'Responses varied (may have partial protection)',
-      ].join('\n'),
-      request: {
-        method: target.method,
-        url: target.url,
-        body: target.body,
-      },
-      response: { status: statuses[0] },
-      timestamp: new Date().toISOString(),
-      confidence: allIdentical ? 'medium' : 'low',
-      evidencePack: { detectionMethod: 'race-condition' },
-    };
+  // Confidence: high if multiple strong indicators, medium for single indicator
+  let confidence: 'high' | 'medium' | 'low';
+  if (burst.indicators.length >= 2 || hasDuplicateIds) {
+    confidence = 'high';
+  } else if (successCount > 1 && allIdentical) {
+    confidence = 'medium';
+  } else {
+    confidence = 'low';
   }
 
-  return null;
+  const pathname = new URL(target.url).pathname;
+
+  return {
+    id: randomUUID(),
+    category: 'race-condition',
+    severity,
+    title: `Race Condition on ${target.description}`,
+    description: [
+      `Sent ${concurrency} concurrent ${target.method} requests to ${pathname}.`,
+      ...burst.indicators.map((ind) => `- ${ind}`),
+      '',
+      'This may allow double-spend, coupon reuse, vote manipulation, or other TOCTOU attacks.',
+      'The endpoint should use database-level locks, idempotency keys, or optimistic concurrency control.',
+    ].join('\n'),
+    url: target.url,
+    evidence: [
+      `Concurrent requests: ${concurrency}`,
+      `Successful responses: ${successCount}/${burst.responses.length}`,
+      `Status codes: ${burst.responses.map((r) => r.status).join(', ')}`,
+      `Unique response bodies: ${new Set(burst.responses.map((r) => r.body).filter(Boolean)).size}`,
+      `Average response time: ${avgTimeMs}ms`,
+      allIdentical
+        ? 'All responses identical (no concurrency control detected)'
+        : 'Responses varied under concurrency',
+      '',
+      'Race indicators:',
+      ...burst.indicators.map((ind) => `  - ${ind}`),
+    ].join('\n'),
+    request: {
+      method: target.method,
+      url: target.url,
+      body: target.body,
+    },
+    response: { status: burst.responses[0]?.status ?? 0 },
+    timestamp: new Date().toISOString(),
+    confidence,
+    evidencePack: {
+      detectionMethod: 'race-condition-burst',
+      responseIndicators: burst.indicators,
+    },
+  };
 }

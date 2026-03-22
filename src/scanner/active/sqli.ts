@@ -23,6 +23,7 @@ import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck, ScanTargets } from './index.js';
 import { delay, measureResponseTime, INFRA_PARAM_RE } from '../../utils/shared.js';
 import { mutatePayload, pickStrategies, sqlCommentObfuscate, sqlCaseRandomize } from '../../utils/payload-mutator.js';
+import { isWafBlock } from '../../utils/waf-retry.js';
 
 /** Threshold in ms — if response is this much slower than baseline, it's suspicious.
  *  With SLEEP(5) payloads and median-of-3 reducing jitter, 2500ms gives
@@ -580,8 +581,9 @@ async function testSqliOnUrls(
 
           const page = await context.newPage();
           try {
-            const response = await page.request.fetch(testUrl.href);
-            const body = await response.text();
+            let response = await page.request.fetch(testUrl.href);
+            let body = await response.text();
+            let usedVariant = variant;
 
             requestLogger?.log({
               timestamp: new Date().toISOString(),
@@ -591,10 +593,33 @@ async function testSqliOnUrls(
               phase: 'active-sqli',
             });
 
+            // WAF adaptive retry: if the response is WAF-blocked, try mutated payloads
+            if (isWafBlock(response.status(), body) && config.wafDetection?.detected) {
+              const retryStrategies = pickStrategies(config.wafDetection, config.payloadStats).filter(s => s !== 'none');
+              for (const strategy of retryStrategies.slice(0, 2)) {
+                const mutated = mutatePayload(payload, [strategy])[0];
+                if (!mutated || mutated === variant) continue;
+                const retryUrl = new URL(originalUrl);
+                retryUrl.searchParams.set(param, mutated);
+                try {
+                  const retryResp = await page.request.fetch(retryUrl.href, { timeout: config.timeout });
+                  const retryBody = await retryResp.text();
+                  if (!isWafBlock(retryResp.status(), retryBody)) {
+                    response = retryResp;
+                    body = retryBody;
+                    usedVariant = mutated;
+                    testUrl.searchParams.set(param, mutated);
+                    log.info(`WAF bypass: ${strategy} worked for SQLi on ${originalUrl}`);
+                    break;
+                  }
+                } catch { continue; }
+              }
+            }
+
             for (const pattern of SQL_ERROR_PATTERNS) {
               const match = body.match(pattern);
               if (match) {
-                const isWafBypass = variant !== payload;
+                const isWafBypass = usedVariant !== payload;
                 findings.push({
                   id: randomUUID(),
                   category: 'sqli',
@@ -603,7 +628,7 @@ async function testSqliOnUrls(
                   title: `SQL Injection in URL Parameter "${param}"${isWafBypass ? ' (WAF bypass)' : ''}`,
                   description: `SQL error message detected when injecting payload into URL parameter "${param}". This indicates the parameter is directly interpolated into SQL queries.${isWafBypass ? ' Encoded payload bypassed WAF detection.' : ''}`,
                   url: originalUrl,
-                  evidence: `Payload: ${variant}\nOriginal: ${payload}\nTest URL: ${testUrl.href}\nSQL error: ${match[0]}${isWafBypass ? '\nWAF bypass: yes' : ''}`,
+                  evidence: `Payload: ${usedVariant}\nOriginal: ${payload}\nTest URL: ${testUrl.href}\nSQL error: ${match[0]}${isWafBypass ? '\nWAF bypass: yes' : ''}`,
                   request: { method: 'GET', url: testUrl.href },
                   response: { status: response.status(), bodySnippet: body.slice(0, 300) },
                   timestamp: new Date().toISOString(),

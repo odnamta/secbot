@@ -10,6 +10,7 @@ import type { RequestLogger } from '../../utils/request-logger.js';
 import type { ActiveCheck, ScanTargets } from './index.js';
 import { delay, INFRA_PARAM_RE } from '../../utils/shared.js';
 import { mutatePayload, pickStrategies, caseRandomize } from '../../utils/payload-mutator.js';
+import { isWafBlock } from '../../utils/waf-retry.js';
 import { detectFramework, waitForHydration } from '../discovery/framework-detector.js';
 import { checkPersistence, type InjectedMarker } from '../../utils/multi-step-verify.js';
 
@@ -1055,9 +1056,9 @@ async function testXssOnUrls(
           const testUrl = new URL(originalUrl);
           testUrl.searchParams.set(param, variant);
 
-          const page = await context.newPage();
+          let page = await context.newPage();
           try {
-            await page.goto(testUrl.href, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
+            const gotoResp = await page.goto(testUrl.href, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
 
             requestLogger?.log({
               timestamp: new Date().toISOString(),
@@ -1066,16 +1067,42 @@ async function testXssOnUrls(
               phase: 'active-xss',
             });
 
-            const content = await page.content();
+            let content = await page.content();
+
+            // WAF adaptive retry: if the response is WAF-blocked, try mutated payloads
+            let usedVariant = variant;
+            if (gotoResp && isWafBlock(gotoResp.status(), content) && config.wafDetection?.detected) {
+              const retryStrategies = pickStrategies(config.wafDetection, config.payloadStats).filter(s => s !== 'none');
+              for (const strategy of retryStrategies.slice(0, 2)) {
+                const mutated = mutatePayload(xssPayload.payload, [strategy])[0];
+                if (!mutated || mutated === variant) continue;
+                const retryUrl = new URL(originalUrl);
+                retryUrl.searchParams.set(param, mutated);
+                try {
+                  await page.close();
+                  page = await context.newPage();
+                  const retryResp = await page.goto(retryUrl.href, { timeout: config.timeout, waitUntil: 'domcontentloaded' });
+                  const retryContent = await page.content();
+                  if (retryResp && !isWafBlock(retryResp.status(), retryContent)) {
+                    content = retryContent;
+                    usedVariant = mutated;
+                    testUrl.searchParams.set(param, mutated);
+                    log.info(`WAF bypass: ${strategy} worked for XSS on ${originalUrl}`);
+                    break;
+                  }
+                } catch { continue; }
+              }
+            }
+
             // Check for both the variant and original payload reflection
-            const dangerousContext = checkDangerousReflection(content, variant, xssPayload.marker)
-              || (variant !== xssPayload.payload ? checkDangerousReflection(content, xssPayload.payload, xssPayload.marker) : null);
+            const dangerousContext = checkDangerousReflection(content, usedVariant, xssPayload.marker)
+              || (usedVariant !== xssPayload.payload ? checkDangerousReflection(content, xssPayload.payload, xssPayload.marker) : null);
 
             if (dangerousContext) {
-              const isWafBypass = variant !== xssPayload.payload;
+              const isWafBypass = usedVariant !== xssPayload.payload;
               // SPA framework downgrade: React/Vue/Angular/Svelte auto-escape output by default.
-              const inAlwaysCtx = isInAlwaysDangerousContext(content, variant, xssPayload.marker)
-                || (variant !== xssPayload.payload ? isInAlwaysDangerousContext(content, xssPayload.payload, xssPayload.marker) : false);
+              const inAlwaysCtx = isInAlwaysDangerousContext(content, usedVariant, xssPayload.marker)
+                || (usedVariant !== xssPayload.payload ? isInAlwaysDangerousContext(content, xssPayload.payload, xssPayload.marker) : false);
               const spaDowngrade = isSpaAutoEscaping(config) && !inAlwaysCtx;
 
               let description = `The URL parameter "${param}" reflects XSS payload (${xssPayload.type}) in a dangerous context without proper encoding. ${dangerousContext}.${isWafBypass ? ' Payload was encoded to bypass WAF detection.' : ''}`;
@@ -1090,7 +1117,7 @@ async function testXssOnUrls(
                 title: `Reflected XSS in URL Parameter "${param}"${isWafBypass ? ' (WAF bypass)' : ''}`,
                 description,
                 url: originalUrl,
-                evidence: `Payload: ${variant}\nOriginal: ${xssPayload.payload}\nType: ${xssPayload.type}\nTest URL: ${testUrl.href}\n${dangerousContext}${isWafBypass ? '\nWAF bypass: yes' : ''}`,
+                evidence: `Payload: ${usedVariant}\nOriginal: ${xssPayload.payload}\nType: ${xssPayload.type}\nTest URL: ${testUrl.href}\n${dangerousContext}${isWafBypass ? '\nWAF bypass: yes' : ''}`,
                 request: { method: 'GET', url: testUrl.href },
                 timestamp: new Date().toISOString(),
                 confidence: spaDowngrade ? 'low' : 'medium',

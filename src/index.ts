@@ -50,6 +50,8 @@ import { verifyFindings } from './scanner/auto-verify.js';
 import { preFilterFindings } from './scanner/pre-filter.js';
 import { EscalationQueue } from './hunting/escalation.js';
 import { Orchestrator } from './hunting/orchestrator.js';
+import { parseIntervalMs, installShutdownHandlers, interruptibleSleep } from './hunting/daemon.js';
+import type { DaemonState } from './hunting/daemon.js';
 import { OutcomeTracker } from './learning/outcomes.js';
 import { FPMemory } from './learning/fp-memory.js';
 import { TechProfiler } from './learning/tech-profiles.js';
@@ -59,6 +61,8 @@ import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, CheckAuditEntr
 import { enrichAllFindings } from './utils/evidence.js';
 import { autoTriageFindings } from './hunting/auto-triage.js';
 import type { TriageInfo } from './hunting/notify.js';
+import { submitReport as h1SubmitReport, mapCategoryToH1Weakness, getCredentialsFromEnv as getH1Credentials } from './hunting/platforms/hackerone.js';
+import type { H1ReportSubmission } from './hunting/platforms/hackerone.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
 
@@ -1203,11 +1207,15 @@ program
   .option('--registry <path>', 'Path to program registry YAML', join(homedir(), '.secbot', 'registry.yaml'))
   .option('--bounty-pool <path>', 'Path to bounty pool directory', join(process.cwd(), 'bounty-pool'))
   .option('--dry-run', 'Show which programs would be scanned without scanning', false)
+  .option('--continuous', 'Run hunt in continuous loop mode', false)
+  .option('--interval <minutes>', 'Sleep interval between hunt cycles in minutes (default: 60)', '60')
+  .option('--auto-submit', 'Auto-submit staged findings to HackerOne (requires HACKERONE_USERNAME + HACKERONE_API_TOKEN)', false)
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (options: Record<string, unknown>) => {
     if (options.verbose) setLogLevel('debug');
     log.banner();
 
+    const autoSubmit = options.autoSubmit === true;
     const registryPath = options.registry as string;
     const bountyPoolDir = options.bountyPool as string ?? join(process.cwd(), 'bounty-pool');
     const orch = new Orchestrator({
@@ -1217,10 +1225,8 @@ program
 
     log.info(`Hunt mode: registry at ${registryPath}`);
 
-    // Collect triage results across all programs
-    const triageResults: TriageInfo = { perProgram: {} };
-
-    const summary = await orch.hunt(async (prog) => {
+    // Build the scan callback (shared between one-shot and continuous)
+    const scanFn = async (prog: Parameters<Parameters<Orchestrator['hunt']>[0]> extends [infer P] ? P : never, triageResults: TriageInfo) => {
       const startMs = Date.now();
       log.info(`Scanning: ${prog.name} (${prog.platform}, profile: ${prog.profile})`);
 
@@ -1228,8 +1234,8 @@ program
       const args: string[] = [];
       if (prog.scopeFile) {
         // Use first in-scope domain as target URL
-        const { readFileSync } = await import('node:fs');
-        const scopeContent = readFileSync(resolve(prog.scopeFile), 'utf-8');
+        const { readFileSync: readSync } = await import('node:fs');
+        const scopeContent = readSync(resolve(prog.scopeFile), 'utf-8');
         const { parseScopeFile: parseSF } = await import('./utils/scope-parser.js');
         const scope = parseSF(scopeContent);
         if (scope.inScope.length === 0) {
@@ -1295,6 +1301,44 @@ program
               log.warn(`Auto-triage failed for ${prog.name}: ${(triageErr as Error).message}`);
             }
           }
+
+          // Auto-submit to HackerOne (opt-in only via --auto-submit flag)
+          if (autoSubmit && prog.platform === 'hackerone' && interpreted.length > 0) {
+            const h1Creds = getH1Credentials();
+            if (!h1Creds) {
+              log.warn('--auto-submit set but HACKERONE_USERNAME / HACKERONE_API_TOKEN not found — skipping');
+            } else {
+              // Submit only high-confidence, medium+ severity findings (same filter as auto-triage)
+              const submittable = interpreted.filter(
+                (f: { confidence: string; severity: string }) =>
+                  f.confidence === 'high' && ['critical', 'high', 'medium'].includes(f.severity),
+              );
+              for (const finding of submittable) {
+                const rawCategory = rawFindings.find(
+                  (r: { id: string }) => finding.rawFindingIds?.includes(r.id),
+                )?.category;
+                const submission: H1ReportSubmission = {
+                  programHandle: prog.name,
+                  title: finding.title,
+                  vulnerabilityInfo: finding.description + '\n\n## Steps to Reproduce\n' +
+                    finding.reproductionSteps.map((s: string, i: number) => `${i + 1}. ${s}`).join('\n'),
+                  impact: finding.impact,
+                  severity: { rating: finding.severity === 'info' ? 'none' : finding.severity as 'low' | 'medium' | 'high' | 'critical' },
+                  weaknessId: rawCategory ? mapCategoryToH1Weakness(rawCategory) : undefined,
+                };
+                try {
+                  const result = await h1SubmitReport(submission, h1Creds);
+                  if (result.success) {
+                    log.info(`H1 report submitted: ${result.reportUrl}`);
+                  } else {
+                    log.warn(`H1 submission failed for "${finding.title}": ${result.error}`);
+                  }
+                } catch (submitErr) {
+                  log.warn(`H1 submission error: ${(submitErr as Error).message}`);
+                }
+              }
+            }
+          }
         }
       } catch { /* no report yet */ }
 
@@ -1317,25 +1361,69 @@ program
         escalations: escalationCount,
         duration: Date.now() - startMs,
       };
-    }, triageResults);
+    };
 
     // Print hunt summary with triage info
-    const totalStaged = Object.values(triageResults.perProgram).reduce((sum, r) => sum + r.staged, 0);
+    function printHuntSummary(summary: import('./hunting/types.js').HuntSummary, triageResults: TriageInfo): void {
+      const totalStaged = Object.values(triageResults.perProgram).reduce((sum, r) => sum + r.staged, 0);
 
-    console.log(chalk.cyan('\n─── Hunt Summary ───'));
-    console.log(chalk.gray(`Programs: ${summary.programs}`));
-    console.log(chalk.gray(`Findings: H:${summary.findings.high} M:${summary.findings.medium} L:${summary.findings.low}`));
-    console.log(chalk.gray(`Escalations: ${summary.escalations}`));
-    console.log(chalk.gray(`Duration: ${summary.duration}`));
+      console.log(chalk.cyan('\n─── Hunt Summary ───'));
+      console.log(chalk.gray(`Programs: ${summary.programs}`));
+      console.log(chalk.gray(`Findings: H:${summary.findings.high} M:${summary.findings.medium} L:${summary.findings.low}`));
+      console.log(chalk.gray(`Escalations: ${summary.escalations}`));
+      console.log(chalk.gray(`Duration: ${summary.duration}`));
 
-    if (totalStaged > 0) {
-      console.log(chalk.yellow(`\n*** ACTION REQUIRED ***`));
-      console.log(chalk.yellow(`  ${totalStaged} finding(s) staged in bounty-pool/pending/ — review and submit`));
-      for (const [name, result] of Object.entries(triageResults.perProgram)) {
-        if (result.staged > 0) {
-          console.log(chalk.gray(`    ${name}: ${result.staged} new`));
+      if (totalStaged > 0) {
+        console.log(chalk.yellow(`\n*** ACTION REQUIRED ***`));
+        console.log(chalk.yellow(`  ${totalStaged} finding(s) staged in bounty-pool/pending/ — review and submit`));
+        for (const [name, result] of Object.entries(triageResults.perProgram)) {
+          if (result.staged > 0) {
+            console.log(chalk.gray(`    ${name}: ${result.staged} new`));
+          }
         }
       }
+    }
+
+    if (options.continuous) {
+      // ─── Continuous / daemon mode ───
+      const intervalMs = parseIntervalMs(options.interval as string);
+      const state: DaemonState = { shuttingDown: false };
+
+      // Replace the default SIGINT/SIGTERM handlers with graceful shutdown
+      process.removeListener('SIGINT', cleanup);
+      process.removeListener('SIGTERM', cleanup);
+      const removeHandlers = installShutdownHandlers(state);
+
+      log.info(`Continuous hunt mode — interval: ${options.interval} min`);
+
+      let cycle = 0;
+      while (!state.shuttingDown) {
+        cycle++;
+        log.info(`── Hunt cycle #${cycle} starting ──`);
+
+        const triageResults: TriageInfo = { perProgram: {} };
+        const summary = await orch.hunt(
+          (prog) => scanFn(prog, triageResults),
+          triageResults,
+        );
+        printHuntSummary(summary, triageResults);
+
+        if (state.shuttingDown) break;
+
+        log.info(`Sleeping ${options.interval} minutes until next cycle...`);
+        await interruptibleSleep(intervalMs, state);
+      }
+
+      removeHandlers();
+      log.info('Hunt daemon stopped.');
+    } else {
+      // ─── One-shot mode (existing behavior) ───
+      const triageResults: TriageInfo = { perProgram: {} };
+      const summary = await orch.hunt(
+        (prog) => scanFn(prog, triageResults),
+        triageResults,
+      );
+      printHuntSummary(summary, triageResults);
     }
   });
 
