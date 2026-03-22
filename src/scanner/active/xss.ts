@@ -11,6 +11,7 @@ import type { ActiveCheck, ScanTargets } from './index.js';
 import { delay, INFRA_PARAM_RE } from '../../utils/shared.js';
 import { mutatePayload, pickStrategies, caseRandomize } from '../../utils/payload-mutator.js';
 import { detectFramework, waitForHydration } from '../discovery/framework-detector.js';
+import { checkPersistence, type InjectedMarker } from '../../utils/multi-step-verify.js';
 
 /**
  * Dangerous HTML contexts — safe to match against both markers and full payloads.
@@ -317,6 +318,45 @@ export const xssCheck: ActiveCheck = {
         await delay(2000);
         log.info(`Checking ${targets.pages.length} pages for ${injectedMarkers.length} stored XSS markers...`);
         findings.push(...(await testStoredXss(context, targets.pages, config, injectedMarkers)));
+
+        // Multi-step verification: check if markers persist on related pages
+        // (second-order XSS — inject in profile form, appears on admin report)
+        const crossCheckUrls = [
+          ...targets.pages,
+          ...targets.apiEndpoints,
+        ];
+        if (crossCheckUrls.length > 0) {
+          const persistenceMarkers: InjectedMarker[] = injectedMarkers.map(m => ({
+            marker: m.marker,
+            payload: m.payload,
+            injectionUrl: m.formAction,
+            injectionField: m.fieldName,
+            injectionMethod: 'POST' as const,
+          }));
+          log.info(`Multi-step verify: checking ${crossCheckUrls.length} URLs for second-order XSS...`);
+          const persistenceHits = await checkPersistence(
+            context,
+            persistenceMarkers,
+            crossCheckUrls,
+            config.timeout,
+          );
+          for (const hit of persistenceHits) {
+            findings.push({
+              id: randomUUID(),
+              category: 'xss',
+              severity: 'critical',
+              title: 'Second-Order Stored XSS — Payload Persists on Different Page',
+              description: `A unique XSS marker ("${hit.marker}") injected into field "${hit.injectionField}" at ${hit.injectionUrl} was found rendered on a different page (${hit.foundOnUrl}) in ${hit.context} context. This indicates second-order stored XSS where user input is stored and later rendered without sanitization on another page.`,
+              url: hit.foundOnUrl,
+              evidence: `Marker: ${hit.marker}\nInjection URL: ${hit.injectionUrl}\nInjection field: ${hit.injectionField}\nFound on: ${hit.foundOnUrl}\nContext: ${hit.context}`,
+              request: { method: 'GET', url: hit.foundOnUrl },
+              timestamp: new Date().toISOString(),
+              confidence: 'high',
+              affectedUrls: [hit.injectionUrl, hit.foundOnUrl],
+              evidencePack: { detectionMethod: 'multi-step-persistence' },
+            });
+          }
+        }
       }
     }
 
