@@ -19,6 +19,8 @@ export interface ScanHistoryEntry {
   newFindings: number; // findings not in previous scan
   resolvedFindings: number; // findings in previous scan but not in this one
   exitCode: number;
+  /** Fingerprints of findings (category|url|title) for accurate new/resolved calculation */
+  findingFingerprints?: string[];
 }
 
 /**
@@ -82,22 +84,25 @@ export function buildHistoryEntry(
     result.rawFindings.map((f) => `${f.category}|${f.url}|${f.title}`),
   );
 
-  // Fingerprint previous findings
-  const previousFingerprints = previousEntry
-    ? new Set(
-        // Reconstruct fingerprints from the previous entry's summary
-        // We don't store individual findings in history, so this is approximate
-        [] as string[],
-      )
+  // Fingerprint previous findings from stored fingerprints
+  const previousFingerprints = previousEntry?.findingFingerprints
+    ? new Set(previousEntry.findingFingerprints)
     : new Set<string>();
 
-  const newFindings = previousEntry
-    ? currentFingerprints.size - Math.min(currentFingerprints.size, previousEntry.totalFindings)
-    : currentFingerprints.size;
-
-  const resolvedFindings = previousEntry
-    ? Math.max(0, previousEntry.totalFindings - currentFingerprints.size)
-    : 0;
+  // Accurate new/resolved calculation using fingerprint comparison
+  let newFindings = 0;
+  let resolvedFindings = 0;
+  if (previousFingerprints.size > 0) {
+    for (const fp of currentFingerprints) {
+      if (!previousFingerprints.has(fp)) newFindings++;
+    }
+    for (const fp of previousFingerprints) {
+      if (!currentFingerprints.has(fp)) resolvedFindings++;
+    }
+  } else {
+    // No previous fingerprints — all current findings are "new"
+    newFindings = currentFingerprints.size;
+  }
 
   return {
     id: result.startedAt.replace(/[^0-9]/g, '').slice(0, 14),
@@ -112,6 +117,7 @@ export function buildHistoryEntry(
     newFindings: Math.max(0, newFindings),
     resolvedFindings,
     exitCode: result.exitCode,
+    findingFingerprints: [...currentFingerprints],
   };
 }
 

@@ -7,7 +7,7 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import type { Program, HuntSummary } from './types.js';
-import { loadRegistry, isDue } from './registry.js';
+import { loadRegistry, isDue, saveLastScan } from './registry.js';
 import { EscalationQueue } from './escalation.js';
 import { formatHuntSummary, sendNotification } from './notify.js';
 import { log } from '../utils/logger.js';
@@ -103,6 +103,14 @@ export class Orchestrator {
 
         // Save result
         await this.saveResult(program.name, result);
+
+        // Mark program as scanned so schedule is respected
+        try {
+          await saveLastScan(this.options.registryPath, program.name, new Date().toISOString());
+          log.debug(`Updated lastScan for ${program.name}`);
+        } catch (saveErr) {
+          log.warn(`Failed to update lastScan for ${program.name}: ${(saveErr as Error).message}`);
+        }
       } catch (err) {
         const error = err instanceof Error ? err.message : String(err);
         log.error(`Failed to scan ${program.name}: ${error}`);

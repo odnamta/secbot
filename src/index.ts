@@ -796,6 +796,35 @@ program
         const escalationQueue = new EscalationQueue();
         escalationQueue.setTarget(targetUrl);
 
+        // Populate escalation queue from crawl/active phase signals
+        // 1. Check crawl responses for WAF blocks, CAPTCHA, rate limiting
+        for (const resp of responses) {
+          if (resp.status === 429) {
+            escalationQueue.addBlocked(resp.url, 'rate-limited', 'crawl');
+          } else if (resp.status === 403 && resp.body) {
+            const bodyLower = resp.body.toLowerCase();
+            if (/captcha|recaptcha|hcaptcha|challenge|turnstile/.test(bodyLower)) {
+              escalationQueue.addBlocked(resp.url, 'captcha', 'crawl');
+            }
+          } else if (resp.status === 401) {
+            escalationQueue.addBlocked(resp.url, 'auth-required', 'crawl');
+          }
+        }
+        // 2. Check active check audit for 2FA/auth escalations
+        if (checkAudit) {
+          for (const entry of checkAudit) {
+            if (entry.status === 'failed' && entry.error) {
+              if (/captcha|challenge/i.test(entry.error)) {
+                escalationQueue.addBlocked(targetUrl, 'captcha', entry.name);
+              } else if (/429|rate.?limit/i.test(entry.error)) {
+                escalationQueue.addBlocked(targetUrl, 'rate-limited', entry.name);
+              } else if (/401|unauthorized|auth/i.test(entry.error)) {
+                escalationQueue.addBlocked(targetUrl, 'auth-required', entry.name);
+              }
+            }
+          }
+        }
+
         // ─── Baseline diff ─────────────────────────────────────
         let findingsForValidation = verifiedFindings;
         if (config.baselinePath) {
@@ -1251,10 +1280,23 @@ program
         }
       } catch { /* no report yet */ }
 
+      // Read escalation queue saved by child scan process
+      let escalationCount = 0;
+      try {
+        const queueDir = join(homedir(), '.secbot', 'queue');
+        const hostname = new URL(args[0] ?? `https://${prog.name}`).hostname.replace(/[^a-z0-9.-]/gi, '_');
+        const queueFiles = (await readdir(join(queueDir, hostname)).catch(() => [] as string[]))
+          .filter(f => f.endsWith('.json')).sort().reverse();
+        if (queueFiles.length > 0) {
+          const queueData = JSON.parse(readFileSync(join(queueDir, hostname, queueFiles[0]), 'utf-8'));
+          escalationCount = queueData.needsHuman ?? queueData.blocked?.length ?? 0;
+        }
+      } catch { /* no queue file */ }
+
       return {
         program: prog.name,
         findings,
-        escalations: 0,
+        escalations: escalationCount,
         duration: Date.now() - startMs,
       };
     });
@@ -1300,6 +1342,27 @@ program
     });
 
     await tracker.save();
+
+    // Backfeed FP patterns from rejected outcomes
+    if (result === 'duplicate' || result === 'informative' || result === 'not-applicable') {
+      try {
+        const { FPMemory } = await import('./learning/fp-memory.js');
+        const fpMemory = new FPMemory();
+        await fpMemory.load();
+        const category = (options.category as string) ?? 'unknown';
+        // Use finding ID as pattern (unique enough for dedup)
+        fpMemory.record({
+          category,
+          pattern: `outcome:${result}:${findingId}`,
+          techStack: options.tech ? (options.tech as string).split(',').map(s => s.trim()) : [],
+          count: 1,
+        });
+        await fpMemory.save();
+        log.info(`FP pattern recorded: ${category} → ${result}`);
+      } catch (err) {
+        log.debug(`Failed to save FP pattern: ${(err as Error).message}`);
+      }
+    }
 
     const stats = tracker.getStats();
     console.log(chalk.green(`Outcome recorded: ${findingId} → ${result}`));

@@ -134,8 +134,19 @@ describe('buildHistoryEntry', () => {
     expect(entry.resolvedFindings).toBe(0);
   });
 
-  it('calculates new/resolved vs previous entry', () => {
-    const previous = makeEntry({ totalFindings: 5 });
+  it('calculates new/resolved vs previous entry using fingerprints', () => {
+    // Previous had 5 findings: Finding 0-4
+    const previous = makeEntry({
+      totalFindings: 5,
+      findingFingerprints: [
+        'xss|https://example.com/0|Finding 0',
+        'xss|https://example.com/1|Finding 1',
+        'xss|https://example.com/2|Finding 2',
+        'xss|https://example.com/3|Finding 3',
+        'xss|https://example.com/4|Finding 4',
+      ],
+    });
+    // Current has 3 findings: Finding 0-2 (same as before — 3 and 4 resolved, 0 new)
     const result = makeScanResult({
       rawFindings: Array.from({ length: 3 }, (_, i) => ({
         id: String(i), category: 'xss', severity: 'high' as Severity,
@@ -151,8 +162,9 @@ describe('buildHistoryEntry', () => {
 
     const entry = buildHistoryEntry(result, previous);
     expect(entry.totalFindings).toBe(3);
-    expect(entry.resolvedFindings).toBe(2); // 5 -> 3
-    expect(entry.newFindings).toBe(0); // 3 <= 5
+    expect(entry.resolvedFindings).toBe(2); // Finding 3 and 4 resolved
+    expect(entry.newFindings).toBe(0); // All 3 current were in previous
+    expect(entry.findingFingerprints).toHaveLength(3); // Fingerprints stored
   });
 });
 
