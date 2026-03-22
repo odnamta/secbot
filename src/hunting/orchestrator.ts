@@ -9,7 +9,7 @@ import { homedir } from 'node:os';
 import type { Program, HuntSummary } from './types.js';
 import { loadRegistry, isDue, saveLastScan } from './registry.js';
 import { EscalationQueue } from './escalation.js';
-import { formatHuntSummary, sendNotification } from './notify.js';
+import { formatHuntSummary, sendNotification, type TriageInfo } from './notify.js';
 import { log } from '../utils/logger.js';
 
 /**
@@ -59,6 +59,7 @@ export class Orchestrator {
    */
   async hunt(
     scanFn: (program: Program) => Promise<ProgramScanResult>,
+    triageInfo?: TriageInfo,
   ): Promise<HuntSummary> {
     const startTime = Date.now();
     const programs = await loadRegistry(this.options.registryPath);
@@ -133,8 +134,8 @@ export class Orchestrator {
       scannedAt: new Date().toISOString(),
     };
 
-    // Send notification
-    await sendNotification(summary);
+    // Send notification (with triage info if available)
+    await sendNotification(summary, triageInfo);
 
     // Save hunt summary
     await this.saveSummary(summary);

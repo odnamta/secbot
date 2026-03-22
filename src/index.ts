@@ -57,6 +57,8 @@ import { PayloadStats } from './learning/payload-stats.js';
 import type { LearningContext } from './learning/types.js';
 import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, CheckAuditEntry, AuthOptions } from './scanner/types.js';
 import { enrichAllFindings } from './utils/evidence.js';
+import { autoTriageFindings } from './hunting/auto-triage.js';
+import type { TriageInfo } from './hunting/notify.js';
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf-8'));
 
@@ -1199,6 +1201,7 @@ program
   .command('hunt')
   .description('Run autonomous bounty hunting across registered programs')
   .option('--registry <path>', 'Path to program registry YAML', join(homedir(), '.secbot', 'registry.yaml'))
+  .option('--bounty-pool <path>', 'Path to bounty pool directory', join(process.cwd(), 'bounty-pool'))
   .option('--dry-run', 'Show which programs would be scanned without scanning', false)
   .option('--verbose', 'Enable verbose logging', false)
   .action(async (options: Record<string, unknown>) => {
@@ -1206,12 +1209,16 @@ program
     log.banner();
 
     const registryPath = options.registry as string;
+    const bountyPoolDir = options.bountyPool as string ?? join(process.cwd(), 'bounty-pool');
     const orch = new Orchestrator({
       registryPath,
       dryRun: options.dryRun === true,
     });
 
     log.info(`Hunt mode: registry at ${registryPath}`);
+
+    // Collect triage results across all programs
+    const triageResults: TriageInfo = { perProgram: {} };
 
     const summary = await orch.hunt(async (prog) => {
       const startMs = Date.now();
@@ -1261,7 +1268,7 @@ program
         }
       }
 
-      // Read JSON report to count findings
+      // Read JSON report to count findings + auto-triage
       const { readdir } = await import('node:fs/promises');
       const resultsDir = join(homedir(), '.secbot', 'results', prog.name);
       let findings = { high: 0, medium: 0, low: 0 };
@@ -1271,11 +1278,22 @@ program
         if (jsonFiles.length > 0) {
           const report = JSON.parse(readFileSync(join(resultsDir, jsonFiles[0]), 'utf-8'));
           const interpreted = report.interpretedFindings ?? report.findings ?? [];
+          const rawFindings = report.rawFindings ?? [];
           for (const f of interpreted) {
             const sev = (f.severity || '').toLowerCase();
             if (sev === 'critical' || sev === 'high') findings.high++;
             else if (sev === 'medium') findings.medium++;
             else findings.low++;
+          }
+
+          // Auto-triage: stage high-confidence findings to bounty-pool/pending/
+          if (interpreted.length > 0) {
+            try {
+              const triageResult = autoTriageFindings(interpreted, rawFindings, prog.name, bountyPoolDir);
+              triageResults.perProgram[prog.name] = triageResult;
+            } catch (triageErr) {
+              log.warn(`Auto-triage failed for ${prog.name}: ${(triageErr as Error).message}`);
+            }
           }
         }
       } catch { /* no report yet */ }
@@ -1299,13 +1317,26 @@ program
         escalations: escalationCount,
         duration: Date.now() - startMs,
       };
-    });
+    }, triageResults);
+
+    // Print hunt summary with triage info
+    const totalStaged = Object.values(triageResults.perProgram).reduce((sum, r) => sum + r.staged, 0);
 
     console.log(chalk.cyan('\n─── Hunt Summary ───'));
     console.log(chalk.gray(`Programs: ${summary.programs}`));
     console.log(chalk.gray(`Findings: H:${summary.findings.high} M:${summary.findings.medium} L:${summary.findings.low}`));
     console.log(chalk.gray(`Escalations: ${summary.escalations}`));
     console.log(chalk.gray(`Duration: ${summary.duration}`));
+
+    if (totalStaged > 0) {
+      console.log(chalk.yellow(`\n*** ACTION REQUIRED ***`));
+      console.log(chalk.yellow(`  ${totalStaged} finding(s) staged in bounty-pool/pending/ — review and submit`));
+      for (const [name, result] of Object.entries(triageResults.perProgram)) {
+        if (result.staged > 0) {
+          console.log(chalk.gray(`    ${name}: ${result.staged} new`));
+        }
+      }
+    }
   });
 
 // ─── Outcome Command ──────────────────────────────────────────
