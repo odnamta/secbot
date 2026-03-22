@@ -1275,7 +1275,9 @@ async function testDomXss(
           phase: 'active-xss-dom',
         });
 
-        // Check if any sink received a value containing our marker (or URL-decoded variant)
+        // Check if any sink received a value containing our payload in EXECUTABLE form.
+        // Key: URL-encoded payloads (%3Cimg%20src...) are SAFE even in innerHTML.
+        // We must verify the sink value contains actual HTML tags, not just the marker.
         const sinkHits = await page.evaluate((args: { marker: string; payload: string }) => {
           const hits = (window as any).__secbot_dom_xss || [];
           return hits.filter((h: { sink: string; value: string }) => {
@@ -1283,9 +1285,17 @@ async function testDomXss(
             if (h.sink === 'innerHTML-mutation') {
               return h.value.includes(args.payload);
             }
-            // For direct JS sinks, marker match is sufficient
-            const hasMarker = h.value.includes(args.marker) ||
-              (() => { try { return decodeURIComponent(h.value).includes(args.marker); } catch { return false; } })();
+            // For innerHTML/outerHTML sinks, the value must contain UNENCODED HTML tags
+            // to be exploitable. URL-encoded values (%3C, %3E) are safe.
+            if (h.sink === 'innerHTML-set' || h.sink === 'outerHTML-set' || h.sink === 'insertAdjacentHTML') {
+              // Must contain actual < > characters (not URL-encoded)
+              const hasRawHtml = h.value.includes('<') && (h.value.includes('>') || h.value.includes('onerror'));
+              const hasMarker = h.value.includes(args.marker);
+              return hasRawHtml && hasMarker;
+            }
+            // For JS execution sinks (eval, setTimeout, etc.), marker match is sufficient
+            // since these execute code regardless of encoding
+            const hasMarker = h.value.includes(args.marker);
             return hasMarker;
           });
         }, { marker: xssPayload.marker, payload: xssPayload.payload });
