@@ -67,6 +67,7 @@ import { FastEngine } from './scanner/fast-engine.js';
 import { discoverParams, discoveredParamsToUrls } from './scanner/discovery/param-discovery.js';
 import { analyzeJavaScript } from './scanner/discovery/js-analysis.js';
 import type { JSAnalysisResult } from './scanner/discovery/js-analysis.js';
+import { analyzeGaps, formatGapReport } from './learning/gap-analysis.js';
 import { autoTriageFindings } from './hunting/auto-triage.js';
 import type { TriageInfo } from './hunting/notify.js';
 import { submitReport as h1SubmitReport, mapCategoryToH1Weakness, getCredentialsFromEnv as getH1Credentials } from './hunting/platforms/hackerone.js';
@@ -1364,6 +1365,15 @@ program
         const baselineOutPath = join(outputDir, 'secbot-baseline.json');
         saveBaseline(dedupedFindings, baselineOutPath);
         log.info(`Baseline saved: ${baselineOutPath}`);
+
+        // ─── Phase 9: Gap Analysis & Confidence Calibration ─────
+        log.info('Phase 9: Analyzing scan gaps...');
+        const gapAnalysis = analyzeGaps(scanResult);
+        scanResult.gapAnalysis = gapAnalysis;
+        if (formats.includes('terminal')) {
+          console.log(formatGapReport(gapAnalysis));
+        }
+        log.info(`Scan quality score: ${gapAnalysis.qualityScore}/100`);
 
         // ─── Scan History + Trend Tracking ──────────────────────
         try {

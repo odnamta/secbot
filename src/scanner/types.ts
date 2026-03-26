@@ -253,6 +253,8 @@ export interface ScanResult {
   tokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
   callbackUrl?: string;
   sessionRefreshes?: number;
+  /** Post-scan gap analysis and quality score */
+  gapAnalysis?: import('../learning/gap-analysis.js').GapAnalysisResult;
 }
 
 export interface ScanSummary {

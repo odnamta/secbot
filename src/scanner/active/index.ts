@@ -56,6 +56,7 @@ import { clickjackingCheck } from './clickjacking.js';
 import { timingAttackCheck } from './timing-attack.js';
 import { verboseErrorsCheck } from './verbose-errors.js';
 import { xpathInjectionCheck } from './xpath-injection.js';
+import { authDiffCheck } from './auth-diff.js';
 import { log } from '../../utils/logger.js';
 
 /** Per-check timeout — scales by profile to account for stealth delays.
@@ -136,6 +137,7 @@ export const CHECK_REGISTRY: ActiveCheck[] = [
   timingAttackCheck,
   verboseErrorsCheck,
   xpathInjectionCheck,
+  authDiffCheck,
 ];
 
 /**
