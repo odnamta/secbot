@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import type { VulnTemplate } from './engine.js';
 import { log } from '../../utils/logger.js';
@@ -175,7 +175,7 @@ export function extractMatchers(yaml: string): VulnTemplate['requests'][0]['matc
 }
 
 /**
- * Load all YAML templates from a directory.
+ * Load all YAML templates from a directory (non-recursive — single level only).
  * Skips invalid files silently.
  */
 export function loadTemplatesFromDir(dir: string): VulnTemplate[] {
@@ -198,6 +198,48 @@ export function loadTemplatesFromDir(dir: string): VulnTemplate[] {
     } catch { /* skip invalid */ }
   }
 
-  log.info(`Loaded ${templates.length} templates from ${dir}`);
+  if (templates.length > 0) {
+    log.info(`Loaded ${templates.length} templates from ${dir}`);
+  }
+  return templates;
+}
+
+/**
+ * Recursively load all YAML templates from a directory tree.
+ * Walks subdirectories and collects all .yaml/.yml files.
+ */
+export function loadTemplatesFromDirRecursive(dir: string): VulnTemplate[] {
+  if (!existsSync(dir)) return [];
+
+  const templates: VulnTemplate[] = [];
+
+  function walk(currentDir: string): void {
+    let entries: string[];
+    try {
+      entries = readdirSync(currentDir);
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      const fullPath = join(currentDir, entry);
+      try {
+        const stat = statSync(fullPath);
+        if (stat.isDirectory()) {
+          walk(fullPath);
+        } else if (entry.endsWith('.yaml') || entry.endsWith('.yml')) {
+          const content = readFileSync(fullPath, 'utf-8');
+          const template = parseNucleiTemplate(content);
+          if (template) templates.push(template);
+        }
+      } catch { /* skip entries we can't read */ }
+    }
+  }
+
+  walk(dir);
+
+  if (templates.length > 0) {
+    log.info(`Loaded ${templates.length} templates (recursive) from ${dir}`);
+  }
   return templates;
 }

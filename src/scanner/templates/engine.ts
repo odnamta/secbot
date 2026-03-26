@@ -1,6 +1,7 @@
 import { FastEngine, type FastResponse } from '../fast-engine.js';
 import { log } from '../../utils/logger.js';
-import { loadTemplatesFromDir } from './yaml-loader.js';
+import { loadTemplatesFromDir, loadTemplatesFromDirRecursive } from './yaml-loader.js';
+import { join } from 'node:path';
 import type { RawFinding, CheckCategory, Severity, Confidence } from '../types.js';
 
 // ─── Template Types ──────────────────────────────────────────────
@@ -220,6 +221,8 @@ export async function runTemplate(
 
 /**
  * Run multiple templates against a target, filtering by tech stack.
+ * Automatically merges built-in templates with any YAML templates found in
+ * config/templates/ and config/templates/nuclei/ directories.
  * Returns all confirmed findings.
  */
 export async function runTemplates(
@@ -227,11 +230,25 @@ export async function runTemplates(
   baseUrl: string,
   engine: FastEngine,
   detectedTech?: string[],
+  options?: { skipDiskMerge?: boolean },
 ): Promise<RawFinding[]> {
+  // Merge built-in templates with YAML templates from config directories
+  let allTemplates = templates;
+  if (!options?.skipDiskMerge) {
+    const templateDirs = [
+      join(process.cwd(), 'config', 'templates'),
+      join(process.cwd(), 'config', 'templates', 'nuclei'),
+    ];
+    allTemplates = mergeWithYamlTemplates(templates, ...templateDirs);
+    if (allTemplates.length > templates.length) {
+      log.info(`Template merge: ${templates.length} built-in + ${allTemplates.length - templates.length} YAML = ${allTemplates.length} total`);
+    }
+  }
+
   const normalizedTech = (detectedTech ?? []).map(t => t.toLowerCase());
 
   // Filter templates by tech match
-  const applicable = templates.filter(t => {
+  const applicable = allTemplates.filter(t => {
     if (!t.match?.tech || t.match.tech.length === 0) return true;
     // Template requires specific tech — at least one must be detected
     return t.match.tech.some(required =>
@@ -239,7 +256,7 @@ export async function runTemplates(
     );
   });
 
-  log.info(`Template scan: ${applicable.length}/${templates.length} templates applicable (${normalizedTech.length} tech tags detected)`);
+  log.info(`Template scan: ${applicable.length}/${allTemplates.length} templates applicable (${normalizedTech.length} tech tags detected)`);
 
   const findings: RawFinding[] = [];
   let completed = 0;
@@ -266,6 +283,7 @@ export async function runTemplates(
 
 /**
  * Load YAML templates from one or more directories and merge with built-in templates.
+ * Uses recursive scanning for directories containing nested subdirectories (e.g. nuclei/).
  * Deduplicates by template ID (built-in templates take priority).
  */
 export function mergeWithYamlTemplates(
@@ -276,7 +294,8 @@ export function mergeWithYamlTemplates(
   const merged = [...builtinTemplates];
 
   for (const dir of dirs) {
-    const yamlTemplates = loadTemplatesFromDir(dir);
+    // Use recursive loading to pick up templates in nested subdirectories
+    const yamlTemplates = loadTemplatesFromDirRecursive(dir);
     for (const t of yamlTemplates) {
       if (!builtinIds.has(t.id)) {
         merged.push(t);

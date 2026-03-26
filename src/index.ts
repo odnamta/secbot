@@ -130,6 +130,7 @@ program
   .option('--scope-file <path>', 'Bug bounty scope file (one domain/pattern per line)')
   .option('--subdomains', 'Enable subdomain enumeration (DNS brute-force)', false)
   .option('--verbose', 'Enable verbose logging', false)
+  .option('--max-scan-time <minutes>', 'Maximum total scan duration in minutes (default: 30)', '30')
   .action(async (url: string | undefined, options: Record<string, unknown>) => {
     if (options.verbose) {
       setLogLevel('debug');
@@ -574,6 +575,19 @@ program
     const requestLogger = config.logRequests
       ? new RequestLogger(outputDir, scanId)
       : undefined;
+
+    // ─── Global Scan Timeout ───────────────────────────────────
+    const maxScanTimeMinutes = parseInt(options.maxScanTime as string, 10) || 30;
+    const maxScanTime = maxScanTimeMinutes * 60 * 1000;
+    const scanTimeout = setTimeout(() => {
+      log.error(`Scan exceeded ${maxScanTimeMinutes} minute(s) — aborting`);
+      closeBrowser().catch(() => {});
+      if (callbackServer?.isRunning()) callbackServer.stop().catch(() => {});
+      if (interactshClient?.isRegistered()) interactshClient.deregister().catch(() => {});
+      process.exit(2);
+    }, maxScanTime);
+    // Prevent the timer from keeping the process alive if everything else is done
+    if (scanTimeout.unref) scanTimeout.unref();
 
     try {
       // ─── Load Plugins ────────────────────────────────────────────
@@ -1502,6 +1516,8 @@ program
         console.error(err);
       }
       process.exit(2);
+    } finally {
+      clearTimeout(scanTimeout);
     }
   });
 

@@ -590,7 +590,7 @@ describe('runTemplates', () => {
     ];
 
     // No tech filter — only templates without tech requirements pass
-    await runTemplates(templates, 'https://example.com', mockEngine as any);
+    await runTemplates(templates, 'https://example.com', mockEngine as any, undefined, { skipDiskMerge: true });
     expect(requestCount).toBe(2);
   });
 
@@ -628,7 +628,7 @@ describe('runTemplates', () => {
       }),
     ];
 
-    const findings = await runTemplates(templates, 'https://example.com', mockEngine as any);
+    const findings = await runTemplates(templates, 'https://example.com', mockEngine as any, undefined, { skipDiskMerge: true });
     expect(findings.length).toBe(1);
     expect(findings[0].title).toBe('Match 1');
   });

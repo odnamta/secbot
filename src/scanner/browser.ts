@@ -326,14 +326,39 @@ async function crawlPage(
     // Try networkidle first (waits for all requests to finish).
     // If it times out (common on marketing-heavy sites with persistent trackers),
     // fall back to domcontentloaded which only waits for HTML parsing.
+    //
+    // For the first page: use a shorter 10s timeout to fail fast on dead hosts
+    // instead of hanging for the full config.timeout (often 30s+).
+    const effectiveTimeout = isFirstPage ? Math.min(config.timeout, 10000) : config.timeout;
     let gotoResponse;
     try {
       gotoResponse = await page.goto(url, {
         waitUntil: 'networkidle',
-        timeout: config.timeout,
+        timeout: effectiveTimeout,
       });
     } catch (err) {
       const msg = (err as Error).message ?? '';
+
+      // For the first page, abort immediately on fatal connection errors
+      // instead of retrying — the host is likely unreachable.
+      if (isFirstPage) {
+        if (msg.includes('net::ERR_CONNECTION_REFUSED')) {
+          throw new Error(`Connection refused — target server is not running or port is wrong (${url})`);
+        }
+        if (msg.includes('net::ERR_NAME_NOT_RESOLVED')) {
+          throw new Error(`DNS resolution failed — domain does not exist (${url})`);
+        }
+        if (msg.includes('net::ERR_CONNECTION_TIMED_OUT')) {
+          throw new Error(`Connection timed out — host is not responding (${url})`);
+        }
+        if (msg.includes('net::ERR_CONNECTION_RESET')) {
+          throw new Error(`Connection reset — target dropped the connection (${url})`);
+        }
+        if (msg.includes('net::ERR_SSL_') || msg.includes('net::ERR_CERT_')) {
+          throw new Error(`SSL/TLS error — invalid certificate or handshake failure (${url})`);
+        }
+      }
+
       if (msg.includes('Timeout') || msg.includes('timeout')) {
         log.info(`networkidle timeout for ${url}, retrying with domcontentloaded`);
         gotoResponse = await page.goto(url, {

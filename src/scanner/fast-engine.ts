@@ -121,6 +121,27 @@ export class FastEngine {
   }
 
   /**
+   * Convenience: send a GET request.
+   */
+  async get(url: string, opts?: Omit<FastRequestOptions, 'method'>): Promise<FastResponse> {
+    return this.request(url, { ...opts, method: 'GET' });
+  }
+
+  /**
+   * Convenience: send a POST request with a body.
+   */
+  async post(url: string, body: string, opts?: Omit<FastRequestOptions, 'method' | 'body'>): Promise<FastResponse> {
+    return this.request(url, { ...opts, method: 'POST', body });
+  }
+
+  /**
+   * Convenience: send a HEAD request (no body download).
+   */
+  async head(url: string, opts?: Omit<FastRequestOptions, 'method'>): Promise<FastResponse> {
+    return this.request(url, { ...opts, method: 'HEAD' });
+  }
+
+  /**
    * Send multiple requests with concurrency control.
    * Returns results in same order as input URLs.
    */
