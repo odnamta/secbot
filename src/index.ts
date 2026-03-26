@@ -59,6 +59,7 @@ import { PayloadStats } from './learning/payload-stats.js';
 import type { LearningContext } from './learning/types.js';
 import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, CheckAuditEntry, AuthOptions } from './scanner/types.js';
 import { enrichAllFindings } from './utils/evidence.js';
+import { discoverContent, mergeIntoEndpoints } from './scanner/discovery/content-discovery.js';
 import { autoTriageFindings } from './hunting/auto-triage.js';
 import type { TriageInfo } from './hunting/notify.js';
 import { submitReport as h1SubmitReport, mapCategoryToH1Weakness, getCredentialsFromEnv as getH1Credentials } from './hunting/platforms/hackerone.js';
@@ -636,6 +637,70 @@ program
         if (crawledFramework) {
           config.detectedFramework = crawledFramework;
           log.info(`Threading framework to active checks: ${crawledFramework.name}${crawledFramework.version ? ` v${crawledFramework.version}` : ''}`);
+        }
+
+        // ─── Phase 2b: Content Discovery ───────────────────────────
+        // Run directory brute-forcing on standard/deep profiles to find hidden endpoints
+        if (config.profile !== 'quick') {
+          log.info('Phase 2b: Content discovery (directory brute-forcing)...');
+          try {
+            const discovered = await discoverContent({
+              targetUrl,
+              concurrency: config.profile === 'deep' ? 30 : 20,
+              requestDelay: config.profile === 'stealth' ? 200 : 50,
+              proxy: config.proxy,
+              userAgent: config.userAgent,
+              detectedFramework: crawledFramework?.name ?? recon.framework.name,
+              maxPaths: config.profile === 'deep' ? 500 : 300,
+              extraHeaders: config.extraHeaders,
+            });
+
+            if (discovered.length > 0) {
+              const { newPages, newApiRoutes } = mergeIntoEndpoints(
+                discovered,
+                recon.endpoints.pages,
+                recon.endpoints.apiRoutes,
+              );
+
+              // Merge into recon endpoints so planner/active checks see them
+              if (newPages.length > 0) {
+                recon.endpoints.pages.push(...newPages);
+                log.info(`Content discovery: +${newPages.length} new pages`);
+              }
+              if (newApiRoutes.length > 0) {
+                recon.endpoints.apiRoutes.push(...newApiRoutes);
+                log.info(`Content discovery: +${newApiRoutes.length} new API routes`);
+              }
+
+              // Also inject discovered pages into CrawledPage[] so active checks can target them
+              for (const url of newPages) {
+                pages.push({
+                  url,
+                  status: 200,
+                  headers: {},
+                  title: '',
+                  forms: [],
+                  links: [],
+                  scripts: [],
+                  cookies: [],
+                });
+              }
+              for (const url of newApiRoutes) {
+                pages.push({
+                  url,
+                  status: 200,
+                  headers: {},
+                  title: '',
+                  forms: [],
+                  links: [],
+                  scripts: [],
+                  cookies: [],
+                });
+              }
+            }
+          } catch (err) {
+            log.warn(`Content discovery failed: ${(err as Error).message}`);
+          }
         }
 
         // ─── Load Learning Data ──────────────────────────────────
