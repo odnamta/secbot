@@ -1,0 +1,24 @@
+[
+  {
+    "category": "xss",
+    "pattern": "outcome:not-applicable:6d09cce8",
+    "techStack": [
+      "ruby",
+      "rails"
+    ],
+    "count": 2,
+    "firstSeen": "2026-03-22T13:04:53.904Z",
+    "lastSeen": "2026-03-26T03:36:10.234Z"
+  },
+  {
+    "category": "xss",
+    "pattern": "outcome:not-applicable:8c0823c1",
+    "techStack": [
+      "ruby",
+      "rails"
+    ],
+    "count": 1,
+    "firstSeen": "2026-03-26T03:36:10.921Z",
+    "lastSeen": "2026-03-26T03:36:10.921Z"
+  }
+]

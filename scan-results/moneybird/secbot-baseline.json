@@ -1,0 +1,72 @@
+[
+  {
+    "fingerprint": "405d8b9f1cd2c423cba277df4940edb1f8cef4ee7699f322732d2a15d1a5f5fd",
+    "category": "security-headers",
+    "url": "https://www.moneybird.com/",
+    "title": "Missing Content-Security-Policy Header",
+    "firstSeen": "2026-03-22T12:41:59.302Z"
+  },
+  {
+    "fingerprint": "f15f9569ff797757273a22271a2ee7e181a0755e8ba3b9d5813ea5e4fd7dfb91",
+    "category": "security-headers",
+    "url": "https://www.moneybird.com/",
+    "title": "Missing Permissions-Policy Header",
+    "firstSeen": "2026-03-22T12:41:59.302Z"
+  },
+  {
+    "fingerprint": "99587bd0545fedd77683f290a3547f1531b097c6708836720d5886779c914762",
+    "category": "cross-origin-policy",
+    "url": "https://www.moneybird.com/",
+    "title": "Missing Cross-Origin-Embedder-Policy Header",
+    "firstSeen": "2026-03-22T12:41:59.302Z"
+  },
+  {
+    "fingerprint": "d3713b3422eadee133b6d6863c93bd3571f0711d1fbb032cf587ffff72b05889",
+    "category": "cross-origin-policy",
+    "url": "https://www.moneybird.com/",
+    "title": "Missing Cross-Origin-Resource-Policy Header",
+    "firstSeen": "2026-03-22T12:41:59.302Z"
+  },
+  {
+    "fingerprint": "b46a8bcee382455641425a2ff30980535f3bd914963b5f70470326d802e87a03",
+    "category": "mixed-content",
+    "url": "https://www.moneybird.com/",
+    "title": "Mixed Content (HTTP Resource on HTTPS Page)",
+    "firstSeen": "2026-03-22T12:41:59.305Z"
+  },
+  {
+    "fingerprint": "103a5410b8b9c043ba9b940e8d209144a4f92aaaf5c5f47d51505e8452113ce2",
+    "category": "sri",
+    "url": "https://www.moneybird.com/",
+    "title": "Missing Subresource Integrity (SRI)",
+    "firstSeen": "2026-03-22T12:42:00.207Z"
+  },
+  {
+    "fingerprint": "5c0cef84cfcd90a46e71655283a0b70c8f512676e0aee0f0cef4b7b2759b8640",
+    "category": "info-disclosure",
+    "url": "https://www.moneybird.com/robots.txt",
+    "title": "Sensitive Paths in robots.txt",
+    "firstSeen": "2026-03-22T12:42:20.900Z"
+  },
+  {
+    "fingerprint": "272fd8873e5d4fa0af58f77b1a450a7ddc6f336ae373accedcf47f4ce12df837",
+    "category": "xss",
+    "url": "https://www.moneybird.com/",
+    "title": "DOM XSS via URL Fragment",
+    "firstSeen": "2026-03-22T12:45:31.515Z"
+  },
+  {
+    "fingerprint": "ac2dbbabb2c3ffc9876d3dff876ccf30b53aaf1b22e1e5d51c3974b89918e5c8",
+    "category": "xss",
+    "url": "https://www.moneybird.com/",
+    "title": "postMessage Handler Without Origin Check",
+    "firstSeen": "2026-03-22T12:45:46.026Z"
+  },
+  {
+    "fingerprint": "562e7b7fadaaca7168317633d4253660d1baf59398a421e3c3223d10145b94fd",
+    "category": "race-condition",
+    "url": "https://www.moneybird.com/features/bookkeeping/",
+    "title": "Race Condition on Page /features/bookkeeping/",
+    "firstSeen": "2026-03-22T12:46:42.400Z"
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "fingerprint": "112ced682f9984cb8d90c0b3dae505c5e4a640ad43572c8f137c939cfb471271",
+    "category": "security-headers",
+    "url": "https://community.openproject.org/",
+    "title": "Missing Permissions-Policy Header",
+    "firstSeen": "2026-03-22T12:39:54.739Z"
+  },
+  {
+    "fingerprint": "ed57a0df94b1103b0118e39af9f947dc3ed7bd3fc85bb05d8b4cdb67036d98a8",
+    "category": "security-headers",
+    "url": "https://community.openproject.org/",
+    "title": "CSP Allows Unsafe Inline Styles",
+    "firstSeen": "2026-03-22T12:39:54.739Z"
+  },
+  {
+    "fingerprint": "a8f864740f8ab2d64478abef664eced0eb1db414f5062a40019c9b22c6911d25",
+    "category": "cross-origin-policy",
+    "url": "https://community.openproject.org/",
+    "title": "Missing Cross-Origin-Opener-Policy Header",
+    "firstSeen": "2026-03-22T12:39:54.739Z"
+  },
+  {
+    "fingerprint": "b3b52cdbbddf4319b9c5850a2069dbb2233cd56d8fa5612555a8bf011ab43898",
+    "category": "cross-origin-policy",
+    "url": "https://community.openproject.org/",
+    "title": "Missing Cross-Origin-Embedder-Policy Header",
+    "firstSeen": "2026-03-22T12:39:54.739Z"
+  },
+  {
+    "fingerprint": "93545a95b740639609613ed56a64d92f71aa3219d557d94b8c32e3ee809ac555",
+    "category": "cross-origin-policy",
+    "url": "https://community.openproject.org/",
+    "title": "Missing Cross-Origin-Resource-Policy Header",
+    "firstSeen": "2026-03-22T12:39:54.739Z"
+  },
+  {
+    "fingerprint": "98c13a524c46e5b0a6d4affaa458c6eddc9f9dc44b48fddd0929cae4d3b6c9ba",
+    "category": "sri",
+    "url": "https://community.openproject.org/",
+    "title": "Missing Subresource Integrity (SRI)",
+    "firstSeen": "2026-03-22T12:40:12.869Z"
+  },
+  {
+    "fingerprint": "037bc8a0b7b1659c72760d852f267984f1c696b22f25324455c5d8d56e93c6e9",
+    "category": "rate-limit",
+    "url": "https://community.openproject.org/login",
+    "title": "Missing Rate Limiting on Authentication Endpoint",
+    "firstSeen": "2026-03-22T12:40:02.110Z"
+  },
+  {
+    "fingerprint": "bd229a26b3ab2d46eb94aeaed0d0f621f13e7a7be27a1ef77f4001bd972b714a",
+    "category": "rate-limit",
+    "url": "https://community.openproject.org/api/v3/attachments/120892/content",
+    "title": "Missing Rate Limiting on API Endpoint",
+    "firstSeen": "2026-03-22T12:40:22.209Z"
+  }
+]

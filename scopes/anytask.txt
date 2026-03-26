@@ -1,0 +1,12 @@
+# Program: AnyTask
+# Platform: Bugcrowd
+# Bounty: $250 - $5,000
+# Notes: Freelancer marketplace, staging domain in scope, small company
+
+In Scope
+anytask.com
+api.anytask.com
+anytask.thesecurityteam.rocks
+api.anytask.thesecurityteam.rocks
+
+Out of Scope

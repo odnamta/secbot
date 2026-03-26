@@ -1,0 +1,344 @@
+[
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-12T13:45:43.877Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-12T14:15:50.137Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-12T14:41:07.903Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-12T14:55:38.458Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-12T15:16:06.840Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-12T15:23:52.656Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-12T15:44:37.293Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-12T16:06:04.130Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-12T16:08:29.028Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-12T16:22:14.538Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-12T23:36:37.658Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-13T00:24:24.372Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-13T00:38:37.671Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-13T01:13:02.715Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-13T01:14:52.960Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-13T17:42:00.309Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T00:52:41.419Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T00:57:30.863Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T01:09:31.999Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T01:26:57.617Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T01:38:48.492Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T02:30:09.082Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T02:54:36.833Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T03:29:10.191Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T03:55:16.242Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T04:41:00.220Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T05:30:12.579Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T05:58:51.570Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T09:28:16.547Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T09:41:38.857Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T10:03:12.392Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T10:27:16.734Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T10:39:34.967Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T12:21:38.896Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T14:43:56.619Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T15:05:02.818Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-14T15:21:45.026Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T01:16:13.636Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T01:16:18.201Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T01:26:42.433Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T01:28:00.169Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T02:19:53.872Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T02:32:10.841Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T02:34:31.746Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T02:41:05.988Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T04:25:56.425Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T04:29:45.861Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T05:01:09.144Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T05:12:15.241Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T05:28:08.423Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T05:37:01.241Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T05:51:38.999Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T06:05:50.173Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T06:20:04.839Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T09:09:21.271Z"
+  },
+  {
+    "waf": "Cloudflare",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-15T10:01:15.164Z"
+  },
+  {
+    "waf": "AWS WAF",
+    "strategy": "default",
+    "success": true,
+    "timestamp": "2026-03-22T11:50:17.790Z"
+  }
+]

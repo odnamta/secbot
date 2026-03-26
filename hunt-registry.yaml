@@ -1,0 +1,39 @@
+# SecBot Hunt Registry — Diagnostic Run #1
+# Created: 2026-03-22
+# Purpose: First real bounty hunt — 5 carefully selected targets
+# Strategy: low competition + web app depth + SecBot strengths
+
+- name: kredivo
+  platform: other
+  scope_file: scopes/kredivo.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: anytask
+  platform: bugcrowd
+  scope_file: scopes/anytask.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: moneybird
+  platform: hackerone
+  scope_file: scopes/moneybird.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: openproject
+  platform: other
+  scope_file: scopes/openproject.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: calcom
+  platform: hackerone
+  scope_file: scopes/calcom.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
