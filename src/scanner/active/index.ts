@@ -413,6 +413,20 @@ export async function runActiveChecks(
     }
   }
 
+  // Skip slow timing-based checks when WAF is blocking most requests —
+  // these checks rely on response-time analysis and will just timeout on 403 pages
+  if (config.wafBlocked) {
+    const slowChecks = new Set(['timing-attack', 'request-smuggling', 'race']);
+    const skippedSlow = checksToRun.filter((c) => slowChecks.has(c.name));
+    checksToRun = checksToRun.filter((c) => !slowChecks.has(c.name));
+    if (skippedSlow.length > 0) {
+      log.info(`WAF-blocked: skipping slow timing checks: ${skippedSlow.map((c) => c.name).join(', ')}`);
+      for (const check of skippedSlow) {
+        audit.push({ name: check.name, status: 'skipped', findingsCount: 0, durationMs: 0, error: 'Skipped: WAF blocking >50% of pages' });
+      }
+    }
+  }
+
   const { parallel, sequential } = splitChecksByParallelism(checksToRun);
 
   // Helper: create per-check config with AI focus areas threaded in

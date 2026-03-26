@@ -169,6 +169,8 @@ export interface ScanConfig {
   subdomainResults?: import('./recon/subdomain.js').SubdomainResult[];
   /** Extra HTTP headers to inject into every request (e.g. Authorization: Bearer <token>) */
   extraHeaders?: Record<string, string>;
+  /** When true, >50% of crawled pages returned 403/429 — slow timing-based checks are skipped */
+  wafBlocked?: boolean;
 }
 
 export interface CrawledPage {

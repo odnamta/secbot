@@ -611,6 +611,14 @@ program
         process.exit(1);
       }
 
+      // ─── WAF Block Detection ────────────────────────────────
+      const blockedPages = pages.filter(p => p.status === 403 || p.status === 429);
+      const wafBlocked = blockedPages.length > pages.length * 0.5;
+      if (wafBlocked) {
+        log.warn(`${blockedPages.length}/${pages.length} pages returned 403/429 — target may be blocking the scanner. Active checks may be ineffective.`);
+        log.warn('Consider: --proxy, --profile stealth, or --auth-cookie to bypass blocks.');
+      }
+
       try {
         // ─── Phase 2: Recon ──────────────────────────────────────
         log.info('Phase 2: Running reconnaissance...');
@@ -618,6 +626,9 @@ program
 
         // Pass WAF detection to config so active checks can use WAF-aware encoding
         config.wafDetection = recon.waf;
+
+        // Pass WAF block flag so active check runner can skip slow timing-based checks
+        config.wafBlocked = wafBlocked;
 
         // Pass detected SPA framework to config so active checks skip re-detection.
         // Use the first framework found across crawled pages (single-framework apps).

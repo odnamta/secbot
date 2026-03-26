@@ -213,6 +213,32 @@ function detectFramework(
     };
   }
 
+  // Priority 1b: WordPress detection from URL paths + scripts + headers
+  // WordPress sites often block Playwright but still expose /wp-login.php, /wp-admin,
+  // /wp-content/ and /wp-includes/ in discovered URLs and script sources.
+  const wpEvidence: string[] = [];
+  if (pages.some(p => p.url.includes('/wp-login'))) wpEvidence.push('wp-login.php URL found');
+  if (pages.some(p => p.url.includes('/wp-admin'))) wpEvidence.push('wp-admin URL found');
+  if (pages.some(p => p.url.includes('/wp-'))) {
+    if (!wpEvidence.some(e => e.startsWith('wp-'))) wpEvidence.push('wp-* URL path found');
+  }
+  if (pages.some(p => p.scripts.some(s => s.includes('/wp-content/') || s.includes('/wp-includes/')))) {
+    wpEvidence.push('WordPress scripts (wp-content/wp-includes) detected');
+  }
+  if (pages.some(p => {
+    const pb = p.headers['x-powered-by'] ?? '';
+    return pb.toLowerCase().includes('wordpress');
+  })) {
+    wpEvidence.push('X-Powered-By: WordPress');
+  }
+  // Also check links for wp-* paths (e.g., discovered from sitemap)
+  if (pages.some(p => p.links.some(l => /\/wp-(login|admin|content|includes)/.test(l)))) {
+    if (!wpEvidence.some(e => e.includes('wp-'))) wpEvidence.push('wp-* links found');
+  }
+  if (wpEvidence.length >= 1) {
+    return { name: 'WordPress', confidence: 'high', evidence: wpEvidence };
+  }
+
   // Priority 2: Existing header/body/script detection (fallback)
   const evidence: string[] = [];
 
