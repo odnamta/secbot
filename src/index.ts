@@ -36,6 +36,7 @@ import { validateCliOptions } from './utils/cli-validation.js';
 import { CallbackServer } from './scanner/oob/callback-server.js';
 import { waitForDelayedCallbacks, getDefaultWaitMs } from './scanner/oob/delayed-detection.js';
 import { convertHitsToFindings } from './scanner/oob/hit-converter.js';
+import { InteractshClient, interactionsToCallbackHits } from './scanner/oob/interactsh-client.js';
 import { startInteractiveMode } from './interactive/repl.js';
 import { authenticate } from './scanner/auth/authenticator.js';
 import { SessionManager } from './scanner/auth/session-manager.js';
@@ -64,6 +65,8 @@ import { runTemplates } from './scanner/templates/engine.js';
 import { BUILTIN_TEMPLATES } from './scanner/templates/builtin-templates.js';
 import { FastEngine } from './scanner/fast-engine.js';
 import { discoverParams, discoveredParamsToUrls } from './scanner/discovery/param-discovery.js';
+import { analyzeJavaScript } from './scanner/discovery/js-analysis.js';
+import type { JSAnalysisResult } from './scanner/discovery/js-analysis.js';
 import { autoTriageFindings } from './hunting/auto-triage.js';
 import type { TriageInfo } from './hunting/notify.js';
 import { submitReport as h1SubmitReport, mapCategoryToH1Weakness, getCredentialsFromEnv as getH1Credentials } from './hunting/platforms/hackerone.js';
@@ -115,6 +118,8 @@ program
   .option('--credentials <user:pass>', 'Username:password pair for login (use with --login-url)')
   .option('--credentials-file <path>', 'Path to file containing credentials (user:pass on first line)')
   .option('--callback-server <port>', 'Auto-start built-in OOB callback server on specified port')
+  .option('--interactsh [url]', 'Use Interactsh for real OOB detection (default: https://oast.fun, or provide custom server URL)')
+  .option('--interactsh-token <token>', 'Auth token for self-hosted Interactsh server')
   .option('--oob-wait <seconds>', 'How long to wait for delayed OOB callbacks (default: 30)')
   .option('--no-ai', 'Skip AI interpretation (use rule-based fallback)')
   .option('--auth-cookie <cookies>', 'Pre-set cookies for authenticated scanning (name1=value1;name2=value2)')
@@ -490,6 +495,8 @@ program
 
     // ─── OOB Callback Server ──────────────────────────────────
     let callbackServer: CallbackServer | undefined;
+    let interactshClient: InteractshClient | undefined;
+
     if (config.callbackServerPort) {
       callbackServer = new CallbackServer();
       try {
@@ -502,6 +509,30 @@ program
       } catch (err) {
         log.error(`Failed to start callback server on port ${config.callbackServerPort}: ${(err as Error).message}`);
         process.exit(2);
+      }
+    }
+
+    // ─── Interactsh OOB Client (real public callbacks) ────────
+    const interactshFlag = options.interactsh as string | boolean | undefined;
+    if (interactshFlag !== undefined && interactshFlag !== false) {
+      const serverUrl = typeof interactshFlag === 'string' && interactshFlag !== ''
+        ? interactshFlag
+        : undefined; // uses default (oast.fun)
+      interactshClient = new InteractshClient({
+        serverUrl,
+        token: options.interactshToken as string | undefined,
+      });
+      const registered = await interactshClient.register();
+      if (registered) {
+        // Interactsh provides a publicly-reachable domain — use it as the callback URL
+        // This overrides the local callback server URL for real OOB detection
+        if (!config.callbackUrl || config.callbackUrl.includes('127.0.0.1')) {
+          config.callbackUrl = interactshClient.getHttpUrl();
+          log.info(`Interactsh callback URL: ${config.callbackUrl}`);
+        }
+      } else {
+        log.warn('Interactsh registration failed — falling back to local callback server if available');
+        interactshClient = undefined;
       }
     }
 
@@ -781,6 +812,108 @@ program
           }
         }
 
+        // ─── Phase 2e: JS Bundle Analysis ────────────────────────
+        // Deep analysis of JavaScript bundles to extract endpoints, GraphQL ops, params, secrets
+        let jsAnalysis: JSAnalysisResult | undefined;
+        if (config.profile !== 'quick') {
+          log.info('Phase 2e: Deep JS bundle analysis...');
+          try {
+            // Collect all script URLs from crawled pages
+            const allScriptUrls = pages.flatMap((p) => p.scripts);
+
+            jsAnalysis = await analyzeJavaScript(allScriptUrls, targetUrl, {
+              maxFiles: config.profile === 'deep' ? 50 : 30,
+              maxFileSize: 2 * 1024 * 1024,
+              concurrency: config.profile === 'deep' ? 15 : 10,
+              proxy: config.proxy,
+              userAgent: config.userAgent,
+              extraHeaders: config.extraHeaders,
+            });
+
+            // Feed discovered API endpoints into recon
+            if (jsAnalysis.apiEndpoints.length > 0) {
+              const existingApiSet = new Set(recon.endpoints.apiRoutes);
+              let newApiCount = 0;
+              for (const ep of jsAnalysis.apiEndpoints) {
+                // Resolve relative paths to full URLs
+                let fullUrl: string;
+                try {
+                  fullUrl = ep.startsWith('http') ? ep : new URL(ep, targetUrl).href;
+                } catch {
+                  continue;
+                }
+                if (!existingApiSet.has(fullUrl)) {
+                  recon.endpoints.apiRoutes.push(fullUrl);
+                  existingApiSet.add(fullUrl);
+                  newApiCount++;
+                  // Also inject as a CrawledPage so active checks can target it
+                  pages.push({
+                    url: fullUrl,
+                    status: 200,
+                    headers: {},
+                    title: '',
+                    forms: [],
+                    links: [],
+                    scripts: [],
+                    cookies: [],
+                  });
+                }
+              }
+              if (newApiCount > 0) {
+                log.info(`JS analysis: +${newApiCount} new API routes from JS bundles`);
+              }
+            }
+
+            // Feed discovered GraphQL operations into recon
+            if (jsAnalysis.graphqlOperations.length > 0) {
+              log.info(`JS analysis: ${jsAnalysis.graphqlOperations.length} GraphQL operations discovered`);
+            }
+
+            // Feed discovered param names into pages (as parameterized URLs on existing pages)
+            if (jsAnalysis.paramNames.length > 0) {
+              const paramlessPages = recon.endpoints.pages.filter(u => !u.includes('?'));
+              // Add up to 3 pages with discovered params to expand attack surface
+              const paramPages = paramlessPages.slice(0, 3);
+              const jsParamUrls: string[] = [];
+              for (const pageUrl of paramPages) {
+                // Only add the most interesting params (first 5)
+                for (const param of jsAnalysis.paramNames.slice(0, 5)) {
+                  try {
+                    const u = new URL(pageUrl);
+                    u.searchParams.set(param, '1');
+                    jsParamUrls.push(u.href);
+                  } catch {
+                    // skip
+                  }
+                }
+              }
+              if (jsParamUrls.length > 0) {
+                for (const url of jsParamUrls) {
+                  pages.push({
+                    url,
+                    status: 200,
+                    headers: {},
+                    title: '',
+                    forms: [],
+                    links: [],
+                    scripts: [],
+                    cookies: [],
+                  });
+                }
+                log.info(`JS analysis: ${jsParamUrls.length} parameterized URLs from ${jsAnalysis.paramNames.length} discovered params`);
+              }
+            }
+
+            // Secrets from JS bundles become findings later in the pipeline
+            // (handled by info-disclosure check which already scans JS)
+            if (jsAnalysis.secrets.length > 0) {
+              log.info(`JS analysis: ${jsAnalysis.secrets.length} potential secrets found in JS bundles`);
+            }
+          } catch (err) {
+            log.warn(`JS analysis failed: ${(err as Error).message}`);
+          }
+        }
+
         // ─── Load Learning Data ──────────────────────────────────
         let learningContext: LearningContext | undefined;
         let loadedFpMemory: FPMemory | undefined;
@@ -1056,6 +1189,23 @@ program
           }
         }
 
+        // ─── Interactsh OOB Polling (real public callbacks) ─────
+        if (interactshClient) {
+          const oobWait = config.oobWaitMs ?? getDefaultWaitMs();
+          log.info(`Polling Interactsh for ${Math.round(oobWait / 1000)}s...`);
+          const interactions = await interactshClient.waitForInteractions(oobWait);
+
+          if (interactions.length > 0) {
+            log.info(`Interactsh received ${interactions.length} interaction(s)`);
+            const interactshHits = interactionsToCallbackHits(interactions);
+            const oobFindings = convertHitsToFindings(interactshHits);
+            findingsForValidation = [...findingsForValidation, ...oobFindings];
+            log.info(`Added ${oobFindings.length} Interactsh OOB finding(s) to validation pipeline`);
+          } else {
+            log.info('Interactsh received no interactions during scan');
+          }
+        }
+
         // ─── Vulnerability Chain Detection ──────────────────────
         const chains = detectChains(findingsForValidation);
         if (chains.length > 0) {
@@ -1293,14 +1443,17 @@ program
           log.debug(`Learning data save failed: ${(err as Error).message}`);
         }
 
-        // Post-scan callback URL reminder (external callback, not our server)
-        if (config.callbackUrl && !callbackServer) {
+        // Post-scan callback URL reminder (external callback, not our server/interactsh)
+        if (config.callbackUrl && !callbackServer && !interactshClient) {
           log.info('Callback URLs injected for blind detection. Check your callback server for hits.');
         }
 
-        // ─── Stop OOB Server ──────────────────────────────────
+        // ─── Stop OOB Server + Deregister Interactsh ──────────
         if (callbackServer) {
           await callbackServer.stop();
+        }
+        if (interactshClient) {
+          await interactshClient.deregister();
         }
 
         log.info('Scan complete!');
@@ -1322,6 +1475,10 @@ program
       // Clean up callback server on error
       if (callbackServer?.isRunning()) {
         try { await callbackServer.stop(); } catch { /* best effort */ }
+      }
+      // Clean up Interactsh on error
+      if (interactshClient?.isRegistered()) {
+        try { await interactshClient.deregister(); } catch { /* best effort */ }
       }
       // Clean up auth temp files on error path too
       if (authTmpDir) {
