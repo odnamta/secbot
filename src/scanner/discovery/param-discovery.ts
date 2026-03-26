@@ -1,8 +1,94 @@
+import { readFileSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { FastEngine, type FastResponse } from '../fast-engine.js';
 import { log } from '../../utils/logger.js';
 
+// ── Wordlist file loader ─────────────────────────────────────────────
+
+/**
+ * Load a wordlist from config/wordlists/ directory.
+ * Tries project-level first (cwd), then relative to this source file.
+ * Returns empty array if file not found (caller should fall back to hardcoded).
+ */
+function loadWordlist(filename: string): string[] {
+  const paths = [
+    join(process.cwd(), 'config', 'wordlists', filename),
+    join(process.cwd(), '..', 'config', 'wordlists', filename),
+  ];
+
+  // Also try relative to source file location (for when cwd differs)
+  try {
+    const thisDir = dirname(fileURLToPath(import.meta.url));
+    paths.push(join(thisDir, '..', '..', '..', 'config', 'wordlists', filename));
+  } catch {
+    // import.meta.url may not resolve in all environments
+  }
+
+  for (const p of paths) {
+    if (existsSync(p)) {
+      return readFileSync(p, 'utf-8')
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l && !l.startsWith('#'));
+    }
+  }
+  return []; // fallback to hardcoded
+}
+
+/** Cached merged param list (loaded once on first access) */
+let _mergedParamsCache: string[] | null = null;
+
+/**
+ * Get the effective param list: file-loaded params merged with hardcoded,
+ * deduped. Falls back to hardcoded only if no files found.
+ */
+function getMergedParams(): string[] {
+  if (_mergedParamsCache !== null) return _mergedParamsCache;
+
+  // Try params-large.txt first, then params-burp.txt
+  let fileParams = loadWordlist('params-large.txt');
+  let source = 'params-large.txt';
+  if (fileParams.length === 0) {
+    fileParams = loadWordlist('params-burp.txt');
+    source = 'params-burp.txt';
+  }
+
+  if (fileParams.length > 0) {
+    // Merge: file params + hardcoded curated list, deduped
+    const seen = new Set<string>();
+    const merged: string[] = [];
+
+    // Hardcoded first (curated, high-value) so they appear at the top
+    for (const p of HARDCODED_PARAMS) {
+      const lower = p.toLowerCase();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        merged.push(p);
+      }
+    }
+
+    // Then file params (bulk coverage)
+    for (const p of fileParams) {
+      const lower = p.toLowerCase();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        merged.push(p);
+      }
+    }
+
+    log.info(`Param discovery: loaded ${fileParams.length} params from ${source}, merged to ${merged.length} total`);
+    _mergedParamsCache = merged;
+  } else {
+    log.info(`Param discovery: using ${HARDCODED_PARAMS.length} built-in params (wordlist files not found)`);
+    _mergedParamsCache = [...HARDCODED_PARAMS];
+  }
+
+  return _mergedParamsCache;
+}
+
 /** Common hidden parameter names — curated from Arjun/Burp/real-world experience */
-const COMMON_PARAMS = [
+const HARDCODED_PARAMS = [
   // Debug/admin
   'debug', 'test', 'verbose', 'admin', 'internal', 'dev', 'staging',
   'trace', 'log', 'monitor', 'profile', 'benchmark', 'console',
@@ -41,6 +127,9 @@ const COMMON_PARAMS = [
   'origin', 'host', 'referer', 'referrer',
   'x-forwarded-for', 'x-real-ip',
 ];
+
+/** Public alias — includes file-loaded params when available */
+const COMMON_PARAMS = HARDCODED_PARAMS;
 
 /** Probe value injected into candidate parameters */
 const PROBE_VALUE = 'secbot_probe_value';
@@ -197,8 +286,8 @@ export async function discoverParams(
     return [];
   }
 
-  // Limit params list
-  const paramList = COMMON_PARAMS.slice(0, maxParams);
+  // Use merged params (file + hardcoded) when available
+  const paramList = getMergedParams().slice(0, maxParams);
 
   log.info(`Param discovery: testing ${paramList.length} params on ${targetUrls.length} URLs`);
 

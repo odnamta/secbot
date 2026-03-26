@@ -1,5 +1,6 @@
 import { FastEngine, type FastResponse } from '../fast-engine.js';
 import { log } from '../../utils/logger.js';
+import { loadTemplatesFromDir } from './yaml-loader.js';
 import type { RawFinding, CheckCategory, Severity, Confidence } from '../types.js';
 
 // ─── Template Types ──────────────────────────────────────────────
@@ -261,4 +262,30 @@ export async function runTemplates(
 
   log.info(`Template scan complete: ${findings.length} finding(s) from ${applicable.length} templates`);
   return findings;
+}
+
+/**
+ * Load YAML templates from one or more directories and merge with built-in templates.
+ * Deduplicates by template ID (built-in templates take priority).
+ */
+export function mergeWithYamlTemplates(
+  builtinTemplates: VulnTemplate[],
+  ...dirs: string[]
+): VulnTemplate[] {
+  const builtinIds = new Set(builtinTemplates.map(t => t.id));
+  const merged = [...builtinTemplates];
+
+  for (const dir of dirs) {
+    const yamlTemplates = loadTemplatesFromDir(dir);
+    for (const t of yamlTemplates) {
+      if (!builtinIds.has(t.id)) {
+        merged.push(t);
+        builtinIds.add(t.id);
+      } else {
+        log.debug(`template-engine: skipping duplicate YAML template "${t.id}" (built-in takes priority)`);
+      }
+    }
+  }
+
+  return merged;
 }

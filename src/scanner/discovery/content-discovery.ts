@@ -1,5 +1,64 @@
+import { readFileSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { FastEngine, type FastResponse } from '../fast-engine.js';
 import { log } from '../../utils/logger.js';
+
+// ── Wordlist file loader ─────────────────────────────────────────────
+
+/** Cached file-loaded paths (loaded once on first call) */
+let _filePathsCache: string[] | null = null;
+let _filePathsCacheLoaded = false;
+
+/**
+ * Load a wordlist from config/wordlists/ directory.
+ * Tries project-level first (cwd), then relative to this source file.
+ * Returns empty array if file not found (caller should fall back to hardcoded).
+ */
+function loadWordlist(filename: string): string[] {
+  const paths = [
+    join(process.cwd(), 'config', 'wordlists', filename),
+    join(process.cwd(), '..', 'config', 'wordlists', filename),
+  ];
+
+  // Also try relative to source file location (for when cwd differs)
+  try {
+    const thisDir = dirname(fileURLToPath(import.meta.url));
+    paths.push(join(thisDir, '..', '..', '..', 'config', 'wordlists', filename));
+  } catch {
+    // import.meta.url may not resolve in all environments
+  }
+
+  for (const p of paths) {
+    if (existsSync(p)) {
+      const lines = readFileSync(p, 'utf-8')
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l && !l.startsWith('#'));
+      return lines;
+    }
+  }
+  return []; // fallback to hardcoded
+}
+
+/**
+ * Load paths from config/wordlists/paths-common.txt (cached).
+ * Returns the loaded paths or empty array if file not found.
+ */
+function getFileLoadedPaths(): string[] {
+  if (_filePathsCacheLoaded) return _filePathsCache ?? [];
+  _filePathsCacheLoaded = true;
+  const raw = loadWordlist('paths-common.txt');
+  if (raw.length > 0) {
+    // Ensure all paths start with /
+    _filePathsCache = raw.map(p => p.startsWith('/') ? p : `/${p}`);
+    log.info(`Content discovery: loaded ${_filePathsCache.length} paths from paths-common.txt`);
+  } else {
+    _filePathsCache = null;
+    log.info(`Content discovery: using ${Object.values(COMMON_PATHS).flat().length} built-in paths (wordlist files not found)`);
+  }
+  return _filePathsCache ?? [];
+}
 
 // Built-in wordlist of ~500 common paths (no external file dependency)
 // Organized by category for tech-aware selection
@@ -176,13 +235,17 @@ interface PathEntry {
 
 /**
  * Select paths to test based on detected framework.
- * Always includes generic categories (admin, api, debug, config, backup, sensitive).
- * Adds framework-specific paths when a matching framework is detected.
+ *
+ * Always includes the hardcoded categorized paths (admin, api, debug, etc.)
+ * which carry category labels used by isInteresting(). When a wordlist file
+ * is present (config/wordlists/paths-common.txt), additional paths are
+ * appended after the categorized ones. Framework-specific hardcoded paths
+ * are always added when a matching framework is detected.
  */
 export function selectPaths(framework: string | undefined, maxPaths: number): PathEntry[] {
   const paths: PathEntry[] = [];
 
-  // Always include common (non-framework-specific) paths
+  // 1. Always include hardcoded generic categories (they carry labels for isInteresting)
   const genericCategories = ['admin', 'api', 'debug', 'config', 'backup', 'sensitive'];
   for (const cat of genericCategories) {
     const catPaths = COMMON_PATHS[cat];
@@ -191,7 +254,7 @@ export function selectPaths(framework: string | undefined, maxPaths: number): Pa
     }
   }
 
-  // Add framework-specific paths based on detection
+  // 2. Add framework-specific paths from hardcoded COMMON_PATHS
   const fw = (framework ?? '').toLowerCase();
 
   const frameworkMapping: Array<{ keywords: string[]; category: string }> = [
@@ -210,6 +273,14 @@ export function selectPaths(framework: string | undefined, maxPaths: number): Pa
       if (catPaths) {
         for (const p of catPaths) paths.push({ path: p, category: mapping.category });
       }
+    }
+  }
+
+  // 3. If a wordlist file is present, append extra paths (category: 'wordlist')
+  const filePaths = getFileLoadedPaths();
+  if (filePaths.length > 0) {
+    for (const p of filePaths) {
+      paths.push({ path: p, category: 'wordlist' });
     }
   }
 
@@ -237,6 +308,8 @@ export function isInteresting(resp: FastResponse, category: string): boolean {
     if (category === 'api' && resp.body.length > 100) return true;
     // Framework-specific 200s are interesting
     if (['wordpress', 'rails', 'laravel', 'django', 'spring', 'dotnet'].includes(category)) return true;
+    // Wordlist-sourced paths with substantial content are interesting
+    if (category === 'wordlist' && resp.body.length > 100) return true;
   }
 
   // 403 on admin/debug/sensitive = exists but forbidden (worth noting)

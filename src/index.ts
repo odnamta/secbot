@@ -1883,4 +1883,25 @@ program
     console.log(chalk.gray(`Total: ${stats.total} outcomes | ${stats.accepted} accepted | $${stats.totalBounty} earned`));
   });
 
+// ─── Update Command ──────────────────────────────────────────
+program
+  .command('update')
+  .description('Update wordlists and vulnerability templates')
+  .option('--wordlists-only', 'Only update wordlists')
+  .option('--templates-only', 'Only update templates')
+  .action(async (options: Record<string, unknown>) => {
+    log.banner();
+
+    if (!options.templatesOnly) {
+      const { updateWordlists } = await import('./utils/updater.js');
+      await updateWordlists();
+    }
+    if (!options.wordlistsOnly) {
+      const { updateTemplates } = await import('./utils/updater.js');
+      await updateTemplates();
+    }
+
+    log.info('Update complete.');
+  });
+
 program.parse();

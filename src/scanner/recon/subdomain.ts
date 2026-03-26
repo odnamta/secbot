@@ -1,6 +1,84 @@
 import dns from 'node:dns/promises';
+import { readFileSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { log } from '../../utils/logger.js';
 import { FastEngine, type FastResponse } from '../fast-engine.js';
+
+// ── Wordlist file loader ─────────────────────────────────────────────
+
+/**
+ * Load a wordlist from config/wordlists/ directory.
+ * Tries project-level first (cwd), then relative to this source file.
+ * Returns empty array if file not found (caller should fall back to hardcoded).
+ */
+function loadWordlist(filename: string): string[] {
+  const paths = [
+    join(process.cwd(), 'config', 'wordlists', filename),
+    join(process.cwd(), '..', 'config', 'wordlists', filename),
+  ];
+
+  // Also try relative to source file location (for when cwd differs)
+  try {
+    const thisDir = dirname(fileURLToPath(import.meta.url));
+    paths.push(join(thisDir, '..', '..', '..', 'config', 'wordlists', filename));
+  } catch {
+    // import.meta.url may not resolve in all environments
+  }
+
+  for (const p of paths) {
+    if (existsSync(p)) {
+      return readFileSync(p, 'utf-8')
+        .split('\n')
+        .map(l => l.trim())
+        .filter(l => l && !l.startsWith('#'));
+    }
+  }
+  return []; // fallback to hardcoded
+}
+
+/** Cached merged subdomain list (loaded once on first access) */
+let _mergedSubdomainsCache: string[] | null = null;
+
+/**
+ * Get the effective subdomain list: file-loaded merged with hardcoded, deduped.
+ * Falls back to hardcoded only if no files found.
+ */
+function getMergedSubdomains(): string[] {
+  if (_mergedSubdomainsCache !== null) return _mergedSubdomainsCache;
+
+  const fileSubdomains = loadWordlist('subdomains-5000.txt');
+
+  if (fileSubdomains.length > 0) {
+    // Merge: hardcoded first (curated, high-value), then file entries, deduped
+    const seen = new Set<string>();
+    const merged: string[] = [];
+
+    for (const s of COMMON_SUBDOMAINS) {
+      const lower = s.toLowerCase();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        merged.push(s);
+      }
+    }
+
+    for (const s of fileSubdomains) {
+      const lower = s.toLowerCase();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        merged.push(s);
+      }
+    }
+
+    log.info(`Subdomain enumeration: loaded ${fileSubdomains.length} from subdomains-5000.txt, merged to ${merged.length} total`);
+    _mergedSubdomainsCache = merged;
+  } else {
+    log.info(`Subdomain enumeration: using ${COMMON_SUBDOMAINS.length} built-in prefixes (wordlist files not found)`);
+    _mergedSubdomainsCache = [...COMMON_SUBDOMAINS];
+  }
+
+  return _mergedSubdomainsCache;
+}
 
 export interface SubdomainResult {
   subdomain: string;
@@ -344,7 +422,7 @@ export async function enumerateSubdomains(
   domain: string,
   concurrency: number = 10,
 ): Promise<SubdomainResult[]> {
-  const prefixes = COMMON_SUBDOMAINS;
+  const prefixes = getMergedSubdomains();
   const results: SubdomainResult[] = [];
 
   log.info(`Checking ${prefixes.length} subdomains for ${domain}...`);
