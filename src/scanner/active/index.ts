@@ -58,8 +58,16 @@ import { verboseErrorsCheck } from './verbose-errors.js';
 import { xpathInjectionCheck } from './xpath-injection.js';
 import { log } from '../../utils/logger.js';
 
-/** Per-check timeout — generous enough for timing-attack (10 samples) but prevents infinite stalls */
-const CHECK_TIMEOUT_MS = 120_000; // 2 minutes default
+/** Per-check timeout — scales by profile to account for stealth delays.
+ *  Stealth mode uses 500ms+ per request; with 10+ URLs × multiple payloads,
+ *  checks need significantly more time than standard mode. */
+const CHECK_TIMEOUT_BY_PROFILE: Record<string, number> = {
+  quick: 60_000,    // 1 minute — fast scan, few URLs
+  standard: 120_000, // 2 minutes — default
+  deep: 300_000,    // 5 minutes — thorough testing
+  stealth: 300_000, // 5 minutes — slow requests need more time
+};
+const DEFAULT_CHECK_TIMEOUT_MS = 120_000;
 
 export interface ScanTargets {
   pages: string[];
@@ -419,14 +427,16 @@ export async function runActiveChecks(
   let completedChecks = 0;
 
   // Helper: run a single check with audit tracking + per-check timeout + progress logging
+  const checkTimeoutMs = CHECK_TIMEOUT_BY_PROFILE[config.profile] ?? DEFAULT_CHECK_TIMEOUT_MS;
+
   const runWithAudit = async (check: ActiveCheck): Promise<RawFinding[]> => {
     const startMs = Date.now();
     try {
       // Race the check against a timeout to prevent infinite stalls
       const timeoutPromise = new Promise<never>((_, reject) =>
         setTimeout(
-          () => reject(new Error(`Check "${check.name}" timed out after ${CHECK_TIMEOUT_MS / 1000}s`)),
-          CHECK_TIMEOUT_MS,
+          () => reject(new Error(`Check "${check.name}" timed out after ${checkTimeoutMs / 1000}s`)),
+          checkTimeoutMs,
         ),
       );
 
