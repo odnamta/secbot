@@ -30492,5 +30492,2198 @@
     "category": "xpath-injection",
     "effective": false,
     "timestamp": "2026-03-22T13:06:28.927Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "security-headers",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "cookie-flags",
+    "effective": true,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "info-leakage",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "mixed-content",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "sensitive-url-data",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "cross-origin-policy",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "xss",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "sqli",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "cors",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "redirect",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "ssrf",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "ssti",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "cmdi",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "idor",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "tls",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "sri",
+    "effective": true,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "info-disclosure",
+    "effective": true,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "js-cve",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "crlf",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "rate-limit",
+    "effective": true,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "jwt",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "race",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "graphql",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "host-header",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "api-version",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "file-upload",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "business-logic",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "websocket",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "access-control",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "subdomain-takeover",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "oauth",
+    "effective": true,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "cache-poisoning",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "csrf",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "prototype-pollution",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "xxe",
+    "effective": true,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "insecure-deserialization",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "request-smuggling",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "ldap-injection",
+    "effective": true,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "user-enum",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "mass-assignment",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "content-type-confusion",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "method-override",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "email-injection",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "bfla",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "clickjacking",
+    "effective": true,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "timing-attack",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "verbose-errors",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "xpath-injection",
+    "effective": false,
+    "timestamp": "2026-03-26T04:18:36.199Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "security-headers",
+    "effective": true,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "cookie-flags",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "info-leakage",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "mixed-content",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "sensitive-url-data",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "cross-origin-policy",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "xss",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "sqli",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "cors",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "redirect",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "ssrf",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "ssti",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "cmdi",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "idor",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "tls",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "sri",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "info-disclosure",
+    "effective": true,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "js-cve",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "crlf",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "rate-limit",
+    "effective": true,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "jwt",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "race",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "graphql",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "host-header",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "api-version",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "file-upload",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "business-logic",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "websocket",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "access-control",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "subdomain-takeover",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "oauth",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "cache-poisoning",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "csrf",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "prototype-pollution",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "xxe",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "insecure-deserialization",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "request-smuggling",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "ldap-injection",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "user-enum",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "mass-assignment",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "content-type-confusion",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "method-override",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "email-injection",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "bfla",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "clickjacking",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "timing-attack",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "verbose-errors",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "xpath-injection",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "Server: nginx",
+      "angular",
+      "nginx"
+    ],
+    "category": "auth-diff",
+    "effective": false,
+    "timestamp": "2026-03-26T08:35:04.128Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "security-headers",
+    "effective": true,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "cookie-flags",
+    "effective": true,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "info-leakage",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "mixed-content",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "sensitive-url-data",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "cross-origin-policy",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "xss",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "sqli",
+    "effective": true,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "cors",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "redirect",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "ssrf",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "ssti",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "cmdi",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "idor",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "tls",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "sri",
+    "effective": true,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "info-disclosure",
+    "effective": true,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "js-cve",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "crlf",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "rate-limit",
+    "effective": true,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "jwt",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "race",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "graphql",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "host-header",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "api-version",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "file-upload",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "business-logic",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "websocket",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "access-control",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "subdomain-takeover",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "oauth",
+    "effective": true,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "cache-poisoning",
+    "effective": true,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "csrf",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "prototype-pollution",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "xxe",
+    "effective": true,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "insecure-deserialization",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "request-smuggling",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "ldap-injection",
+    "effective": true,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "user-enum",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "mass-assignment",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "content-type-confusion",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "method-override",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "email-injection",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "bfla",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "clickjacking",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "timing-attack",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "verbose-errors",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "xpath-injection",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Cloudflare",
+      "Next.js",
+      "Powered-By: Next.js",
+      "Server: cloudflare",
+      "cloudflare"
+    ],
+    "category": "auth-diff",
+    "effective": false,
+    "timestamp": "2026-03-26T08:41:20.722Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "security-headers",
+    "effective": true,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "cookie-flags",
+    "effective": true,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "info-leakage",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "mixed-content",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "sensitive-url-data",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "cross-origin-policy",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "xss",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "sqli",
+    "effective": true,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "cors",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "redirect",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "ssrf",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "ssti",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "cmdi",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "idor",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "tls",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "sri",
+    "effective": true,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "info-disclosure",
+    "effective": true,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "js-cve",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "crlf",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "rate-limit",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "jwt",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "race",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "graphql",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "host-header",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "api-version",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "file-upload",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "business-logic",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "websocket",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "access-control",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "subdomain-takeover",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "oauth",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "cache-poisoning",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "csrf",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "prototype-pollution",
+    "effective": true,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "xxe",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "insecure-deserialization",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "request-smuggling",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "ldap-injection",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "user-enum",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "mass-assignment",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "content-type-confusion",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "method-override",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "email-injection",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "bfla",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "clickjacking",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "timing-attack",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "verbose-errors",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "xpath-injection",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
+  },
+  {
+    "techStack": [
+      "CDN: Vercel",
+      "Next.js",
+      "Server: Vercel",
+      "Vercel"
+    ],
+    "category": "auth-diff",
+    "effective": false,
+    "timestamp": "2026-03-26T13:31:47.644Z"
   }
 ]

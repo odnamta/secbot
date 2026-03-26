@@ -1,0 +1,268 @@
+[
+  {
+    "fingerprint": "9e75e4d4740f19fbe442385353ff9d083ce51b310d44ee93675bdf7520c83863",
+    "category": "security-headers",
+    "url": "https://app.cal.com/auth/login",
+    "title": "Missing Permissions-Policy Header",
+    "firstSeen": "2026-03-26T08:19:09.865Z"
+  },
+  {
+    "fingerprint": "ce79c513210e51c2ea4634cded99053f12c15cc4823b538db698ec0f9cdc98c4",
+    "category": "security-headers",
+    "url": "https://app.cal.com/auth/login",
+    "title": "CSP Allows Unsafe Inline Scripts",
+    "firstSeen": "2026-03-26T08:19:09.865Z"
+  },
+  {
+    "fingerprint": "87c3c16eb5ad9666de54c0a0e8b0a386af99e7cc0e5db7ca46327a97aad5e1a2",
+    "category": "cross-origin-policy",
+    "url": "https://app.cal.com/auth/login",
+    "title": "Missing Cross-Origin-Opener-Policy Header",
+    "firstSeen": "2026-03-26T08:19:09.865Z"
+  },
+  {
+    "fingerprint": "ae6bd57283eb67d38f02af714d74002141d394b3e916a23ac38b433d8fec7fac",
+    "category": "cross-origin-policy",
+    "url": "https://app.cal.com/auth/login",
+    "title": "Missing Cross-Origin-Embedder-Policy Header",
+    "firstSeen": "2026-03-26T08:19:09.865Z"
+  },
+  {
+    "fingerprint": "cdd03dfce0bf4045ea54201771c2487a7a43c2a8396654d9369d883a1a157d43",
+    "category": "cross-origin-policy",
+    "url": "https://app.cal.com/auth/login",
+    "title": "Missing Cross-Origin-Resource-Policy Header",
+    "firstSeen": "2026-03-26T08:19:09.865Z"
+  },
+  {
+    "fingerprint": "4f5f70c9c6d6ad0d456b1a8b05f3799d700f35d2de2442972a505a4cbf6a6d1a",
+    "category": "cookie-flags",
+    "url": "https://app.cal.com/auth/login",
+    "title": "Cookie \"__Secure-next-auth.callback-url\" Missing HttpOnly Flag",
+    "firstSeen": "2026-03-26T08:19:09.867Z"
+  },
+  {
+    "fingerprint": "243a4df6dd3e34a147d25ef57a48e080010a49177ce1b7dd0bb2db02f40201f7",
+    "category": "cookie-flags",
+    "url": "https://app.cal.com/auth/login",
+    "title": "Cookie \"__Secure-next-auth.callback-url\" Weak SameSite Setting",
+    "firstSeen": "2026-03-26T08:19:09.867Z"
+  },
+  {
+    "fingerprint": "b70d2492225341d6fa83e538309a0b82f2077f892ed183fd4441fcf29743fc59",
+    "category": "cookie-flags",
+    "url": "https://app.cal.com/auth/login",
+    "title": "Cookie \"__Secure-next-auth.csrf-token\" Weak SameSite Setting",
+    "firstSeen": "2026-03-26T08:19:09.867Z"
+  },
+  {
+    "fingerprint": "a19cf046130cb58efdcc65ee89ad320cac1f8f11a231125288cd70bc02377ebb",
+    "category": "cookie-flags",
+    "url": "https://app.cal.com/auth/login",
+    "title": "1 Third-Party Cookies Missing HttpOnly",
+    "firstSeen": "2026-03-26T08:19:09.867Z"
+  },
+  {
+    "fingerprint": "a18e1e0541190c1cb7ecaa302d60ee177be2d4dd1250bd27ce28bfb043d0af21",
+    "category": "cookie-flags",
+    "url": "https://app.cal.com/auth/login",
+    "title": "3 Third-Party Cookies Missing Secure Flag",
+    "firstSeen": "2026-03-26T08:19:09.867Z"
+  },
+  {
+    "fingerprint": "657cfe9197cea3d3131e278bae0c247711376c60dd82a25e913b5f33d8dc691e",
+    "category": "info-leakage",
+    "url": "https://app.cal.com/auth/login",
+    "title": "Technology Stack Disclosure",
+    "firstSeen": "2026-03-26T08:19:09.868Z"
+  },
+  {
+    "fingerprint": "a861bda7f4d0c0bf3916e828e16d860275dcd46e7039939201c85e1c59dee181",
+    "category": "security-headers",
+    "url": "https://app.cal.com/signup",
+    "title": "Missing Content-Security-Policy Header",
+    "firstSeen": "2026-03-26T08:19:09.871Z"
+  },
+  {
+    "fingerprint": "4e8b1756e4f3fc3b0e1b22dd9e32425a48e30229b479de2c5dea7cf9a11ea3a9",
+    "category": "security-headers",
+    "url": "https://app.cal.com/administrator",
+    "title": "Missing HSTS Header",
+    "firstSeen": "2026-03-26T08:19:09.878Z"
+  },
+  {
+    "fingerprint": "47bfc845e21353647141917f2cff558f956754da1aee38692b055ee6619f31c4",
+    "category": "security-headers",
+    "url": "https://app.cal.com/administrator",
+    "title": "Missing X-Content-Type-Options Header",
+    "firstSeen": "2026-03-26T08:19:09.879Z"
+  },
+  {
+    "fingerprint": "655bdc4de4c6dbef8774a988b5eba7c1e876ab3ef0ccd62df6b82de230d9149c",
+    "category": "security-headers",
+    "url": "https://app.cal.com/administrator",
+    "title": "Missing Referrer-Policy Header",
+    "firstSeen": "2026-03-26T08:19:09.879Z"
+  },
+  {
+    "fingerprint": "cbda1b8efca087d57be126a0515eebad842bbe3726d58a6bd322484b780fc675",
+    "category": "info-disclosure",
+    "url": "https://app.cal.com/",
+    "title": "HTTP TRACE Method Enabled",
+    "firstSeen": "2026-03-26T08:19:36.640Z"
+  },
+  {
+    "fingerprint": "3251f3337e6657a27d3421a90a7174877f2d97b011f710b194c251318bb9338b",
+    "category": "info-disclosure",
+    "url": "https://app.cal.com/",
+    "title": "X-Powered-By Header Exposes Technology",
+    "firstSeen": "2026-03-26T08:19:38.329Z"
+  },
+  {
+    "fingerprint": "309b6026cb12772f1523b00b50eeb69567e6f1b09b6dce16ba3ef37e72dac02b",
+    "category": "sri",
+    "url": "https://app.cal.com/login",
+    "title": "Missing Subresource Integrity (SRI)",
+    "firstSeen": "2026-03-26T08:19:47.229Z"
+  },
+  {
+    "fingerprint": "6347fb6585a2576b950ee5bd1ddb0bec055f8b8cbd4c47c6d04814183a843094",
+    "category": "info-disclosure",
+    "url": "https://app.cal.com/_next/static/chunks/38892383c615aecb.js.map",
+    "title": "Source Map Exposure — Original Source Code Accessible",
+    "firstSeen": "2026-03-26T08:20:20.383Z"
+  },
+  {
+    "fingerprint": "2244bb2e7aae241bc4a60681c843b32ec19a2e769096e6e5b1140f38e871760a",
+    "category": "info-disclosure",
+    "url": "https://app.cal.com/robots.txt",
+    "title": "Sensitive Paths in robots.txt",
+    "firstSeen": "2026-03-26T08:20:21.692Z"
+  },
+  {
+    "fingerprint": "3a47cb5691b39883c21295ca76052d14cd574110e696476c66b7f9d761ede15d",
+    "category": "rate-limit",
+    "url": "https://app.cal.com/auth/login",
+    "title": "Missing Rate Limiting on Authentication Endpoint",
+    "firstSeen": "2026-03-26T08:20:03.585Z"
+  },
+  {
+    "fingerprint": "c1d0cd332eb91b80776855ae67e512177625083f164355466d889c7a5732172d",
+    "category": "rate-limit",
+    "url": "https://app.cal.com/api/trpc/features/map",
+    "title": "Missing Rate Limiting on API Endpoint",
+    "firstSeen": "2026-03-26T08:21:09.342Z"
+  },
+  {
+    "fingerprint": "2317a942a52df371b91d16ec49465c67e65afaea9cb826f5486a6144c778082f",
+    "category": "oauth",
+    "url": "https://app.cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fapp.cal.com%2Fcallback",
+    "title": "OAuth missing state parameter on /api/auth/session",
+    "firstSeen": "2026-03-26T08:19:45.420Z"
+  },
+  {
+    "fingerprint": "1d05276a61fd3d54f17493e1578d688d359b9aa8e25185846d406070106668f5",
+    "category": "oauth",
+    "url": "https://app.cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fapp.cal.com%2Fcallback&state=secbot-test",
+    "title": "OAuth PKCE not enforced on /api/auth/session",
+    "firstSeen": "2026-03-26T08:19:48.530Z"
+  },
+  {
+    "fingerprint": "1fa9bff2bfb1963478086d71b6567df1b761d4bc7421701bb6ff24587db7ddd4",
+    "category": "cache-poisoning",
+    "url": "https://app.cal.com/admin/30min?month=2026-04/nonexistent.css",
+    "title": "Web Cache Deception via /nonexistent.css on /admin/30min",
+    "firstSeen": "2026-03-26T08:21:10.174Z"
+  },
+  {
+    "fingerprint": "dc78951e00080f3d7081db0e740a54da32695a4e9a471bc92d1b76aa3f59749c",
+    "category": "sqli",
+    "url": "https://app.cal.com/admin/30min?month=2026-04",
+    "title": "Possible XPath Injection — Boolean-Based (month parameter)",
+    "firstSeen": "2026-03-26T08:19:51.360Z"
+  },
+  {
+    "fingerprint": "371b122d4319e557186c7a9418e3c1c0c890c2fc69bc309a014d01358dcb6ed4",
+    "category": "sqli",
+    "url": "https://app.cal.com/auth/login?user=1",
+    "title": "Possible XPath Injection — Boolean-Based (user parameter)",
+    "firstSeen": "2026-03-26T08:19:58.951Z"
+  },
+  {
+    "fingerprint": "4fc0b4503a92cfd76c7c3b4fc6bff0c24ccf0a7a55a362c4d13b630ba81de2f8",
+    "category": "sqli",
+    "url": "https://app.cal.com/auth/forgot-password?_rsc=ne5al",
+    "title": "Possible XPath Injection — Boolean-Based (_rsc parameter)",
+    "firstSeen": "2026-03-26T08:20:20.756Z"
+  },
+  {
+    "fingerprint": "d0b4b946f4b3899bcc6f7a515df61b36e8796e7960e3eb7221caacf870493665",
+    "category": "race-condition",
+    "url": "https://app.cal.com/register",
+    "title": "Race Condition on Page /register",
+    "firstSeen": "2026-03-26T08:34:50.646Z"
+  },
+  {
+    "fingerprint": "83e3edec7d3caa6ff5cd6f36ff68ab95988f445e81c38550c59b47be37ee8bb8",
+    "category": "xxe",
+    "url": "https://app.cal.com/api/trpc/features/map",
+    "title": "XML DTD Processing Enabled (Potential XXE)",
+    "firstSeen": "2026-03-26T08:36:27.147Z"
+  },
+  {
+    "fingerprint": "d123674f10646dd766c34ffc9b8a0c5e9566417e9fe51422f4796a7c5076cde6",
+    "category": "xxe",
+    "url": "https://app.cal.com/api/trpc/features/map",
+    "title": "XML External Entity (XXE) Injection — parameter-entity",
+    "firstSeen": "2026-03-26T08:36:27.318Z"
+  },
+  {
+    "fingerprint": "2497c0d549da8048d1a934c74258d14de3de15064cca7694bc80a6f027a49181",
+    "category": "ldap-injection",
+    "url": "https://app.cal.com/auth/login?user=1",
+    "title": "LDAP Injection — Error-Based (wildcard-filter-break)",
+    "firstSeen": "2026-03-26T08:36:39.169Z"
+  },
+  {
+    "fingerprint": "99b19e56462ac7ae7a2d05d4bc56c9a2c0fc0c80b1ecbe80857bdd762f380a62",
+    "category": "info-disclosure",
+    "url": "https://app.cal.com/auth/login",
+    "title": "Username Enumeration — login form (content-based)",
+    "firstSeen": "2026-03-26T08:36:42.398Z"
+  },
+  {
+    "fingerprint": "ebb6a6979eaaa80702f8067c5a6d3ccc8bf9c57b9a8d95cc90765e687423db8e",
+    "category": "broken-access-control",
+    "url": "https://app.cal.com/api/trpc/me/myStats",
+    "title": "HTTP Method Override: X-HTTP-Method-Override header accepted (DELETE)",
+    "firstSeen": "2026-03-26T08:37:10.793Z"
+  },
+  {
+    "fingerprint": "6aea489bc63c9796026607b57481a5f68a1348fbd508a2107d45ff001848b1a7",
+    "category": "broken-access-control",
+    "url": "https://app.cal.com/api/trpc/slots/getSchedule",
+    "title": "HTTP Method Override: X-Method-Override header accepted (PUT)",
+    "firstSeen": "2026-03-26T08:37:26.766Z"
+  },
+  {
+    "fingerprint": "243dcd1e1c625cc10b5bbae58b534273bae7b76eb3d38a959dc3bd79da51d838",
+    "category": "broken-access-control",
+    "url": "https://app.cal.com/api/trpc/slots/getSchedule",
+    "title": "HTTP Method Override: _method parameter accepted (DELETE)",
+    "firstSeen": "2026-03-26T08:37:26.838Z"
+  },
+  {
+    "fingerprint": "9319ace81769dba0fd1af1a445ef2d8851e79adb01f33a14a2e502534ed22844",
+    "category": "broken-access-control",
+    "url": "https://app.cal.com/api/trpc/slots/getSchedule",
+    "title": "HTTP Method Override: method parameter accepted (DELETE)",
+    "firstSeen": "2026-03-26T08:37:26.913Z"
+  },
+  {
+    "fingerprint": "bdc155a094fc1cc58aac1706705872d9ec333773eb7c42a803b734f63b0bf50a",
+    "category": "broken-access-control",
+    "url": "https://app.cal.com/api/trpc/slots/getSchedule",
+    "title": "HTTP Method Override: _httpmethod parameter accepted (DELETE)",
+    "firstSeen": "2026-03-26T08:37:26.984Z"
+  }
+]
