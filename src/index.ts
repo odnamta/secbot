@@ -40,7 +40,7 @@ import { startInteractiveMode } from './interactive/repl.js';
 import { authenticate } from './scanner/auth/authenticator.js';
 import { SessionManager } from './scanner/auth/session-manager.js';
 import { SessionGuard } from './scanner/auth/session-guard.js';
-import { enumerateSubdomains } from './scanner/recon/subdomain.js';
+import { enumerateAndProbeSubdomains } from './scanner/recon/subdomain.js';
 import { parseScopeFile, scopeToScanConfig } from './utils/scope-parser.js';
 import { detectChains } from './scanner/active/chain-detector.js';
 import { getHistoryPath, loadHistory, addToHistory, saveHistory, getTrendSummary } from './utils/scan-history.js';
@@ -60,6 +60,10 @@ import type { LearningContext } from './learning/types.js';
 import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, CheckAuditEntry, AuthOptions } from './scanner/types.js';
 import { enrichAllFindings } from './utils/evidence.js';
 import { discoverContent, mergeIntoEndpoints } from './scanner/discovery/content-discovery.js';
+import { runTemplates } from './scanner/templates/engine.js';
+import { BUILTIN_TEMPLATES } from './scanner/templates/builtin-templates.js';
+import { FastEngine } from './scanner/fast-engine.js';
+import { discoverParams, discoveredParamsToUrls } from './scanner/discovery/param-discovery.js';
 import { autoTriageFindings } from './hunting/auto-triage.js';
 import type { TriageInfo } from './hunting/notify.js';
 import { submitReport as h1SubmitReport, mapCategoryToH1Weakness, getCredentialsFromEnv as getH1Credentials } from './hunting/platforms/hackerone.js';
@@ -551,24 +555,49 @@ program
       }
       const seedUrls = discoveredRoutes.map((r) => r.url);
 
-      // ─── Phase 0b: Subdomain Enumeration (optional) ────────────
+      // ─── Phase 0b: Subdomain Enumeration + HTTP Probing (optional) ──
       if (options.subdomains) {
         const targetHost = new URL(targetUrl).hostname;
         // Strip leading "www." to get base domain for enumeration
         const baseDomain = targetHost.replace(/^www\./, '');
-        log.info('Phase 0b: Enumerating subdomains...');
-        const subdomainResults = await enumerateSubdomains(baseDomain);
-        if (subdomainResults.length > 0) {
-          log.info(`Discovered ${subdomainResults.length} subdomain(s):`);
-          for (const sub of subdomainResults) {
+        log.info('Phase 0b: Enumerating subdomains (DNS + HTTP probing)...');
+        const subEnum = await enumerateAndProbeSubdomains(baseDomain, {
+          dnsConcurrency: 10,
+          httpConcurrency: 20,
+          requestDelay: config.profile === 'stealth' ? 200 : 50,
+          proxy: config.proxy,
+          userAgent: config.userAgent,
+        });
+
+        if (subEnum.resolved.length > 0) {
+          log.info(`DNS: ${subEnum.resolved.length} subdomain(s) resolved`);
+          for (const sub of subEnum.resolved) {
             const cnameInfo = sub.cname ? ` (CNAME: ${sub.cname})` : '';
             log.info(`  ${sub.subdomain} -> ${sub.ips.join(', ')}${cnameInfo}`);
           }
-          log.warn('Discovered subdomains are reported only — not added as scan targets (may be out of scope)');
-          // Wire results into config so subdomain-takeover check can use them
-          config.subdomainResults = subdomainResults;
+          // Wire DNS results into config so subdomain-takeover check can use them
+          config.subdomainResults = subEnum.resolved;
         } else {
           log.info('No subdomains discovered via DNS brute-force');
+        }
+
+        if (subEnum.httpAlive.length > 0) {
+          log.info(`HTTP: ${subEnum.httpAlive.length} subdomain(s) serving web content`);
+          for (const probe of subEnum.httpAlive) {
+            const titleInfo = probe.title ? ` — "${probe.title}"` : '';
+            const serverInfo = probe.server ? ` [${probe.server}]` : '';
+            log.info(`  ${probe.url} (${probe.status}) ${probe.timeMs}ms${serverInfo}${titleInfo}`);
+          }
+          config.subdomainHttpResults = subEnum.httpAlive;
+
+          // Feed HTTP-alive subdomain URLs into seed URLs so they get crawled + scanned
+          for (const probe of subEnum.httpAlive) {
+            const probeUrl = probe.finalUrl ?? probe.url;
+            if (!seedUrls.includes(probeUrl)) {
+              seedUrls.push(probeUrl);
+            }
+          }
+          log.info(`Added ${subEnum.httpAlive.length} subdomain URLs to scan targets`);
         }
       }
 
@@ -703,6 +732,55 @@ program
           }
         }
 
+        // ─── Phase 2d: Param Discovery ───────────────────────────
+        // Probe pages for hidden parameters not visible in HTML source
+        if (config.profile !== 'quick') {
+          log.info('Phase 2d: Hidden parameter discovery...');
+          try {
+            // Select pages + API routes to test (prefer pages that had no visible params)
+            const paramlessPages = recon.endpoints.pages.filter(u => !u.includes('?'));
+            const candidateUrls = [
+              ...paramlessPages.slice(0, config.profile === 'deep' ? 8 : 5),
+              ...recon.endpoints.apiRoutes.slice(0, config.profile === 'deep' ? 5 : 2),
+            ];
+
+            if (candidateUrls.length > 0) {
+              const discoveredHiddenParams = await discoverParams(candidateUrls, {
+                concurrency: config.profile === 'deep' ? 15 : 10,
+                requestDelay: config.profile === 'stealth' ? 200 : 50,
+                proxy: config.proxy,
+                userAgent: config.userAgent,
+                maxParams: config.profile === 'deep' ? 120 : 80,
+                maxUrls: config.profile === 'deep' ? 10 : 5,
+                extraHeaders: config.extraHeaders,
+              });
+
+              if (discoveredHiddenParams.length > 0) {
+                const newParamUrls = discoveredParamsToUrls(discoveredHiddenParams);
+                // Inject hidden-param URLs into crawled pages so buildTargets picks them up
+                for (const url of newParamUrls) {
+                  pages.push({
+                    url,
+                    status: 200,
+                    headers: {},
+                    title: '',
+                    forms: [],
+                    links: [],
+                    scripts: [],
+                    cookies: [],
+                  });
+                }
+                log.info(
+                  `Param discovery: ${discoveredHiddenParams.length} hidden params → ` +
+                  `${newParamUrls.length} new parameterized URLs injected`,
+                );
+              }
+            }
+          } catch (err) {
+            log.warn(`Param discovery failed: ${(err as Error).message}`);
+          }
+        }
+
         // ─── Load Learning Data ──────────────────────────────────
         let learningContext: LearningContext | undefined;
         let loadedFpMemory: FPMemory | undefined;
@@ -774,6 +852,40 @@ program
         log.info('Phase 4: Running passive security checks...');
         const passiveFindings = runPassiveChecks(pages, responses, recon);
 
+        // ─── Phase 4b: Template Scanning ──────────────────────────
+        // Run vulnerability templates on standard/deep profiles using FastEngine
+        let templateFindings: import('./scanner/types.js').RawFinding[] = [];
+        if (config.profile !== 'quick') {
+          log.info('Phase 4b: Running vulnerability template checks...');
+          const templateEngine = new FastEngine({
+            concurrency: config.profile === 'deep' ? 20 : 10,
+            requestDelay: config.profile === 'stealth' ? 200 : 50,
+            userAgent: config.userAgent ?? 'Mozilla/5.0 (compatible; SecBot/2.0)',
+            proxy: config.proxy,
+            defaultHeaders: config.extraHeaders,
+            rateLimitRps: config.rateLimitRps,
+          });
+          const detectedTech = [
+            ...recon.techStack.languages,
+            ...recon.techStack.detected,
+            recon.techStack.server,
+            recon.techStack.poweredBy,
+            recon.framework.name,
+            crawledFramework?.name,
+          ].filter((t): t is string => !!t);
+
+          try {
+            templateFindings = await runTemplates(
+              BUILTIN_TEMPLATES,
+              targetUrl,
+              templateEngine,
+              detectedTech,
+            );
+          } catch (err) {
+            log.warn(`Template scan error: ${(err as Error).message}`);
+          }
+        }
+
         // ─── Session Guard: monitor for session expiry during active scanning ─
         let sessionGuard: SessionGuard | undefined;
         const sessionManager = new SessionManager();
@@ -837,7 +949,7 @@ program
           }
         }
 
-        let allRawFindings = [...passiveFindings, ...activeFindings, ...aiResponseFindings];
+        let allRawFindings = [...passiveFindings, ...templateFindings, ...activeFindings, ...aiResponseFindings];
 
         // ─── Evidence Enrichment ─────────────────────────────────
         // Enrich ALL raw findings before dedup so evidence packs are preserved
