@@ -576,15 +576,13 @@ program
       ? new RequestLogger(outputDir, scanId)
       : undefined;
 
-    // ─── Global Scan Timeout ───────────────────────────────────
+    // ─── Global Scan Timeout (graceful — partial results preserved) ─
     const maxScanTimeMinutes = parseInt(options.maxScanTime as string, 10) || 30;
     const maxScanTime = maxScanTimeMinutes * 60 * 1000;
+    let globalTimeoutFired = false;
     const scanTimeout = setTimeout(() => {
-      log.error(`Scan exceeded ${maxScanTimeMinutes} minute(s) — aborting`);
-      closeBrowser().catch(() => {});
-      if (callbackServer?.isRunning()) callbackServer.stop().catch(() => {});
-      if (interactshClient?.isRegistered()) interactshClient.deregister().catch(() => {});
-      process.exit(2);
+      log.error(`Scan exceeded ${maxScanTimeMinutes} minute(s) — generating partial report with findings so far`);
+      globalTimeoutFired = true;
     }, maxScanTime);
     // Prevent the timer from keeping the process alive if everything else is done
     if (scanTimeout.unref) scanTimeout.unref();
@@ -716,7 +714,9 @@ program
 
         // ─── Phase 2b: Content Discovery ───────────────────────────
         // Run directory brute-forcing on standard/deep profiles to find hidden endpoints
-        if (config.profile !== 'quick') {
+        if (globalTimeoutFired) {
+          log.warn('Time budget exceeded — skipping content discovery and remaining discovery phases');
+        } else if (config.profile !== 'quick') {
           log.info('Phase 2b: Content discovery (directory brute-forcing)...');
           try {
             const discovered = await discoverContent({
@@ -780,7 +780,9 @@ program
 
         // ─── Phase 2d: Param Discovery ───────────────────────────
         // Probe pages for hidden parameters not visible in HTML source
-        if (config.profile !== 'quick') {
+        if (globalTimeoutFired) {
+          log.warn('Time budget exceeded — skipping param discovery');
+        } else if (config.profile !== 'quick') {
           log.info('Phase 2d: Hidden parameter discovery...');
           try {
             // Select pages + API routes to test (prefer pages that had no visible params)
@@ -830,7 +832,9 @@ program
         // ─── Phase 2e: JS Bundle Analysis ────────────────────────
         // Deep analysis of JavaScript bundles to extract endpoints, GraphQL ops, params, secrets
         let jsAnalysis: JSAnalysisResult | undefined;
-        if (config.profile !== 'quick') {
+        if (globalTimeoutFired) {
+          log.warn('Time budget exceeded — skipping JS bundle analysis');
+        } else if (config.profile !== 'quick') {
           log.info('Phase 2e: Deep JS bundle analysis...');
           try {
             // Collect all script URLs from crawled pages
@@ -989,7 +993,9 @@ program
 
         // ─── Phase 3: AI Attack Plan ─────────────────────────────
         let attackPlan;
-        if (config.useAI) {
+        if (globalTimeoutFired) {
+          log.warn('Time budget exceeded — skipping AI planning');
+        } else if (config.useAI) {
           log.info('Phase 3: AI planning attack strategy...');
           attackPlan = await planAttack(targetUrl, recon, pages, config.profile, payloadContext, learningContext, responses);
         } else {
@@ -1003,7 +1009,9 @@ program
         // ─── Phase 4b: Template Scanning ──────────────────────────
         // Run vulnerability templates on standard/deep profiles using FastEngine
         let templateFindings: import('./scanner/types.js').RawFinding[] = [];
-        if (config.profile !== 'quick') {
+        if (globalTimeoutFired) {
+          log.warn('Time budget exceeded — skipping template scanning');
+        } else if (config.profile !== 'quick') {
           log.info('Phase 4b: Running vulnerability template checks...');
           const templateEngine = new FastEngine({
             concurrency: config.profile === 'deep' ? 20 : 10,
@@ -1050,10 +1058,14 @@ program
         }
 
         // ─── Phase 5: Active Scanning ────────────────────────────
-        log.info('Phase 5: Running active security checks...');
+        if (globalTimeoutFired) {
+          log.warn('Time budget exceeded — skipping active scanning');
+        } else {
+          log.info('Phase 5: Running active security checks...');
+        }
 
         // Verify browser context is still alive before active checks
-        let browserDead = false;
+        let browserDead = globalTimeoutFired;
         try {
           const healthPage = await context.newPage();
           await healthPage.close();
@@ -1080,7 +1092,9 @@ program
 
         // ─── Phase 5b: AI Response Analysis ──────────────────────
         let aiResponseFindings: import('./scanner/types.js').RawFinding[] = [];
-        if (config.useAI) {
+        if (globalTimeoutFired) {
+          log.warn('Time budget exceeded — skipping AI response analysis');
+        } else if (config.useAI) {
           const { analyzeResponses } = await import('./ai/response-analyzer.js');
           log.info('Phase 5b: AI analyzing HTTP responses...');
           aiResponseFindings = await analyzeResponses(targetUrl, pages, recon);

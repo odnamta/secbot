@@ -438,6 +438,16 @@ export async function runActiveChecks(
     return { ...config, aiFocusAreas: areas };
   };
 
+  // Total time budget for all active checks combined (prevents unbounded scans)
+  const TOTAL_ACTIVE_TIMEOUT: Record<string, number> = {
+    quick: 120_000,    // 2 min
+    standard: 600_000, // 10 min
+    deep: 1_200_000,   // 20 min
+    stealth: 1_200_000, // 20 min
+  };
+  const activeStart = Date.now();
+  const totalActiveMs = TOTAL_ACTIVE_TIMEOUT[config.profile] ?? 600_000;
+
   // Progress tracking across parallel + sequential phases
   const totalChecks = checksToRun.length;
   let completedChecks = 0;
@@ -447,19 +457,21 @@ export async function runActiveChecks(
 
   const runWithAudit = async (check: ActiveCheck): Promise<RawFinding[]> => {
     const startMs = Date.now();
+    let timer: ReturnType<typeof setTimeout>;
     try {
       // Race the check against a timeout to prevent infinite stalls
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(
           () => reject(new Error(`Check "${check.name}" timed out after ${checkTimeoutMs / 1000}s`)),
           checkTimeoutMs,
-        ),
-      );
+        );
+      });
 
       const result = await Promise.race([
         check.run(context, targets, configForCheck(check.name), requestLogger),
         timeoutPromise,
       ]);
+      clearTimeout(timer!);
 
       const entry: CheckAuditEntry = {
         name: check.name,
@@ -474,6 +486,7 @@ export async function runActiveChecks(
       log.info(`  \u2713 ${check.name}${findingsNote} ${timeNote} [${completedChecks}/${totalChecks}]`);
       return result;
     } catch (err) {
+      clearTimeout(timer!);
       const errorMsg = (err as Error).message;
       const isTimeout = errorMsg.includes('timed out');
       log.warn(`Active check "${check.name}" ${isTimeout ? 'timed out' : 'failed'}: ${errorMsg}`);
@@ -510,6 +523,16 @@ export async function runActiveChecks(
   if (sequential.length > 0) {
     log.info(`Running ${sequential.length} checks sequentially: ${sequential.map((c) => c.name).join(', ')}`);
     for (let i = 0; i < sequential.length; i++) {
+      // Check total active time budget before starting next check
+      if (Date.now() - activeStart > totalActiveMs) {
+        const remaining = sequential.length - i;
+        log.warn(`Active checks exceeded ${totalActiveMs / 60_000}min budget — skipping remaining ${remaining} checks`);
+        for (let j = i; j < sequential.length; j++) {
+          audit.push({ name: sequential[j].name, status: 'skipped', findingsCount: 0, durationMs: 0, error: 'Time budget exceeded' });
+        }
+        break;
+      }
+
       const check = sequential[i];
       if (i > 0) {
         await rateLimiter.acquire();

@@ -1,6 +1,6 @@
 import { FastEngine, type FastResponse } from '../fast-engine.js';
 import { log } from '../../utils/logger.js';
-import { loadTemplatesFromDir, loadTemplatesFromDirRecursive } from './yaml-loader.js';
+import { loadTemplatesFromDir, loadTemplatesFromDirRecursive, loadTemplatesFiltered } from './yaml-loader.js';
 import { join } from 'node:path';
 import type { RawFinding, CheckCategory, Severity, Confidence } from '../types.js';
 
@@ -61,14 +61,41 @@ function evaluateSingleMatcher(
 
     case 'header': {
       if (matcher.header) {
-        const headerKey = matcher.header.toLowerCase();
-        const headerVal = resp.headers[headerKey];
-        if (matcher.value) {
-          matched = headerVal !== undefined &&
-            headerVal.toLowerCase().includes(matcher.value.toLowerCase());
+        if (matcher.header === '_raw') {
+          // Nuclei "part: header" word matcher — search all header values concatenated
+          const allHeaders = Object.entries(resp.headers)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join('\n')
+            .toLowerCase();
+          if (matcher.words && matcher.words.length > 0) {
+            // Check if all words are present in the full header string
+            matched = matcher.words.every(w => allHeaders.includes(w.toLowerCase()));
+          } else if (matcher.value) {
+            matched = allHeaders.includes(matcher.value.toLowerCase());
+          }
+        } else if (matcher.header === '_regex') {
+          // Nuclei "part: header" regex matcher — match against all header values
+          const allHeaders = Object.entries(resp.headers)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join('\n');
+          if (matcher.regex) {
+            try {
+              const re = new RegExp(matcher.regex, 'is');
+              matched = re.test(allHeaders);
+            } catch {
+              matched = false;
+            }
+          }
         } else {
-          // Just check header existence
-          matched = headerVal !== undefined;
+          const headerKey = matcher.header.toLowerCase();
+          const headerVal = resp.headers[headerKey];
+          if (matcher.value) {
+            matched = headerVal !== undefined &&
+              headerVal.toLowerCase().includes(matcher.value.toLowerCase());
+          } else {
+            // Just check header existence
+            matched = headerVal !== undefined;
+          }
         }
       }
       break;
@@ -235,11 +262,25 @@ export async function runTemplates(
   // Merge built-in templates with YAML templates from config directories
   let allTemplates = templates;
   if (!options?.skipDiskMerge) {
-    const templateDirs = [
-      join(process.cwd(), 'config', 'templates'),
-      join(process.cwd(), 'config', 'templates', 'nuclei'),
-    ];
-    allTemplates = mergeWithYamlTemplates(templates, ...templateDirs);
+    const nucleiDir = join(process.cwd(), 'config', 'templates', 'nuclei');
+    const customDir = join(process.cwd(), 'config', 'templates');
+
+    // Use filtered loading for nuclei dir (performance: skip irrelevant CVE/vuln templates)
+    const nucleiTemplates = loadTemplatesFiltered(nucleiDir, detectedTech);
+
+    // Also load any custom templates from the base templates dir (non-recursive, no filtering)
+    const customTemplates = loadTemplatesFromDir(customDir);
+
+    // Merge: built-in > custom > nuclei (dedup by id)
+    allTemplates = mergeWithYamlTemplates(templates, ...([] as string[])); // start with built-in
+    const builtinIds = new Set(allTemplates.map(t => t.id));
+    for (const t of customTemplates) {
+      if (!builtinIds.has(t.id)) { allTemplates.push(t); builtinIds.add(t.id); }
+    }
+    for (const t of nucleiTemplates) {
+      if (!builtinIds.has(t.id)) { allTemplates.push(t); builtinIds.add(t.id); }
+    }
+
     if (allTemplates.length > templates.length) {
       log.info(`Template merge: ${templates.length} built-in + ${allTemplates.length - templates.length} YAML = ${allTemplates.length} total`);
     }
@@ -258,10 +299,17 @@ export async function runTemplates(
 
   log.info(`Template scan: ${applicable.length}/${allTemplates.length} templates applicable (${normalizedTech.length} tech tags detected)`);
 
+  const TEMPLATE_TIMEOUT_MS = 180_000; // 3 minutes total budget for all templates
+  const templateStartMs = Date.now();
   const findings: RawFinding[] = [];
   let completed = 0;
 
   for (const template of applicable) {
+    if (Date.now() - templateStartMs > TEMPLATE_TIMEOUT_MS) {
+      log.warn(`Template scan exceeded 3min budget — tested ${completed}/${applicable.length}, stopping`);
+      break;
+    }
+
     try {
       const finding = await runTemplate(template, baseUrl, engine);
       if (finding) {
@@ -277,7 +325,7 @@ export async function runTemplates(
     }
   }
 
-  log.info(`Template scan complete: ${findings.length} finding(s) from ${applicable.length} templates`);
+  log.info(`Template scan complete: ${findings.length} finding(s) from ${completed} templates (${applicable.length} applicable)`);
   return findings;
 }
 
