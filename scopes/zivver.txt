@@ -1,0 +1,22 @@
+# Program: Zivver
+# Platform: YesWeHack (public — https://yeswehack.com/programs/zivver-bug-bounty-program)
+# Bounty: Paid (exact amounts gated behind YesWeHack login)
+# Notes: Secure email/communication SaaS, ~134 employees, Amsterdam, Netherlands.
+#        Acquired by Kiteworks (program still active). Stack: Angular (frontend) + Scala/Java (backend) + GraphQL.
+#        SecBot strengths: GraphQL deep check, CORS, JWT, XSS (Angular app), broken access control.
+# Setup required:
+#   1. Create a freemium test account at https://app.zivver.com/signup using your YesWeHack email alias
+#   2. Do NOT claim any domain associated with yeswehack.com in the product
+#   3. Add "-bug-bounty-yeswehack-[your_username]" to the User-Agent header in all test traffic
+#   4. Only test with your own YesWeHack-alias account — attacks from other accounts = ban
+# Warning: MFA client-side bypass is explicitly out of scope (MFA is optional by design at Zivver).
+# Warning: Duplicate reward degrades per their policy — check for recent similar reports first.
+
+In Scope
+app.zivver.com
+
+Out of Scope
+- Any Zivver domain or service not explicitly listed above
+- MFA bypass on the web application (client-side) — intentionally optional feature
+- Attacks using accounts not associated with your YesWeHack email alias
+- Reports that note deviations from best practices without demonstrating clear exploitability

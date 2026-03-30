@@ -1,0 +1,22 @@
+# Program: SimScale
+# Platform: Intigriti (public — https://app.intigriti.com/programs/simscale/simscale)
+# Bounty: Paid (exact amounts gated behind Intigriti login; actively increased bounties in recent update)
+# Notes: Cloud engineering simulation SaaS, ~143 employees, Munich, Germany (~$21.6M ARR).
+#        Hosted on AWS. Free account available at simscale.com for authenticated testing.
+#        Special interest: IDOR / access control bugs exposing customer data (CAD files, simulation results).
+#        API added to scope — OpenAPI/Swagger schema available; API key requestable from Intigriti support.
+#        SecBot strengths: IDOR, broken access control, BFLA, JWT auth, API versioning, SSRF.
+# Warning: Respect AWS penetration testing policy when testing cloud-hosted infrastructure.
+# Warning: Do not access or exfiltrate real customer simulation data — stay within your own test account.
+
+In Scope
+www.simscale.com
+api.simscale.com
+
+Out of Scope
+- Any domain not listed above
+- Third-party / closed-source integrated software
+- AWS infrastructure beyond the SimScale application layer
+- Community-created plugins or simulations
+- Zero-day vulnerabilities within 14 days of public patch
+- Reports of outdated software without a working PoC
