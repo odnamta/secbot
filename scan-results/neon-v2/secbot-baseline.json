@@ -1,0 +1,191 @@
+[
+  {
+    "fingerprint": "700f4d81581d959eda8f994984664de19a6bdda742e7158ff192ff8d29a61aac",
+    "category": "security-headers",
+    "url": "https://neon.com/",
+    "title": "Missing Content-Security-Policy Header",
+    "firstSeen": "2026-03-26T13:24:44.347Z"
+  },
+  {
+    "fingerprint": "7ff380f4a17f8f1d639f1aaf184871bf20f7e662aeb40f344833440f798aad3c",
+    "category": "security-headers",
+    "url": "https://neon.com/",
+    "title": "Missing X-Content-Type-Options Header",
+    "firstSeen": "2026-03-26T13:24:44.347Z"
+  },
+  {
+    "fingerprint": "48471752cfc8a191ebd48830a663d1514c02e179225b69b54fb36e7debaf9482",
+    "category": "security-headers",
+    "url": "https://neon.com/",
+    "title": "Missing Referrer-Policy Header",
+    "firstSeen": "2026-03-26T13:24:44.347Z"
+  },
+  {
+    "fingerprint": "30452399eaf22be72877f810364f9cd4d6f6ff55471d39d56afbe095f1a5c856",
+    "category": "security-headers",
+    "url": "https://neon.com/",
+    "title": "Missing Permissions-Policy Header",
+    "firstSeen": "2026-03-26T13:24:44.347Z"
+  },
+  {
+    "fingerprint": "e3b6f87d64faf04d2cd6be0c766ee91316e21a406e709c12d01705fa3af0440f",
+    "category": "cross-origin-policy",
+    "url": "https://neon.com/",
+    "title": "Missing Cross-Origin-Opener-Policy Header",
+    "firstSeen": "2026-03-26T13:24:44.347Z"
+  },
+  {
+    "fingerprint": "ae46dd5483ddc6a88f4043f8161044447bcc935ca03982ea2e8747e32b023730",
+    "category": "cross-origin-policy",
+    "url": "https://neon.com/",
+    "title": "Missing Cross-Origin-Embedder-Policy Header",
+    "firstSeen": "2026-03-26T13:24:44.347Z"
+  },
+  {
+    "fingerprint": "cc748dbc63c2bff0a20c903092557632ab94267fe691aed94708c6e299a23834",
+    "category": "cross-origin-policy",
+    "url": "https://neon.com/",
+    "title": "Missing Cross-Origin-Resource-Policy Header",
+    "firstSeen": "2026-03-26T13:24:44.347Z"
+  },
+  {
+    "fingerprint": "62ad3e540b2c12233e4e6fec445e57fc78b73a2182af31c146a0b83e26b4676f",
+    "category": "cookie-flags",
+    "url": "https://neon.com/",
+    "title": "Cookie \"neon_consent\" Missing HttpOnly Flag",
+    "firstSeen": "2026-03-26T13:24:44.349Z"
+  },
+  {
+    "fingerprint": "43b69f2b04d3e43d87dedd2528be31d851505fc56aea3498eb7d198790b5a37c",
+    "category": "cookie-flags",
+    "url": "https://neon.com/",
+    "title": "Cookie \"neon_consent\" Missing Secure Flag",
+    "firstSeen": "2026-03-26T13:24:44.349Z"
+  },
+  {
+    "fingerprint": "1530ae074c5a12c70e4042303b0782dddd273473876f9a48649887ead251283a",
+    "category": "cookie-flags",
+    "url": "https://neon.com/",
+    "title": "1 Third-Party Cookies Missing HttpOnly",
+    "firstSeen": "2026-03-26T13:24:44.349Z"
+  },
+  {
+    "fingerprint": "1aca1dd294d579eb923e0c0419c777670ba6d551b0fa623f8bb37fa3a782a7d7",
+    "category": "cookie-flags",
+    "url": "https://neon.com/",
+    "title": "1 Third-Party Cookies Missing Secure Flag",
+    "firstSeen": "2026-03-26T13:24:44.349Z"
+  },
+  {
+    "fingerprint": "3bb577e1485c0c01b44a21aa9dc7e458d4c7660155564ecfcfce96069f685d75",
+    "category": "security-headers",
+    "url": "https://neon.com/?chatId=1",
+    "title": "Missing HSTS Header",
+    "firstSeen": "2026-03-26T13:24:44.360Z"
+  },
+  {
+    "fingerprint": "8a05062f169d75a9a4ec643088094db7ecf188dc13be5714f5692c481aff42b2",
+    "category": "info-disclosure",
+    "url": "https://neon.tech/",
+    "title": "HTTP TRACE Method Enabled",
+    "firstSeen": "2026-03-26T13:24:57.349Z"
+  },
+  {
+    "fingerprint": "cd796b3b14c4510ab7a090be4dcf3b07168bca0dcac53e10b9e99f486945fac5",
+    "category": "sri",
+    "url": "https://neon.tech/unify",
+    "title": "Missing Subresource Integrity (SRI)",
+    "firstSeen": "2026-03-26T13:25:00.326Z"
+  },
+  {
+    "fingerprint": "b596c803bdbe234ed08d117e67bba81dd40bc6b75ddd2684ef924e65775112cb",
+    "category": "info-disclosure",
+    "url": "https://neon.tech/undefined",
+    "title": "Verbose Error — Database error details",
+    "firstSeen": "2026-03-26T13:25:01.528Z"
+  },
+  {
+    "fingerprint": "791a9a83086a661c6cb620accda3a75d9fb723fdebda5bc8cd0e44e2f8a3ae2d",
+    "category": "sqli",
+    "url": "https://neon.tech/unify?a=51b7d4a6-96d4-40e0-9ab7-4a1c076825d2&n=pricing",
+    "title": "SQL Injection in URL Parameter \"a\"",
+    "firstSeen": "2026-03-26T13:27:31.410Z"
+  },
+  {
+    "fingerprint": "a8372ef0973a6c270b1b112637c0ca47b7ab298d724950bae9f666aafd05aae8",
+    "category": "sqli",
+    "url": "https://neon.tech/unify?a=51b7d4a6-96d4-40e0-9ab7-4a1c076825d2&n=pricing",
+    "title": "SQL Injection in URL Parameter \"n\"",
+    "firstSeen": "2026-03-26T13:27:31.746Z"
+  },
+  {
+    "fingerprint": "43cfb761a85e56ff871ad22c188e2b166c72c810b4d070f6dc2958b708626874",
+    "category": "open-redirect",
+    "url": "https://neon.tech/login?url=https://evil.example.com",
+    "title": "Open Redirect via \"url\" Parameter",
+    "firstSeen": "2026-03-26T13:27:50.641Z"
+  },
+  {
+    "fingerprint": "c363b402e1f1dcd2c6b264c1ef1819ab63cf3a136bc1567f93cf48469ce05285",
+    "category": "open-redirect",
+    "url": "https://neon.tech/login?redirect=https://evil.example.com",
+    "title": "Open Redirect via \"redirect\" Parameter",
+    "firstSeen": "2026-03-26T13:27:50.749Z"
+  },
+  {
+    "fingerprint": "34e4bef879ce8fc49e2c43fd1cad9ab99aa27043e6d6d5f3780fadc6fe76b037",
+    "category": "open-redirect",
+    "url": "https://neon.tech/login?next=https://evil.example.com",
+    "title": "Open Redirect via \"next\" Parameter",
+    "firstSeen": "2026-03-26T13:27:50.837Z"
+  },
+  {
+    "fingerprint": "125aeb78343fd158cb36afef1912009ff420eed98f20161315b1e63d856baec3",
+    "category": "open-redirect",
+    "url": "https://neon.tech/login?return=https://evil.example.com",
+    "title": "Open Redirect via \"return\" Parameter",
+    "firstSeen": "2026-03-26T13:27:50.927Z"
+  },
+  {
+    "fingerprint": "4967bbf5a9f07ddb19261c3ea047b06498a8fdbb7bbffd7d1580471cd031d513",
+    "category": "open-redirect",
+    "url": "https://neon.tech/login?returnTo=https://evil.example.com",
+    "title": "Open Redirect via \"returnTo\" Parameter",
+    "firstSeen": "2026-03-26T13:27:51.039Z"
+  },
+  {
+    "fingerprint": "475325bbba297521e00deb4f4b3f688dec1e206bb1d6d04d954b771d0ce1fb94",
+    "category": "open-redirect",
+    "url": "https://neon.tech/login?redirect_uri=https://evil.example.com",
+    "title": "Open Redirect via \"redirect_uri\" Parameter",
+    "firstSeen": "2026-03-26T13:27:51.138Z"
+  },
+  {
+    "fingerprint": "6938c262f5e425c9cee4f49c2f601d5150e6ba6062b26cab5a837d0f88912509",
+    "category": "open-redirect",
+    "url": "https://neon.tech/login?goto=https://evil.example.com",
+    "title": "Open Redirect via \"goto\" Parameter",
+    "firstSeen": "2026-03-26T13:27:51.219Z"
+  },
+  {
+    "fingerprint": "8227a709cfd4a5ca3bf62879ece0d90830c96cdbdbb0a31043c39cea17fa8e60",
+    "category": "open-redirect",
+    "url": "https://neon.tech/login?dest=https://evil.example.com",
+    "title": "Open Redirect via \"dest\" Parameter",
+    "firstSeen": "2026-03-26T13:27:51.301Z"
+  },
+  {
+    "fingerprint": "a1c7eed2b76d005b588e1116817ce7fce6f9249c861fdb127e3d8b9944bc3a14",
+    "category": "directory-traversal",
+    "url": "https://neon.tech/unify?a=51b7d4a6-96d4-40e0-9ab7-4a1c076825d2&n=pricing",
+    "title": "Directory Traversal",
+    "firstSeen": "2026-03-26T13:27:51.819Z"
+  },
+  {
+    "fingerprint": "3173e203b61b79b14a8e4c86f66c66b48436564535e1358c39c153e13f7c478c",
+    "category": "prototype-pollution",
+    "url": "https://neon.tech/unify?a=51b7d4a6-96d4-40e0-9ab7-4a1c076825d2&n=pricing",
+    "title": "Server-Side Prototype Pollution via Query Parameter (__proto__-bracket)",
+    "firstSeen": "2026-03-26T13:29:48.245Z"
+  }
+]

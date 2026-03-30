@@ -124,6 +124,7 @@ export function mapToOwasp(category: string): string {
     'timing-attack': 'A07:2021 - Identification and Authentication Failures',
     'verbose-errors': 'A05:2021 - Security Misconfiguration',
     'xpath-injection': 'A03:2021 - Injection',
+    'auth-diff': 'A01:2021 - Broken Access Control',
   };
   return map[category] ?? 'Unknown';
 }
@@ -178,6 +179,7 @@ export function getGenericImpact(category: string): string {
     'timing-attack': 'An attacker can enumerate valid usernames by measuring authentication response times. Consistent timing differences between valid and invalid usernames reveal which accounts exist, enabling targeted attacks (credential stuffing, phishing, password spraying) against confirmed accounts.',
     'verbose-errors': 'Verbose error messages expose internal application details — stack traces reveal file paths and code structure, debug pages show configuration and environment variables, and database errors leak query structure and schema information. Attackers use this reconnaissance to craft targeted exploits.',
     'xpath-injection': 'An attacker can manipulate XPath queries to bypass authentication, extract sensitive data from XML documents, or enumerate the XML structure. XPath injection in authentication systems often allows login bypass via tautology attacks (e.g., \' or \'1\'=\'1). Unlike SQL injection, XPath has no permission model — successful injection gives access to the entire XML document.',
+    'auth-diff': 'An attacker (User B) can access another user\'s (User A) private data by replaying authenticated API requests. This is the most common and highest-paid bug bounty finding: broken authorization that lets one user read, modify, or delete another user\'s resources.',
   };
   return map[category] ?? 'Unknown impact.';
 }
@@ -232,6 +234,7 @@ export function getGenericFix(category: string): string {
     'timing-attack': 'Ensure authentication endpoints take constant time regardless of input validity. Always hash a dummy password when the username is not found (constant-time operation). Use constant-time string comparison for tokens and secrets (crypto.timingSafeEqual). Return generic error messages ("Invalid credentials") instead of specific ones. Consider adding random jitter (10-50ms) to authentication responses.',
     'verbose-errors': 'Disable debug mode in production (Django DEBUG=False, Rails RAILS_ENV=production, Laravel APP_DEBUG=false, Express NODE_ENV=production). Configure custom error handlers for all HTTP status codes. Log detailed errors server-side only. Never expose stack traces, internal paths, SQL queries, or environment variables to end users.',
     'xpath-injection': 'Use parameterized XPath queries (XPath variables) instead of string concatenation. Sanitize user input by removing or escaping XPath special characters (\', ", [, ], /, @, :). Use an ORM or data access layer that handles XPath escaping. Consider switching from XML/XPath to JSON where possible to eliminate the attack surface entirely.',
+    'auth-diff': 'Implement server-side authorization checks on every API endpoint that verify the authenticated user owns or has permission to access the requested resource. Use row-level security (e.g., Supabase RLS, Django guardian) or explicit ownership checks. Never rely on client-side filtering alone. Test with two different user accounts to verify isolation.',
   };
   return map[category] ?? 'Review and fix the identified vulnerability.';
 }

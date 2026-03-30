@@ -1,0 +1,100 @@
+[
+  {
+    "fingerprint": "edb87bf8e1d01b5a41bda366211d90c74ae38cffa90bb837b44025ef385b36f1",
+    "category": "security-headers",
+    "url": "https://blog.kredivo.com/",
+    "title": "Missing Content-Security-Policy Header",
+    "firstSeen": "2026-03-22T12:38:21.085Z"
+  },
+  {
+    "fingerprint": "d624b052ea6a49fd6173099468e197fe1a64c4fc97b66dae3f9a73e760a3f714",
+    "category": "security-headers",
+    "url": "https://blog.kredivo.com/",
+    "title": "Missing X-Frame-Options Header",
+    "firstSeen": "2026-03-22T12:38:21.085Z"
+  },
+  {
+    "fingerprint": "71b6532103066b6f6f59896f2449b4e7b7972c37715b8186bb781f56743895b1",
+    "category": "security-headers",
+    "url": "https://blog.kredivo.com/",
+    "title": "Missing X-Content-Type-Options Header",
+    "firstSeen": "2026-03-22T12:38:21.085Z"
+  },
+  {
+    "fingerprint": "3e7f6992a80620c1ca98e233728dcbc47ba5cf4fc6fafbedf98e8808696c66e9",
+    "category": "security-headers",
+    "url": "https://blog.kredivo.com/",
+    "title": "Missing Referrer-Policy Header",
+    "firstSeen": "2026-03-22T12:38:21.085Z"
+  },
+  {
+    "fingerprint": "c48b5a90d7f513fc2fb6073294271e4ad4a3641bc1b0191529b3167639cef1cd",
+    "category": "security-headers",
+    "url": "https://blog.kredivo.com/",
+    "title": "Missing Permissions-Policy Header",
+    "firstSeen": "2026-03-22T12:38:21.085Z"
+  },
+  {
+    "fingerprint": "e69f5a8d51b21f952bee9c3dc7d499d184d7c378bc84598667191e1a067b18a4",
+    "category": "cross-origin-policy",
+    "url": "https://blog.kredivo.com/",
+    "title": "Missing Cross-Origin-Opener-Policy Header",
+    "firstSeen": "2026-03-22T12:38:21.085Z"
+  },
+  {
+    "fingerprint": "4bc8d74b21970a14d07e9727461534b23f845779fc5fcdfd7073210353794dc1",
+    "category": "cross-origin-policy",
+    "url": "https://blog.kredivo.com/",
+    "title": "Missing Cross-Origin-Embedder-Policy Header",
+    "firstSeen": "2026-03-22T12:38:21.085Z"
+  },
+  {
+    "fingerprint": "44ebdbbffc3650f408d6c2cb7d9a6e2a371b0435e8c97a799d1fbab15bb9d56d",
+    "category": "cross-origin-policy",
+    "url": "https://blog.kredivo.com/",
+    "title": "Missing Cross-Origin-Resource-Policy Header",
+    "firstSeen": "2026-03-22T12:38:21.085Z"
+  },
+  {
+    "fingerprint": "55b778586ab94f327f086204ff24a216ed79105253e537e200b11111486b90eb",
+    "category": "cookie-flags",
+    "url": "https://blog.kredivo.com/",
+    "title": "Cookie \"_hcc\" Missing HttpOnly Flag",
+    "firstSeen": "2026-03-22T12:38:21.086Z"
+  },
+  {
+    "fingerprint": "89cb711e05e2e202ee019e33e93a0da2c53fd4a465dea386ee043e2b1f8a39d5",
+    "category": "cookie-flags",
+    "url": "https://blog.kredivo.com/",
+    "title": "Cookie \"_hcc\" Missing Secure Flag",
+    "firstSeen": "2026-03-22T12:38:21.086Z"
+  },
+  {
+    "fingerprint": "ad8f243bcc7cd9a8cad41251b3d76648ce468b7c2655b0f9e21d8d64b56fa4f5",
+    "category": "tls",
+    "url": "https://blog.kredivo.com/",
+    "title": "HSTS Not Eligible for Preload",
+    "firstSeen": "2026-03-22T12:38:22.019Z"
+  },
+  {
+    "fingerprint": "6d15137503374eb0817315ed5a1f13ce35dddd792c712ac3703bff1350368a90",
+    "category": "info-disclosure",
+    "url": "https://blog.kredivo.com/wp-login.php",
+    "title": "WordPress login page detected",
+    "firstSeen": "2026-03-22T12:38:42.382Z"
+  },
+  {
+    "fingerprint": "f79cc2ff5494ccbb12215cbeb80077f7be554b953aefeec511ff31fc88acbbfe",
+    "category": "rate-limit",
+    "url": "https://blog.kredivo.com/login",
+    "title": "Missing Rate Limiting on Authentication Endpoint",
+    "firstSeen": "2026-03-22T12:38:53.585Z"
+  },
+  {
+    "fingerprint": "b3a39c2241f04c53f6921ff0ff5b40bade05a52bae7f8a0e22e97fe2b294580a",
+    "category": "broken-access-control",
+    "url": "https://blog.kredivo.com/wp-login.php",
+    "title": "Exposed Internal Endpoint: /wp-login.php",
+    "firstSeen": "2026-03-22T12:44:44.936Z"
+  }
+]

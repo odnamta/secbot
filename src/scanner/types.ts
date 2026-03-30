@@ -167,8 +167,12 @@ export interface ScanConfig {
   payloadStats?: import('../learning/payload-stats.js').PayloadStats;
   /** Subdomain enumeration results from recon phase — used by subdomain-takeover check */
   subdomainResults?: import('./recon/subdomain.js').SubdomainResult[];
+  /** HTTP-alive subdomains from probing — live web services discovered during subdomain enumeration */
+  subdomainHttpResults?: import('./recon/subdomain.js').HttpProbeResult[];
   /** Extra HTTP headers to inject into every request (e.g. Authorization: Bearer <token>) */
   extraHeaders?: Record<string, string>;
+  /** When true, >50% of crawled pages returned 403/429 — slow timing-based checks are skipped */
+  wafBlocked?: boolean;
 }
 
 export interface CrawledPage {
@@ -249,6 +253,8 @@ export interface ScanResult {
   tokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
   callbackUrl?: string;
   sessionRefreshes?: number;
+  /** Post-scan gap analysis and quality score */
+  gapAnalysis?: import('../learning/gap-analysis.js').GapAnalysisResult;
 }
 
 export interface ScanSummary {

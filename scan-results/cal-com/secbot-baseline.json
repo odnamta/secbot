@@ -1,0 +1,177 @@
+[
+  {
+    "fingerprint": "571a3c9d06f3e65556c7e1efde5804147f0f8ae8ad6944635e7845240d11771a",
+    "category": "security-headers",
+    "url": "https://cal.com/",
+    "title": "Missing Content-Security-Policy Header",
+    "firstSeen": "2026-03-22T11:37:02.206Z"
+  },
+  {
+    "fingerprint": "0a237f73c08cef73ef36076444603d145bb0d7eb787f422e9bb7b20334e4691b",
+    "category": "security-headers",
+    "url": "https://cal.com/",
+    "title": "Missing Referrer-Policy Header",
+    "firstSeen": "2026-03-22T11:37:02.206Z"
+  },
+  {
+    "fingerprint": "8effdd3e5edf5d65324bfe65d379d2d5de32bcb9bb020b2595394fd33450a61b",
+    "category": "security-headers",
+    "url": "https://cal.com/",
+    "title": "Missing Permissions-Policy Header",
+    "firstSeen": "2026-03-22T11:37:02.206Z"
+  },
+  {
+    "fingerprint": "2a64c9a61d530c04830d71fa87602dd70bcf574ed710876b348ded550b43cfe1",
+    "category": "cross-origin-policy",
+    "url": "https://cal.com/",
+    "title": "Missing Cross-Origin-Opener-Policy Header",
+    "firstSeen": "2026-03-22T11:37:02.206Z"
+  },
+  {
+    "fingerprint": "a9f3cdf8ce80062f04cd64c7b0e50ae86fafe73d2240268bf15e7c6057192251",
+    "category": "cross-origin-policy",
+    "url": "https://cal.com/",
+    "title": "Missing Cross-Origin-Embedder-Policy Header",
+    "firstSeen": "2026-03-22T11:37:02.206Z"
+  },
+  {
+    "fingerprint": "f34ca51c3854ae27c11a95386210c19decc2ced061db6887284e76b02ec35fcd",
+    "category": "cross-origin-policy",
+    "url": "https://cal.com/",
+    "title": "Missing Cross-Origin-Resource-Policy Header",
+    "firstSeen": "2026-03-22T11:37:02.206Z"
+  },
+  {
+    "fingerprint": "43d4abece7162b5d11e0a1070375f644ecdb9c122b8291ca94dd5e11e877323c",
+    "category": "cookie-flags",
+    "url": "https://cal.com/",
+    "title": "Cookie \"__Secure-next-auth.csrf-token\" Weak SameSite Setting",
+    "firstSeen": "2026-03-22T11:37:02.208Z"
+  },
+  {
+    "fingerprint": "48d0e94c1c6eaa6bb54fd445ed152424e23e60bbc472061c8da0f13cb3cf3328",
+    "category": "cookie-flags",
+    "url": "https://cal.com/",
+    "title": "Cookie \"__Secure-next-auth.callback-url\" Missing HttpOnly Flag",
+    "firstSeen": "2026-03-22T11:37:02.208Z"
+  },
+  {
+    "fingerprint": "3c61b9e7cc8e43d9a49e89b6c388f4f93a060a5f69be4fe8bf5af328cc838629",
+    "category": "cookie-flags",
+    "url": "https://cal.com/",
+    "title": "Cookie \"__Secure-next-auth.callback-url\" Weak SameSite Setting",
+    "firstSeen": "2026-03-22T11:37:02.208Z"
+  },
+  {
+    "fingerprint": "9bddeeb3159b667695d942cbe3da5b22024e35cf66a27975ed2694c8627aa0cd",
+    "category": "cookie-flags",
+    "url": "https://cal.com/",
+    "title": "1 Third-Party Cookies Missing HttpOnly",
+    "firstSeen": "2026-03-22T11:37:02.208Z"
+  },
+  {
+    "fingerprint": "bc7dc956f5a91b61ac1698a81c9b3eb412e45fbcdf33837eca514f057dcbf4d0",
+    "category": "sensitive-url-data",
+    "url": "https://cal.com/",
+    "title": "Sensitive Data in URL (password/secret)",
+    "firstSeen": "2026-03-22T11:37:02.211Z"
+  },
+  {
+    "fingerprint": "345006aa42ab2ec22951a2a8c15110d8636dc779d12c8f31975239ce7e78063e",
+    "category": "sri",
+    "url": "https://cal.com/",
+    "title": "Missing Subresource Integrity (SRI)",
+    "firstSeen": "2026-03-22T11:37:02.693Z"
+  },
+  {
+    "fingerprint": "f1f635011880b07d2eff70d1645a4f45d0bbc9eb408e6cc088fa252aab511175",
+    "category": "info-disclosure",
+    "url": "https://cal.com/robots.txt",
+    "title": "Sensitive Paths in robots.txt",
+    "firstSeen": "2026-03-22T11:37:40.475Z"
+  },
+  {
+    "fingerprint": "b7db53a7512ed1dbc80817c42a8018e240d9c1b16a91303f172cbf6aa9be3461",
+    "category": "rate-limit",
+    "url": "https://cal.com/api/auth/session",
+    "title": "Missing Rate Limiting on Authentication Endpoint",
+    "firstSeen": "2026-03-22T11:37:09.434Z"
+  },
+  {
+    "fingerprint": "de15c446f7f8af00956345dbdd2cf7267f4ced5b1a23f32e7afcf77b8164b953",
+    "category": "rate-limit",
+    "url": "https://cal.com/api/geolocation",
+    "title": "Missing Rate Limiting on API Endpoint",
+    "firstSeen": "2026-03-22T11:37:12.985Z"
+  },
+  {
+    "fingerprint": "b2bd9fb955b5b7cb1d6311d27c716a1925cdf4716bbd2b8bc2f9266551746851",
+    "category": "oauth",
+    "url": "https://cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fcal.com%2Fcallback",
+    "title": "OAuth missing state parameter on /api/auth/session",
+    "firstSeen": "2026-03-22T11:37:02.748Z"
+  },
+  {
+    "fingerprint": "8fbef7879db600c71e721d030ddeafd4b130dda2f71e5c0cc819e69394721d4b",
+    "category": "oauth",
+    "url": "https://cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fcal.com%2Fcallback&state=secbot-test",
+    "title": "OAuth PKCE not enforced on /api/auth/session",
+    "firstSeen": "2026-03-22T11:37:06.747Z"
+  },
+  {
+    "fingerprint": "38d3b19a52ee6f81ee70ca0d0396d82e702f453534bf288249a0596def9d06cc",
+    "category": "directory-traversal",
+    "url": "https://cal.com/api/geolocation",
+    "title": "Directory Traversal",
+    "firstSeen": "2026-03-22T11:43:11.876Z"
+  },
+  {
+    "fingerprint": "1a16a2c1caf7f6b1753879abb5e862ad0008f69b2dcfd786e0d4430bdda8ffb5",
+    "category": "broken-access-control",
+    "url": "https://cal.com/admin",
+    "title": "Exposed Admin Panel: /admin",
+    "firstSeen": "2026-03-22T11:45:24.485Z"
+  },
+  {
+    "fingerprint": "8a2964aadf5a0364f41c451727525ff0de57ef1590cc27c62ed0a4ecdbcaf178",
+    "category": "broken-access-control",
+    "url": "https://cal.com/administrator",
+    "title": "Exposed Admin Panel: /administrator",
+    "firstSeen": "2026-03-22T11:45:26.932Z"
+  },
+  {
+    "fingerprint": "0e841d0ac43c63d4831f21273a9ba907c1b1cece086f8b95f25436b27f48bd6b",
+    "category": "broken-access-control",
+    "url": "https://cal.com/manage",
+    "title": "Exposed Admin Panel: /manage",
+    "firstSeen": "2026-03-22T11:45:30.687Z"
+  },
+  {
+    "fingerprint": "0b493b7efea70edb73dcb407a3aa11ad9cb7b68ccb10c6441c3f6904f19304af",
+    "category": "broken-access-control",
+    "url": "https://cal.com/manager",
+    "title": "Exposed Admin Panel: /manager",
+    "firstSeen": "2026-03-22T11:45:32.406Z"
+  },
+  {
+    "fingerprint": "2c829501774ceb9af739bc4ac11b222a33a21e06944e18eb0e4c7f33390110f7",
+    "category": "broken-access-control",
+    "url": "https://cal.com/management",
+    "title": "Exposed Admin Panel: /management",
+    "firstSeen": "2026-03-22T11:45:34.067Z"
+  },
+  {
+    "fingerprint": "fb760cb20da057bb78570fe4a54a7d73f0d6281af9c2299a42243780f5408cde",
+    "category": "xxe",
+    "url": "https://cal.com/api/geolocation",
+    "title": "XML DTD Processing Enabled (Potential XXE)",
+    "firstSeen": "2026-03-22T11:47:14.940Z"
+  },
+  {
+    "fingerprint": "a85b1f126d568f260877904e0280219781fd21a692d95a8f34bf3cc8acf78a6d",
+    "category": "xxe",
+    "url": "https://cal.com/api/geolocation",
+    "title": "XML External Entity (XXE) Injection — parameter-entity",
+    "firstSeen": "2026-03-22T11:47:15.512Z"
+  }
+]

@@ -1,0 +1,2519 @@
+{
+  "targetUrl": "https://cal.com/",
+  "profile": "stealth",
+  "startedAt": "2026-03-22T11:36:33.680Z",
+  "completedAt": "2026-03-22T11:50:17.778Z",
+  "pagesScanned": 5,
+  "rawFindings": [
+    {
+      "id": "40affde7-5a0a-4ef1-af29-bccec8165f6b",
+      "category": "security-headers",
+      "severity": "high",
+      "confidence": "medium",
+      "title": "Missing Content-Security-Policy Header",
+      "description": "No CSP header found. This makes the application more susceptible to XSS attacks.",
+      "url": "https://cal.com/",
+      "evidence": "Header \"content-security-policy\" not present in response",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "private, max-age=0, must-revalidate",
+          "cf-cache-status": "DYNAMIC",
+          "cf-ray": "9e04e698e8e24ad1-CGK",
+          "content-encoding": "gzip",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 11:36:48 GMT",
+          "last-modified": "Fri, 20 Mar 2026 21:15:10 GMT",
+          "link": "<https://framerusercontent.com>; rel=\"preconnect\", <https://framerusercontent.com>; rel=\"preconnect\"; crossorigin=\"\"",
+          "server": "cloudflare",
+          "server-timing": "region;desc=\"ap-southeast-1\", cache;desc=\"cached\", ssg-status;desc=\"optimized\", version;desc=\"b987130\", route;dur=1;desc=\"id=v7M7xdOQx&locale=default\", abtests;dur=1;desc=\"VujeUsxcJ=zkkLhrfP4&vTZCk8F3q=zMZyfPGHU&Yoe_8Npvc=aF_KZyC6r\"",
+          "strict-transport-security": "max-age=31536000",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff"
+        }
+      },
+      "affectedUrls": [
+        "https://cal.com/",
+        "https://cal.com/sitemap_en.xml",
+        "https://cal.com/sitemap_de-DE.xml",
+        "https://cal.com/sitemap_fr-FR.xml",
+        "https://cal.com/sitemap_nl-NL.xml"
+      ],
+      "timestamp": "2026-03-22T11:37:02.206Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "private, max-age=0, must-revalidate",
+              "cf-cache-status": "DYNAMIC",
+              "cf-ray": "9e04e698e8e24ad1-CGK",
+              "content-encoding": "gzip",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 11:36:48 GMT",
+              "last-modified": "Fri, 20 Mar 2026 21:15:10 GMT",
+              "link": "<https://framerusercontent.com>; rel=\"preconnect\", <https://framerusercontent.com>; rel=\"preconnect\"; crossorigin=\"\"",
+              "server": "cloudflare",
+              "server-timing": "region;desc=\"ap-southeast-1\", cache;desc=\"cached\", ssg-status;desc=\"optimized\", version;desc=\"b987130\", route;dur=1;desc=\"id=v7M7xdOQx&locale=default\", abtests;dur=1;desc=\"VujeUsxcJ=zkkLhrfP4&vTZCk8F3q=zMZyfPGHU&Yoe_8Npvc=aF_KZyC6r\"",
+              "strict-transport-security": "max-age=31536000",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "content-security-policy",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "846a37b8-104e-4260-bcb9-f8a1e36dae05",
+      "category": "security-headers",
+      "severity": "info",
+      "confidence": "low",
+      "title": "Missing X-Frame-Options Header",
+      "description": "The X-Frame-Options header is missing, potentially allowing clickjacking attacks. Note: Target uses Cloudflare which may inject this header at the platform level.",
+      "url": "https://cal.com/",
+      "evidence": "Header \"x-frame-options\" not present in response",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "private, max-age=0, must-revalidate",
+          "cf-cache-status": "DYNAMIC",
+          "cf-ray": "9e04e698e8e24ad1-CGK",
+          "content-encoding": "gzip",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 11:36:48 GMT",
+          "last-modified": "Fri, 20 Mar 2026 21:15:10 GMT",
+          "link": "<https://framerusercontent.com>; rel=\"preconnect\", <https://framerusercontent.com>; rel=\"preconnect\"; crossorigin=\"\"",
+          "server": "cloudflare",
+          "server-timing": "region;desc=\"ap-southeast-1\", cache;desc=\"cached\", ssg-status;desc=\"optimized\", version;desc=\"b987130\", route;dur=1;desc=\"id=v7M7xdOQx&locale=default\", abtests;dur=1;desc=\"VujeUsxcJ=zkkLhrfP4&vTZCk8F3q=zMZyfPGHU&Yoe_8Npvc=aF_KZyC6r\"",
+          "strict-transport-security": "max-age=31536000",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff"
+        }
+      },
+      "affectedUrls": [
+        "https://cal.com/",
+        "https://cal.com/sitemap_en.xml",
+        "https://cal.com/sitemap_de-DE.xml",
+        "https://cal.com/sitemap_fr-FR.xml",
+        "https://cal.com/sitemap_nl-NL.xml"
+      ],
+      "timestamp": "2026-03-22T11:37:02.206Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "private, max-age=0, must-revalidate",
+              "cf-cache-status": "DYNAMIC",
+              "cf-ray": "9e04e698e8e24ad1-CGK",
+              "content-encoding": "gzip",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 11:36:48 GMT",
+              "last-modified": "Fri, 20 Mar 2026 21:15:10 GMT",
+              "link": "<https://framerusercontent.com>; rel=\"preconnect\", <https://framerusercontent.com>; rel=\"preconnect\"; crossorigin=\"\"",
+              "server": "cloudflare",
+              "server-timing": "region;desc=\"ap-southeast-1\", cache;desc=\"cached\", ssg-status;desc=\"optimized\", version;desc=\"b987130\", route;dur=1;desc=\"id=v7M7xdOQx&locale=default\", abtests;dur=1;desc=\"VujeUsxcJ=zkkLhrfP4&vTZCk8F3q=zMZyfPGHU&Yoe_8Npvc=aF_KZyC6r\"",
+              "strict-transport-security": "max-age=31536000",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "x-frame-options",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "0da0b808-68af-40b6-a3a2-535a21212ef1",
+      "category": "security-headers",
+      "severity": "info",
+      "confidence": "low",
+      "title": "Missing Referrer-Policy Header",
+      "description": "No Referrer-Policy set. Sensitive data in URLs may leak via the Referer header. Note: Target uses Cloudflare which may inject this header at the platform level.",
+      "url": "https://cal.com/",
+      "evidence": "Header \"referrer-policy\" not present in response",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "private, max-age=0, must-revalidate",
+          "cf-cache-status": "DYNAMIC",
+          "cf-ray": "9e04e698e8e24ad1-CGK",
+          "content-encoding": "gzip",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 11:36:48 GMT",
+          "last-modified": "Fri, 20 Mar 2026 21:15:10 GMT",
+          "link": "<https://framerusercontent.com>; rel=\"preconnect\", <https://framerusercontent.com>; rel=\"preconnect\"; crossorigin=\"\"",
+          "server": "cloudflare",
+          "server-timing": "region;desc=\"ap-southeast-1\", cache;desc=\"cached\", ssg-status;desc=\"optimized\", version;desc=\"b987130\", route;dur=1;desc=\"id=v7M7xdOQx&locale=default\", abtests;dur=1;desc=\"VujeUsxcJ=zkkLhrfP4&vTZCk8F3q=zMZyfPGHU&Yoe_8Npvc=aF_KZyC6r\"",
+          "strict-transport-security": "max-age=31536000",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff"
+        }
+      },
+      "affectedUrls": [
+        "https://cal.com/",
+        "https://cal.com/sitemap_en.xml",
+        "https://cal.com/sitemap_de-DE.xml",
+        "https://cal.com/sitemap_fr-FR.xml",
+        "https://cal.com/sitemap_nl-NL.xml"
+      ],
+      "timestamp": "2026-03-22T11:37:02.206Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "private, max-age=0, must-revalidate",
+              "cf-cache-status": "DYNAMIC",
+              "cf-ray": "9e04e698e8e24ad1-CGK",
+              "content-encoding": "gzip",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 11:36:48 GMT",
+              "last-modified": "Fri, 20 Mar 2026 21:15:10 GMT",
+              "link": "<https://framerusercontent.com>; rel=\"preconnect\", <https://framerusercontent.com>; rel=\"preconnect\"; crossorigin=\"\"",
+              "server": "cloudflare",
+              "server-timing": "region;desc=\"ap-southeast-1\", cache;desc=\"cached\", ssg-status;desc=\"optimized\", version;desc=\"b987130\", route;dur=1;desc=\"id=v7M7xdOQx&locale=default\", abtests;dur=1;desc=\"VujeUsxcJ=zkkLhrfP4&vTZCk8F3q=zMZyfPGHU&Yoe_8Npvc=aF_KZyC6r\"",
+              "strict-transport-security": "max-age=31536000",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "referrer-policy",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "5b91b306-e29e-4758-8650-41f9dff05cd8",
+      "category": "security-headers",
+      "severity": "info",
+      "confidence": "low",
+      "title": "Missing Permissions-Policy Header",
+      "description": "No Permissions-Policy header. Browser features like camera/microphone are not explicitly restricted.",
+      "url": "https://cal.com/",
+      "evidence": "Header \"permissions-policy\" not present in response",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "private, max-age=0, must-revalidate",
+          "cf-cache-status": "DYNAMIC",
+          "cf-ray": "9e04e698e8e24ad1-CGK",
+          "content-encoding": "gzip",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 11:36:48 GMT",
+          "last-modified": "Fri, 20 Mar 2026 21:15:10 GMT",
+          "link": "<https://framerusercontent.com>; rel=\"preconnect\", <https://framerusercontent.com>; rel=\"preconnect\"; crossorigin=\"\"",
+          "server": "cloudflare",
+          "server-timing": "region;desc=\"ap-southeast-1\", cache;desc=\"cached\", ssg-status;desc=\"optimized\", version;desc=\"b987130\", route;dur=1;desc=\"id=v7M7xdOQx&locale=default\", abtests;dur=1;desc=\"VujeUsxcJ=zkkLhrfP4&vTZCk8F3q=zMZyfPGHU&Yoe_8Npvc=aF_KZyC6r\"",
+          "strict-transport-security": "max-age=31536000",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff"
+        }
+      },
+      "affectedUrls": [
+        "https://cal.com/",
+        "https://cal.com/sitemap_en.xml",
+        "https://cal.com/sitemap_de-DE.xml",
+        "https://cal.com/sitemap_fr-FR.xml",
+        "https://cal.com/sitemap_nl-NL.xml"
+      ],
+      "timestamp": "2026-03-22T11:37:02.206Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "private, max-age=0, must-revalidate",
+              "cf-cache-status": "DYNAMIC",
+              "cf-ray": "9e04e698e8e24ad1-CGK",
+              "content-encoding": "gzip",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 11:36:48 GMT",
+              "last-modified": "Fri, 20 Mar 2026 21:15:10 GMT",
+              "link": "<https://framerusercontent.com>; rel=\"preconnect\", <https://framerusercontent.com>; rel=\"preconnect\"; crossorigin=\"\"",
+              "server": "cloudflare",
+              "server-timing": "region;desc=\"ap-southeast-1\", cache;desc=\"cached\", ssg-status;desc=\"optimized\", version;desc=\"b987130\", route;dur=1;desc=\"id=v7M7xdOQx&locale=default\", abtests;dur=1;desc=\"VujeUsxcJ=zkkLhrfP4&vTZCk8F3q=zMZyfPGHU&Yoe_8Npvc=aF_KZyC6r\"",
+              "strict-transport-security": "max-age=31536000",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "permissions-policy",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "0827fe74-7c70-4f75-88be-cfa68364ec06",
+      "category": "cross-origin-policy",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Missing Cross-Origin-Opener-Policy Header",
+      "description": "The Cross-Origin-Opener-Policy header is missing. This header isolates the browsing context, preventing cross-origin attacks like Spectre.",
+      "url": "https://cal.com/",
+      "evidence": "Header \"cross-origin-opener-policy\" not present in response",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "private, max-age=0, must-revalidate",
+          "cf-cache-status": "DYNAMIC",
+          "cf-ray": "9e04e698e8e24ad1-CGK",
+          "content-encoding": "gzip",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 11:36:48 GMT",
+          "last-modified": "Fri, 20 Mar 2026 21:15:10 GMT",
+          "link": "<https://framerusercontent.com>; rel=\"preconnect\", <https://framerusercontent.com>; rel=\"preconnect\"; crossorigin=\"\"",
+          "server": "cloudflare",
+          "server-timing": "region;desc=\"ap-southeast-1\", cache;desc=\"cached\", ssg-status;desc=\"optimized\", version;desc=\"b987130\", route;dur=1;desc=\"id=v7M7xdOQx&locale=default\", abtests;dur=1;desc=\"VujeUsxcJ=zkkLhrfP4&vTZCk8F3q=zMZyfPGHU&Yoe_8Npvc=aF_KZyC6r\"",
+          "strict-transport-security": "max-age=31536000",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff"
+        }
+      },
+      "affectedUrls": [
+        "https://cal.com/",
+        "https://cal.com/sitemap_en.xml",
+        "https://cal.com/sitemap_de-DE.xml",
+        "https://cal.com/sitemap_fr-FR.xml",
+        "https://cal.com/sitemap_nl-NL.xml"
+      ],
+      "timestamp": "2026-03-22T11:37:02.206Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "private, max-age=0, must-revalidate",
+              "cf-cache-status": "DYNAMIC",
+              "cf-ray": "9e04e698e8e24ad1-CGK",
+              "content-encoding": "gzip",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 11:36:48 GMT",
+              "last-modified": "Fri, 20 Mar 2026 21:15:10 GMT",
+              "link": "<https://framerusercontent.com>; rel=\"preconnect\", <https://framerusercontent.com>; rel=\"preconnect\"; crossorigin=\"\"",
+              "server": "cloudflare",
+              "server-timing": "region;desc=\"ap-southeast-1\", cache;desc=\"cached\", ssg-status;desc=\"optimized\", version;desc=\"b987130\", route;dur=1;desc=\"id=v7M7xdOQx&locale=default\", abtests;dur=1;desc=\"VujeUsxcJ=zkkLhrfP4&vTZCk8F3q=zMZyfPGHU&Yoe_8Npvc=aF_KZyC6r\"",
+              "strict-transport-security": "max-age=31536000",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/",
+        "responseIndicators": [
+          "cross-origin-opener-policy",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "a76dcd76-6e5f-4458-977a-05aa8844f742",
+      "category": "cross-origin-policy",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Missing Cross-Origin-Embedder-Policy Header",
+      "description": "The Cross-Origin-Embedder-Policy header is missing. This header ensures all cross-origin resources are loaded with CORS or CORP, enabling cross-origin isolation.",
+      "url": "https://cal.com/",
+      "evidence": "Header \"cross-origin-embedder-policy\" not present in response",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "private, max-age=0, must-revalidate",
+          "cf-cache-status": "DYNAMIC",
+          "cf-ray": "9e04e698e8e24ad1-CGK",
+          "content-encoding": "gzip",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 11:36:48 GMT",
+          "last-modified": "Fri, 20 Mar 2026 21:15:10 GMT",
+          "link": "<https://framerusercontent.com>; rel=\"preconnect\", <https://framerusercontent.com>; rel=\"preconnect\"; crossorigin=\"\"",
+          "server": "cloudflare",
+          "server-timing": "region;desc=\"ap-southeast-1\", cache;desc=\"cached\", ssg-status;desc=\"optimized\", version;desc=\"b987130\", route;dur=1;desc=\"id=v7M7xdOQx&locale=default\", abtests;dur=1;desc=\"VujeUsxcJ=zkkLhrfP4&vTZCk8F3q=zMZyfPGHU&Yoe_8Npvc=aF_KZyC6r\"",
+          "strict-transport-security": "max-age=31536000",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff"
+        }
+      },
+      "affectedUrls": [
+        "https://cal.com/",
+        "https://cal.com/sitemap_en.xml",
+        "https://cal.com/sitemap_de-DE.xml",
+        "https://cal.com/sitemap_fr-FR.xml",
+        "https://cal.com/sitemap_nl-NL.xml"
+      ],
+      "timestamp": "2026-03-22T11:37:02.206Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "private, max-age=0, must-revalidate",
+              "cf-cache-status": "DYNAMIC",
+              "cf-ray": "9e04e698e8e24ad1-CGK",
+              "content-encoding": "gzip",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 11:36:48 GMT",
+              "last-modified": "Fri, 20 Mar 2026 21:15:10 GMT",
+              "link": "<https://framerusercontent.com>; rel=\"preconnect\", <https://framerusercontent.com>; rel=\"preconnect\"; crossorigin=\"\"",
+              "server": "cloudflare",
+              "server-timing": "region;desc=\"ap-southeast-1\", cache;desc=\"cached\", ssg-status;desc=\"optimized\", version;desc=\"b987130\", route;dur=1;desc=\"id=v7M7xdOQx&locale=default\", abtests;dur=1;desc=\"VujeUsxcJ=zkkLhrfP4&vTZCk8F3q=zMZyfPGHU&Yoe_8Npvc=aF_KZyC6r\"",
+              "strict-transport-security": "max-age=31536000",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/",
+        "responseIndicators": [
+          "cross-origin-embedder-policy",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "251cac4c-045c-4027-9cbf-415ab22b3417",
+      "category": "cross-origin-policy",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Missing Cross-Origin-Resource-Policy Header",
+      "description": "The Cross-Origin-Resource-Policy header is missing. This header prevents other origins from loading this resource, mitigating side-channel attacks.",
+      "url": "https://cal.com/",
+      "evidence": "Header \"cross-origin-resource-policy\" not present in response",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "private, max-age=0, must-revalidate",
+          "cf-cache-status": "DYNAMIC",
+          "cf-ray": "9e04e698e8e24ad1-CGK",
+          "content-encoding": "gzip",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 11:36:48 GMT",
+          "last-modified": "Fri, 20 Mar 2026 21:15:10 GMT",
+          "link": "<https://framerusercontent.com>; rel=\"preconnect\", <https://framerusercontent.com>; rel=\"preconnect\"; crossorigin=\"\"",
+          "server": "cloudflare",
+          "server-timing": "region;desc=\"ap-southeast-1\", cache;desc=\"cached\", ssg-status;desc=\"optimized\", version;desc=\"b987130\", route;dur=1;desc=\"id=v7M7xdOQx&locale=default\", abtests;dur=1;desc=\"VujeUsxcJ=zkkLhrfP4&vTZCk8F3q=zMZyfPGHU&Yoe_8Npvc=aF_KZyC6r\"",
+          "strict-transport-security": "max-age=31536000",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff"
+        }
+      },
+      "affectedUrls": [
+        "https://cal.com/",
+        "https://cal.com/sitemap_en.xml",
+        "https://cal.com/sitemap_de-DE.xml",
+        "https://cal.com/sitemap_fr-FR.xml",
+        "https://cal.com/sitemap_nl-NL.xml"
+      ],
+      "timestamp": "2026-03-22T11:37:02.206Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "private, max-age=0, must-revalidate",
+              "cf-cache-status": "DYNAMIC",
+              "cf-ray": "9e04e698e8e24ad1-CGK",
+              "content-encoding": "gzip",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 11:36:48 GMT",
+              "last-modified": "Fri, 20 Mar 2026 21:15:10 GMT",
+              "link": "<https://framerusercontent.com>; rel=\"preconnect\", <https://framerusercontent.com>; rel=\"preconnect\"; crossorigin=\"\"",
+              "server": "cloudflare",
+              "server-timing": "region;desc=\"ap-southeast-1\", cache;desc=\"cached\", ssg-status;desc=\"optimized\", version;desc=\"b987130\", route;dur=1;desc=\"id=v7M7xdOQx&locale=default\", abtests;dur=1;desc=\"VujeUsxcJ=zkkLhrfP4&vTZCk8F3q=zMZyfPGHU&Yoe_8Npvc=aF_KZyC6r\"",
+              "strict-transport-security": "max-age=31536000",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/",
+        "responseIndicators": [
+          "cross-origin-resource-policy",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "d225e6f0-4371-486a-b9e2-42b1e87c1514",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Cookie \"__Secure-next-auth.csrf-token\" Weak SameSite Setting",
+      "description": "The cookie \"__Secure-next-auth.csrf-token\" has SameSite=None, allowing cross-site usage.",
+      "url": "https://cal.com/",
+      "evidence": "Cookie: __Secure-next-auth.csrf-token; SameSite=None",
+      "timestamp": "2026-03-22T11:37:02.208Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "3a5f83ad-c118-4382-b4cc-dde885cd411e",
+      "category": "cookie-flags",
+      "severity": "medium",
+      "confidence": "medium",
+      "title": "Cookie \"__Secure-next-auth.callback-url\" Missing HttpOnly Flag",
+      "description": "The cookie \"__Secure-next-auth.callback-url\" is accessible via JavaScript, increasing XSS impact.",
+      "url": "https://cal.com/",
+      "evidence": "Cookie: __Secure-next-auth.callback-url; HttpOnly=false",
+      "timestamp": "2026-03-22T11:37:02.208Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "adbd7e11-7c8b-4a91-9fb1-23ba7c8925f4",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Cookie \"__Secure-next-auth.callback-url\" Weak SameSite Setting",
+      "description": "The cookie \"__Secure-next-auth.callback-url\" has SameSite=None, allowing cross-site usage.",
+      "url": "https://cal.com/",
+      "evidence": "Cookie: __Secure-next-auth.callback-url; SameSite=None",
+      "timestamp": "2026-03-22T11:37:02.208Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "07d88436-afe1-4710-80ba-9d29bc902e47",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "1 Third-Party Cookies Missing HttpOnly",
+      "description": "1 analytics/marketing cookies are accessible via JavaScript. These are third-party tracking cookies with limited security impact.",
+      "url": "https://cal.com/",
+      "evidence": "Cookies: _twpid",
+      "timestamp": "2026-03-22T11:37:02.208Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "846fbd06-6327-4826-a9aa-99924e191999",
+      "category": "sensitive-url-data",
+      "severity": "high",
+      "confidence": "high",
+      "title": "Sensitive Data in URL (password/secret)",
+      "description": "A URL contains what appears to be password/secret data as a query parameter. This data may be logged in server logs, browser history, and proxy caches.",
+      "url": "https://cal.com/",
+      "evidence": "https://cal.com/api/web_experiments/?token=",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -s -i -L \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/"
+      }
+    },
+    {
+      "id": "9c704ea8-45a8-40af-a621-8e0e145707c2",
+      "category": "sensitive-url-data",
+      "severity": "high",
+      "confidence": "high",
+      "title": "Sensitive Data in URL (password/secret)",
+      "description": "A URL contains what appears to be password/secret data as a query parameter. This data may be logged in server logs, browser history, and proxy caches.",
+      "url": "https://cal.com/",
+      "evidence": "https://cal.com/api/early_access_features/?token=",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -s -i -L \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/"
+      }
+    },
+    {
+      "id": "63dce828-be5f-4a24-992a-0f16086a0fd8",
+      "category": "sensitive-url-data",
+      "severity": "high",
+      "confidence": "high",
+      "title": "Sensitive Data in URL (password/secret)",
+      "description": "A URL contains what appears to be password/secret data as a query parameter. This data may be logged in server logs, browser history, and proxy caches.",
+      "url": "https://cal.com/",
+      "evidence": "https://cal.com/api/product_tours/?token=",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -s -i -L \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/"
+      }
+    },
+    {
+      "id": "45747ef6-1945-4c3c-bd2c-d6f24cfbb340",
+      "category": "sensitive-url-data",
+      "severity": "high",
+      "confidence": "high",
+      "title": "Sensitive Data in URL (password/secret)",
+      "description": "A URL contains what appears to be password/secret data as a query parameter. This data may be logged in server logs, browser history, and proxy caches.",
+      "url": "https://cal.com/",
+      "evidence": "https://cal.com/api/surveys/?token=",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -s -i -L \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/"
+      }
+    },
+    {
+      "id": "bfd555db-87b2-4718-9dcb-b1022825d4a8",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Cookie \"__Secure-next-auth.csrf-token\" Weak SameSite Setting",
+      "description": "The cookie \"__Secure-next-auth.csrf-token\" has SameSite=None, allowing cross-site usage.",
+      "url": "https://cal.com/sitemap_en.xml",
+      "evidence": "Cookie: __Secure-next-auth.csrf-token; SameSite=None",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_en.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_en.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "f386bdfe-b4de-4505-a2ff-bfc6793419f1",
+      "category": "cookie-flags",
+      "severity": "medium",
+      "confidence": "medium",
+      "title": "Cookie \"__Secure-next-auth.callback-url\" Missing HttpOnly Flag",
+      "description": "The cookie \"__Secure-next-auth.callback-url\" is accessible via JavaScript, increasing XSS impact.",
+      "url": "https://cal.com/sitemap_en.xml",
+      "evidence": "Cookie: __Secure-next-auth.callback-url; HttpOnly=false",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_en.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_en.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "4c0d655f-3946-496a-9d8c-db4e4421bce6",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Cookie \"__Secure-next-auth.callback-url\" Weak SameSite Setting",
+      "description": "The cookie \"__Secure-next-auth.callback-url\" has SameSite=None, allowing cross-site usage.",
+      "url": "https://cal.com/sitemap_en.xml",
+      "evidence": "Cookie: __Secure-next-auth.callback-url; SameSite=None",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_en.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_en.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "5850528d-85ba-498b-8fd4-10d10ef9b5da",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "1 Third-Party Cookies Missing HttpOnly",
+      "description": "1 analytics/marketing cookies are accessible via JavaScript. These are third-party tracking cookies with limited security impact.",
+      "url": "https://cal.com/sitemap_en.xml",
+      "evidence": "Cookies: _twpid",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_en.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_en.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "81ab1547-7c66-49fe-8c38-29646c4e047c",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Cookie \"__Secure-next-auth.csrf-token\" Weak SameSite Setting",
+      "description": "The cookie \"__Secure-next-auth.csrf-token\" has SameSite=None, allowing cross-site usage.",
+      "url": "https://cal.com/sitemap_de-DE.xml",
+      "evidence": "Cookie: __Secure-next-auth.csrf-token; SameSite=None",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_de-DE.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_de-DE.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "b56b45f8-b87b-459e-b31e-a1bc32f320c4",
+      "category": "cookie-flags",
+      "severity": "medium",
+      "confidence": "medium",
+      "title": "Cookie \"__Secure-next-auth.callback-url\" Missing HttpOnly Flag",
+      "description": "The cookie \"__Secure-next-auth.callback-url\" is accessible via JavaScript, increasing XSS impact.",
+      "url": "https://cal.com/sitemap_de-DE.xml",
+      "evidence": "Cookie: __Secure-next-auth.callback-url; HttpOnly=false",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_de-DE.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_de-DE.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "bc4e26d9-f98c-4ecf-8e89-8412e52b7998",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Cookie \"__Secure-next-auth.callback-url\" Weak SameSite Setting",
+      "description": "The cookie \"__Secure-next-auth.callback-url\" has SameSite=None, allowing cross-site usage.",
+      "url": "https://cal.com/sitemap_de-DE.xml",
+      "evidence": "Cookie: __Secure-next-auth.callback-url; SameSite=None",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_de-DE.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_de-DE.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "1b1b8fa0-1ee5-4fb4-a728-ba900f5c0e4b",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "1 Third-Party Cookies Missing HttpOnly",
+      "description": "1 analytics/marketing cookies are accessible via JavaScript. These are third-party tracking cookies with limited security impact.",
+      "url": "https://cal.com/sitemap_de-DE.xml",
+      "evidence": "Cookies: _twpid",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_de-DE.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_de-DE.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "5a35f8da-10c3-4f75-8985-b50313367dfe",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Cookie \"__Secure-next-auth.csrf-token\" Weak SameSite Setting",
+      "description": "The cookie \"__Secure-next-auth.csrf-token\" has SameSite=None, allowing cross-site usage.",
+      "url": "https://cal.com/sitemap_fr-FR.xml",
+      "evidence": "Cookie: __Secure-next-auth.csrf-token; SameSite=None",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_fr-FR.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_fr-FR.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "b76fad31-1230-476d-8dd8-262990484854",
+      "category": "cookie-flags",
+      "severity": "medium",
+      "confidence": "medium",
+      "title": "Cookie \"__Secure-next-auth.callback-url\" Missing HttpOnly Flag",
+      "description": "The cookie \"__Secure-next-auth.callback-url\" is accessible via JavaScript, increasing XSS impact.",
+      "url": "https://cal.com/sitemap_fr-FR.xml",
+      "evidence": "Cookie: __Secure-next-auth.callback-url; HttpOnly=false",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_fr-FR.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_fr-FR.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "e554b002-91b1-4670-a13c-3a93466ff6c3",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Cookie \"__Secure-next-auth.callback-url\" Weak SameSite Setting",
+      "description": "The cookie \"__Secure-next-auth.callback-url\" has SameSite=None, allowing cross-site usage.",
+      "url": "https://cal.com/sitemap_fr-FR.xml",
+      "evidence": "Cookie: __Secure-next-auth.callback-url; SameSite=None",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_fr-FR.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_fr-FR.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "89f880ae-b78c-4481-9e8a-8031832c2f8f",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "1 Third-Party Cookies Missing HttpOnly",
+      "description": "1 analytics/marketing cookies are accessible via JavaScript. These are third-party tracking cookies with limited security impact.",
+      "url": "https://cal.com/sitemap_fr-FR.xml",
+      "evidence": "Cookies: _twpid",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_fr-FR.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_fr-FR.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "ad5cd97a-b364-4e43-8959-6445a2c2bbcb",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Cookie \"__Secure-next-auth.csrf-token\" Weak SameSite Setting",
+      "description": "The cookie \"__Secure-next-auth.csrf-token\" has SameSite=None, allowing cross-site usage.",
+      "url": "https://cal.com/sitemap_nl-NL.xml",
+      "evidence": "Cookie: __Secure-next-auth.csrf-token; SameSite=None",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_nl-NL.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_nl-NL.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "5233b070-4875-436e-b105-62186790acc9",
+      "category": "cookie-flags",
+      "severity": "medium",
+      "confidence": "medium",
+      "title": "Cookie \"__Secure-next-auth.callback-url\" Missing HttpOnly Flag",
+      "description": "The cookie \"__Secure-next-auth.callback-url\" is accessible via JavaScript, increasing XSS impact.",
+      "url": "https://cal.com/sitemap_nl-NL.xml",
+      "evidence": "Cookie: __Secure-next-auth.callback-url; HttpOnly=false",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_nl-NL.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_nl-NL.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "f1abac6f-dfac-4427-b934-cfdc4471068d",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Cookie \"__Secure-next-auth.callback-url\" Weak SameSite Setting",
+      "description": "The cookie \"__Secure-next-auth.callback-url\" has SameSite=None, allowing cross-site usage.",
+      "url": "https://cal.com/sitemap_nl-NL.xml",
+      "evidence": "Cookie: __Secure-next-auth.callback-url; SameSite=None",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_nl-NL.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_nl-NL.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "28bb9bba-3f7f-4064-9d9f-d0ea5a260ea0",
+      "category": "cookie-flags",
+      "severity": "low",
+      "confidence": "low",
+      "title": "1 Third-Party Cookies Missing HttpOnly",
+      "description": "1 analytics/marketing cookies are accessible via JavaScript. These are third-party tracking cookies with limited security impact.",
+      "url": "https://cal.com/sitemap_nl-NL.xml",
+      "evidence": "Cookies: _twpid",
+      "timestamp": "2026-03-22T11:37:02.211Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://cal.com/sitemap_nl-NL.xml'",
+        "reproductionUrl": "https://cal.com/sitemap_nl-NL.xml",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "168f9775-18bf-4557-aed3-71c88f66002a",
+      "category": "sri",
+      "severity": "medium",
+      "title": "Missing Subresource Integrity (SRI)",
+      "description": "Found 7 external resource(s) without integrity attributes on https://cal.com/. Without SRI, if the CDN or external host is compromised, an attacker can inject malicious code that the browser will execute without verification. Add integrity=\"sha384-...\" and crossorigin=\"anonymous\" attributes to all external script and stylesheet tags.",
+      "url": "https://cal.com/",
+      "evidence": "External resources without SRI:\n<script> https://ddwl4m2hdecbv.cloudfront.net/b/46DJ4HWPMG61/46DJ4HWPMG61.js.gz\n<script> https://eu-assets.i.posthog.com/static/array.js\n<script> https://static.ads-twitter.com/uwt.js\n<script> https://www.dubcdn.com/analytics/script.js\n<script> https://eu-assets.i.posthog.com/array/phc_jrYSGC4qf6Se7YWQoDHM0xhZGxN1jEdqF5rqyfAqg1/config.js\n<script> https://events.framer.com/script?v=2\n<script> https://framerusercontent.com/sites/3nD48sbvLWIxKbF7A73bty/script_main.CjysJb-2.mjs",
+      "timestamp": "2026-03-22T11:37:02.693Z",
+      "affectedUrls": [
+        "https://ddwl4m2hdecbv.cloudfront.net/b/46DJ4HWPMG61/46DJ4HWPMG61.js.gz",
+        "https://eu-assets.i.posthog.com/static/array.js",
+        "https://static.ads-twitter.com/uwt.js",
+        "https://www.dubcdn.com/analytics/script.js",
+        "https://eu-assets.i.posthog.com/array/phc_jrYSGC4qf6Se7YWQoDHM0xhZGxN1jEdqF5rqyfAqg1/config.js",
+        "https://events.framer.com/script?v=2",
+        "https://framerusercontent.com/sites/3nD48sbvLWIxKbF7A73bty/script_main.CjysJb-2.mjs"
+      ],
+      "confidence": "medium",
+      "evidencePack": {
+        "detectionMethod": "integrity-check",
+        "curlCommand": "curl -s -i -L \\\n  'https://cal.com/'",
+        "reproductionUrl": "https://cal.com/"
+      }
+    },
+    {
+      "id": "be79933a-53dc-4bc8-b157-eb4dceeeb740",
+      "category": "info-disclosure",
+      "severity": "low",
+      "title": "Sensitive Paths in robots.txt",
+      "description": "The robots.txt file contains Disallow entries referencing sensitive paths. While robots.txt does not enforce access control, it reveals the existence of admin panels, APIs, or internal endpoints that attackers can target directly.",
+      "url": "https://cal.com/robots.txt",
+      "evidence": "Sensitive Disallow paths:\n/api",
+      "response": {
+        "status": 200,
+        "bodySnippet": "User-agent: *\nDisallow: /sandbox\nDisallow: /api\nDisallow: /settings\nDisallow: /settings/my-account\n\n# Specifically allow access to OG Image api, otherwise eg Twitter won't render these images.\nAllow: /api/social/og/image\n# Specifically allow access to api/app-store to allow search engines to fetch assets\nAllow: /api/app-store/\n"
+      },
+      "timestamp": "2026-03-22T11:37:40.475Z",
+      "affectedUrls": [
+        "https://cal.com/api"
+      ],
+      "confidence": "low",
+      "evidencePack": {
+        "detectionMethod": "file-probe",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/robots.txt"
+          },
+          "response": {
+            "status": 200,
+            "body": "User-agent: *\nDisallow: /sandbox\nDisallow: /api\nDisallow: /settings\nDisallow: /settings/my-account\n\n# Specifically allow access to OG Image api, otherwise eg Twitter won't render these images.\nAllow: /api/social/og/image\n# Specifically allow access to api/app-store to allow search engines to fetch assets\nAllow: /api/app-store/\n"
+          }
+        },
+        "curlCommand": "curl -s -i -L \\\n  'https://cal.com/robots.txt'",
+        "reproductionUrl": "https://cal.com/robots.txt",
+        "responseIndicators": [
+          "Response body contains: User-agent: *\nDisallow: /sandbox\nDisallow: /api\nDisallow: /settings\nDisallow: /settings/my-account\n\n...",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "c0fbd4c5-fc22-4dce-831b-0515b8aebfd1",
+      "category": "rate-limit",
+      "severity": "medium",
+      "title": "Missing Rate Limiting on Authentication Endpoint",
+      "description": "The authentication endpoint at /api/auth/session does not enforce rate limiting. An attacker can perform brute-force password attacks, credential stuffing, or account enumeration without being throttled.",
+      "url": "https://cal.com/api/auth/session",
+      "evidence": "Sent 15 rapid requests — all returned HTTP 200 with no rate-limit headers (X-RateLimit-*, Retry-After, etc.) and no 429 response.",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/api/auth/session"
+      },
+      "response": {
+        "status": 200
+      },
+      "timestamp": "2026-03-22T11:37:09.434Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "brute-force-probe",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/api/auth/session"
+          },
+          "response": {
+            "status": 200
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/api/auth/session'",
+        "reproductionUrl": "https://cal.com/api/auth/session",
+        "responseIndicators": [
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "287735c1-f98b-4516-b458-cb30d3183c7b",
+      "category": "rate-limit",
+      "severity": "low",
+      "title": "Missing Rate Limiting on API Endpoint",
+      "description": "The API endpoint at /api/geolocation does not enforce rate limiting. This may allow abuse, scraping, or resource exhaustion attacks.",
+      "url": "https://cal.com/api/geolocation",
+      "evidence": "Sent 15 rapid requests — all returned HTTP 200 with no rate-limit headers (X-RateLimit-*, Retry-After, etc.) and no 429 response.",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/api/geolocation"
+      },
+      "response": {
+        "status": 200
+      },
+      "timestamp": "2026-03-22T11:37:12.985Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "brute-force-probe",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/api/geolocation"
+          },
+          "response": {
+            "status": 200
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/api/geolocation'",
+        "reproductionUrl": "https://cal.com/api/geolocation",
+        "responseIndicators": [
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "c975c67c-8c7b-426a-af74-7d6f6d02c713",
+      "category": "oauth",
+      "severity": "medium",
+      "title": "OAuth missing state parameter on /api/auth/session",
+      "description": "OAuth authorization endpoint accepts requests without a state parameter, enabling CSRF attacks on the OAuth flow.",
+      "url": "https://cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fcal.com%2Fcallback",
+      "evidence": "Endpoint responded with 200 without requiring state parameter",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fcal.com%2Fcallback"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "age": "0",
+          "cache-control": "private, no-cache, no-store",
+          "cf-cache-status": "DYNAMIC",
+          "cf-ray": "9e04e6edde2b910a-CGK",
+          "connection": "keep-alive",
+          "content-length": "2",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Sun, 22 Mar 2026 11:37:02 GMT",
+          "etag": "\"bwc9mymkdm2\"",
+          "expires": "0",
+          "pragma": "no-cache",
+          "referrer-policy": "no-referrer-when-downgrade",
+          "server": "cloudflare",
+          "set-cookie": "__cf_bm=R_0rP_XJNs7M5yxaiXJ.agpepxRnUQghXVR75ZXwrGo-1774179422.3760688-1.0.1.1-QXgnNvQAy17EOTdhugan7XOPdm2f4TfMiNiDx8e5xyKePSIVOpvY13ZVPeTUQbWyZN6ZAkTR51Uk4ojaZUsc_A91ULQTi03dIVXCsykylJO5ZOtH7yVZDm2InETA8qY4; HttpOnly; Secure; Path=/; Domain=cal.com; Expires=Sun, 22 Mar 2026 12:07:02 GMT",
+          "strict-transport-security": "max-age=63072000",
+          "x-content-type-options": "nosniff",
+          "x-matched-path": "/api/auth/[...nextauth]",
+          "x-vercel-cache": "MISS",
+          "x-vercel-id": "sin1:sin1:sin1::cle1::mg56n-1774179422405-9027433234ab"
+        }
+      },
+      "timestamp": "2026-03-22T11:37:02.748Z",
+      "confidence": "medium",
+      "evidencePack": {
+        "detectionMethod": "flow-analysis",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fcal.com%2Fcallback"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "age": "0",
+              "cache-control": "private, no-cache, no-store",
+              "cf-cache-status": "DYNAMIC",
+              "cf-ray": "9e04e6edde2b910a-CGK",
+              "connection": "keep-alive",
+              "content-length": "2",
+              "content-type": "application/json; charset=utf-8",
+              "date": "Sun, 22 Mar 2026 11:37:02 GMT",
+              "etag": "\"bwc9mymkdm2\"",
+              "expires": "0",
+              "pragma": "no-cache",
+              "referrer-policy": "no-referrer-when-downgrade",
+              "server": "cloudflare",
+              "set-cookie": "__cf_bm=R_0rP_XJNs7M5yxaiXJ.agpepxRnUQghXVR75ZXwrGo-1774179422.3760688-1.0.1.1-QXgnNvQAy17EOTdhugan7XOPdm2f4TfMiNiDx8e5xyKePSIVOpvY13ZVPeTUQbWyZN6ZAkTR51Uk4ojaZUsc_A91ULQTi03dIVXCsykylJO5ZOtH7yVZDm2InETA8qY4; HttpOnly; Secure; Path=/; Domain=cal.com; Expires=Sun, 22 Mar 2026 12:07:02 GMT",
+              "strict-transport-security": "max-age=63072000",
+              "x-content-type-options": "nosniff",
+              "x-matched-path": "/api/auth/[...nextauth]",
+              "x-vercel-cache": "MISS",
+              "x-vercel-id": "sin1:sin1:sin1::cle1::mg56n-1774179422405-9027433234ab"
+            }
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fcal.com%2Fcallback'",
+        "reproductionUrl": "https://cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fcal.com%2Fcallback",
+        "responseIndicators": [
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "a54e2a8b-5954-4732-a40e-645d970e294b",
+      "category": "oauth",
+      "severity": "low",
+      "title": "OAuth PKCE not enforced on /api/auth/session",
+      "description": "The OAuth authorization endpoint does not require PKCE (Proof Key for Code Exchange). Without PKCE, authorization codes are vulnerable to interception attacks, especially on mobile/native apps.",
+      "url": "https://cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fcal.com%2Fcallback&state=secbot-test",
+      "evidence": "Endpoint accepted authorization request without code_challenge parameter (HTTP 200)",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fcal.com%2Fcallback&state=secbot-test"
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "age": "0",
+          "cache-control": "private, no-cache, no-store",
+          "cf-cache-status": "DYNAMIC",
+          "cf-ray": "9e04e7073c82910a-CGK",
+          "connection": "keep-alive",
+          "content-length": "2",
+          "content-type": "application/json; charset=utf-8",
+          "date": "Sun, 22 Mar 2026 11:37:06 GMT",
+          "etag": "\"bwc9mymkdm2\"",
+          "expires": "0",
+          "pragma": "no-cache",
+          "referrer-policy": "no-referrer-when-downgrade",
+          "server": "cloudflare",
+          "set-cookie": "__cf_bm=d24C.jj8AU3aGzs_MWe6fGLkJmkhUrEgwtN8AYEzqnk-1774179426.4372094-1.0.1.1-D8JbmEsqpJn.iGpQlQuN11xMDQTGhD_kTBH_0oKY4ol4o4msm8GQN9b_rEb315AEw_LdkThbrl5KLWCoX7M2yqj7aaO4_8_A3eyEA9uBbwhh2C0..2j9J7UGxxqpHpE3; HttpOnly; Secure; Path=/; Domain=cal.com; Expires=Sun, 22 Mar 2026 12:07:06 GMT",
+          "strict-transport-security": "max-age=63072000",
+          "x-content-type-options": "nosniff",
+          "x-matched-path": "/api/auth/[...nextauth]",
+          "x-vercel-cache": "MISS",
+          "x-vercel-id": "sin1:sin1:sin1::cle1::j599s-1774179426466-42742e314553"
+        }
+      },
+      "timestamp": "2026-03-22T11:37:06.747Z",
+      "confidence": "medium",
+      "evidencePack": {
+        "detectionMethod": "flow-analysis",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fcal.com%2Fcallback&state=secbot-test"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "age": "0",
+              "cache-control": "private, no-cache, no-store",
+              "cf-cache-status": "DYNAMIC",
+              "cf-ray": "9e04e7073c82910a-CGK",
+              "connection": "keep-alive",
+              "content-length": "2",
+              "content-type": "application/json; charset=utf-8",
+              "date": "Sun, 22 Mar 2026 11:37:06 GMT",
+              "etag": "\"bwc9mymkdm2\"",
+              "expires": "0",
+              "pragma": "no-cache",
+              "referrer-policy": "no-referrer-when-downgrade",
+              "server": "cloudflare",
+              "set-cookie": "__cf_bm=d24C.jj8AU3aGzs_MWe6fGLkJmkhUrEgwtN8AYEzqnk-1774179426.4372094-1.0.1.1-D8JbmEsqpJn.iGpQlQuN11xMDQTGhD_kTBH_0oKY4ol4o4msm8GQN9b_rEb315AEw_LdkThbrl5KLWCoX7M2yqj7aaO4_8_A3eyEA9uBbwhh2C0..2j9J7UGxxqpHpE3; HttpOnly; Secure; Path=/; Domain=cal.com; Expires=Sun, 22 Mar 2026 12:07:06 GMT",
+              "strict-transport-security": "max-age=63072000",
+              "x-content-type-options": "nosniff",
+              "x-matched-path": "/api/auth/[...nextauth]",
+              "x-vercel-cache": "MISS",
+              "x-vercel-id": "sin1:sin1:sin1::cle1::j599s-1774179426466-42742e314553"
+            }
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fcal.com%2Fcallback&state=secbot-test'",
+        "reproductionUrl": "https://cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fcal.com%2Fcallback&state=secbot-test",
+        "responseIndicators": [
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "c3571c16-6b28-4ffa-92fe-2ee014a466f4",
+      "category": "directory-traversal",
+      "severity": "critical",
+      "title": "Directory Traversal",
+      "description": "The endpoint is vulnerable to directory traversal, allowing access to system files.",
+      "url": "https://cal.com/api/geolocation",
+      "evidence": "Payload: ../../../etc/passwd\nTest URL: https://cal.com/api/../../../etc/passwd\nResponse contains system file content",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/api/../../../etc/passwd"
+      },
+      "response": {
+        "status": 404,
+        "bodySnippet": "<!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link "
+      },
+      "timestamp": "2026-03-22T11:43:11.876Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "path-traversal-response",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/api/../../../etc/passwd"
+          },
+          "response": {
+            "status": 404,
+            "body": "<!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link "
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/api/../../../etc/passwd'",
+        "reproductionUrl": "https://cal.com/api/../../../etc/passwd",
+        "responseIndicators": [
+          "Response body contains: <!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=...",
+          "HTTP 404"
+        ]
+      }
+    },
+    {
+      "id": "10a5289a-eb98-47cc-bd87-fa7b8e304579",
+      "category": "directory-traversal",
+      "severity": "critical",
+      "title": "Directory Traversal",
+      "description": "The endpoint is vulnerable to directory traversal, allowing access to system files.",
+      "url": "https://cal.com/api/auth/session",
+      "evidence": "Payload: ../../../etc/passwd\nTest URL: https://cal.com/api/auth/../../../etc/passwd\nResponse contains system file content",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/api/auth/../../../etc/passwd"
+      },
+      "response": {
+        "status": 404,
+        "bodySnippet": "<!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link "
+      },
+      "timestamp": "2026-03-22T11:43:13.050Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "path-traversal-response",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/api/auth/../../../etc/passwd"
+          },
+          "response": {
+            "status": 404,
+            "body": "<!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link "
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/api/auth/../../../etc/passwd'",
+        "reproductionUrl": "https://cal.com/api/auth/../../../etc/passwd",
+        "responseIndicators": [
+          "Response body contains: <!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=...",
+          "HTTP 404"
+        ]
+      }
+    },
+    {
+      "id": "b52c768e-02c6-4990-99c6-87fba55e63c1",
+      "category": "directory-traversal",
+      "severity": "critical",
+      "title": "Directory Traversal",
+      "description": "The endpoint is vulnerable to directory traversal, allowing access to system files.",
+      "url": "https://cal.com/sitemap_en.xml",
+      "evidence": "Payload: ../../../etc/passwd\nTest URL: https://cal.com/../../../etc/passwd\nResponse contains system file content",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/../../../etc/passwd"
+      },
+      "response": {
+        "status": 404,
+        "bodySnippet": "<!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link "
+      },
+      "timestamp": "2026-03-22T11:43:14.139Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "path-traversal-response",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/../../../etc/passwd"
+          },
+          "response": {
+            "status": 404,
+            "body": "<!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link "
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/../../../etc/passwd'",
+        "reproductionUrl": "https://cal.com/../../../etc/passwd",
+        "responseIndicators": [
+          "Response body contains: <!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=...",
+          "HTTP 404"
+        ]
+      }
+    },
+    {
+      "id": "a0169cce-e215-4621-ac5c-fa3ce8e4fbe3",
+      "category": "directory-traversal",
+      "severity": "critical",
+      "title": "Directory Traversal",
+      "description": "The endpoint is vulnerable to directory traversal, allowing access to system files.",
+      "url": "https://cal.com/sitemap_de-DE.xml",
+      "evidence": "Payload: ../../../etc/passwd\nTest URL: https://cal.com/../../../etc/passwd\nResponse contains system file content",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/../../../etc/passwd"
+      },
+      "response": {
+        "status": 404,
+        "bodySnippet": "<!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link "
+      },
+      "timestamp": "2026-03-22T11:43:15.053Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "path-traversal-response",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/../../../etc/passwd"
+          },
+          "response": {
+            "status": 404,
+            "body": "<!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link "
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/../../../etc/passwd'",
+        "reproductionUrl": "https://cal.com/../../../etc/passwd",
+        "responseIndicators": [
+          "Response body contains: <!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=...",
+          "HTTP 404"
+        ]
+      }
+    },
+    {
+      "id": "fa2dc4a8-bbaf-46db-aafe-d4aad01d5974",
+      "category": "directory-traversal",
+      "severity": "critical",
+      "title": "Directory Traversal",
+      "description": "The endpoint is vulnerable to directory traversal, allowing access to system files.",
+      "url": "https://cal.com/sitemap_fr-FR.xml",
+      "evidence": "Payload: ../../../etc/passwd\nTest URL: https://cal.com/../../../etc/passwd\nResponse contains system file content",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/../../../etc/passwd"
+      },
+      "response": {
+        "status": 404,
+        "bodySnippet": "<!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link "
+      },
+      "timestamp": "2026-03-22T11:43:16.263Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "path-traversal-response",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/../../../etc/passwd"
+          },
+          "response": {
+            "status": 404,
+            "body": "<!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link "
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/../../../etc/passwd'",
+        "reproductionUrl": "https://cal.com/../../../etc/passwd",
+        "responseIndicators": [
+          "Response body contains: <!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=...",
+          "HTTP 404"
+        ]
+      }
+    },
+    {
+      "id": "c6348b74-a264-4bb8-9897-4e41d4627dab",
+      "category": "directory-traversal",
+      "severity": "critical",
+      "title": "Directory Traversal",
+      "description": "The endpoint is vulnerable to directory traversal, allowing access to system files.",
+      "url": "https://cal.com/sitemap_nl-NL.xml",
+      "evidence": "Payload: ../../../etc/passwd\nTest URL: https://cal.com/../../../etc/passwd\nResponse contains system file content",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/../../../etc/passwd"
+      },
+      "response": {
+        "status": 404,
+        "bodySnippet": "<!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link "
+      },
+      "timestamp": "2026-03-22T11:43:17.511Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "path-traversal-response",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/../../../etc/passwd"
+          },
+          "response": {
+            "status": 404,
+            "body": "<!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link "
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/../../../etc/passwd'",
+        "reproductionUrl": "https://cal.com/../../../etc/passwd",
+        "responseIndicators": [
+          "Response body contains: <!DOCTYPE html><html id=\"__next_error__\"><head><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=...",
+          "HTTP 404"
+        ]
+      }
+    },
+    {
+      "id": "6d9f2dd7-4451-498a-ae4f-e4775d0c4c79",
+      "category": "broken-access-control",
+      "severity": "critical",
+      "title": "Exposed Admin Panel: /admin",
+      "description": "The path \"/admin\" is accessible without authentication (HTTP 200). Admin panels should require authentication.",
+      "url": "https://cal.com/admin",
+      "evidence": "Path: /admin\nStatus: 200\nBody length: 367931\nResponse snippet: <!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link rel=\"stylesheet\" href=\"/_next/s",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/admin"
+      },
+      "response": {
+        "status": 200,
+        "bodySnippet": "<!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-sc"
+      },
+      "timestamp": "2026-03-22T11:45:24.485Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "endpoint-replay",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/admin"
+          },
+          "response": {
+            "status": 200,
+            "body": "<!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-sc"
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/admin'",
+        "reproductionUrl": "https://cal.com/admin",
+        "responseIndicators": [
+          "notranslate",
+          " lang=",
+          " dir=",
+          " data-nextjs-router=",
+          "><head nonce=",
+          "Response body contains: <!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"...",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "65a39305-aaac-470c-bad4-0a757143eddd",
+      "category": "broken-access-control",
+      "severity": "critical",
+      "title": "Exposed Admin Panel: /administrator",
+      "description": "The path \"/administrator\" is accessible without authentication (HTTP 200). Admin panels should require authentication.",
+      "url": "https://cal.com/administrator",
+      "evidence": "Path: /administrator\nStatus: 200\nBody length: 368318\nResponse snippet: <!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link rel=\"stylesheet\" href=\"/_next/s",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/administrator"
+      },
+      "response": {
+        "status": 200,
+        "bodySnippet": "<!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-sc"
+      },
+      "timestamp": "2026-03-22T11:45:26.932Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "endpoint-replay",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/administrator"
+          },
+          "response": {
+            "status": 200,
+            "body": "<!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-sc"
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/administrator'",
+        "reproductionUrl": "https://cal.com/administrator",
+        "responseIndicators": [
+          "notranslate",
+          " lang=",
+          " dir=",
+          " data-nextjs-router=",
+          "><head nonce=",
+          "Response body contains: <!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"...",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "7255621b-f784-4b8d-a00b-fb6240c51ce4",
+      "category": "broken-access-control",
+      "severity": "critical",
+      "title": "Exposed Admin Panel: /manage",
+      "description": "The path \"/manage\" is accessible without authentication (HTTP 200). Admin panels should require authentication.",
+      "url": "https://cal.com/manage",
+      "evidence": "Path: /manage\nStatus: 200\nBody length: 367341\nResponse snippet: <!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link rel=\"stylesheet\" href=\"/_next/s",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/manage"
+      },
+      "response": {
+        "status": 200,
+        "bodySnippet": "<!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-sc"
+      },
+      "timestamp": "2026-03-22T11:45:30.687Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "endpoint-replay",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/manage"
+          },
+          "response": {
+            "status": 200,
+            "body": "<!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-sc"
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/manage'",
+        "reproductionUrl": "https://cal.com/manage",
+        "responseIndicators": [
+          "notranslate",
+          " lang=",
+          " dir=",
+          " data-nextjs-router=",
+          "><head nonce=",
+          "Response body contains: <!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"...",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "e420b44e-a00a-41dc-9284-f62c089db99f",
+      "category": "broken-access-control",
+      "severity": "critical",
+      "title": "Exposed Admin Panel: /manager",
+      "description": "The path \"/manager\" is accessible without authentication (HTTP 200). Admin panels should require authentication.",
+      "url": "https://cal.com/manager",
+      "evidence": "Path: /manager\nStatus: 200\nBody length: 372419\nResponse snippet: <!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link rel=\"stylesheet\" href=\"/_next/s",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/manager"
+      },
+      "response": {
+        "status": 200,
+        "bodySnippet": "<!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-sc"
+      },
+      "timestamp": "2026-03-22T11:45:32.406Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "endpoint-replay",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/manager"
+          },
+          "response": {
+            "status": 200,
+            "body": "<!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-sc"
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/manager'",
+        "reproductionUrl": "https://cal.com/manager",
+        "responseIndicators": [
+          "notranslate",
+          " lang=",
+          " dir=",
+          " data-nextjs-router=",
+          "><head nonce=",
+          "Response body contains: <!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"...",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "33f9850f-26be-4d60-aa60-230bdffe0538",
+      "category": "broken-access-control",
+      "severity": "critical",
+      "title": "Exposed Admin Panel: /management",
+      "description": "The path \"/management\" is accessible without authentication (HTTP 200). Admin panels should require authentication.",
+      "url": "https://cal.com/management",
+      "evidence": "Path: /management\nStatus: 200\nBody length: 366232\nResponse snippet: <!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no\"/><link rel=\"stylesheet\" href=\"/_next/s",
+      "request": {
+        "method": "GET",
+        "url": "https://cal.com/management"
+      },
+      "response": {
+        "status": 200,
+        "bodySnippet": "<!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-sc"
+      },
+      "timestamp": "2026-03-22T11:45:34.067Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "endpoint-replay",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://cal.com/management"
+          },
+          "response": {
+            "status": 200,
+            "body": "<!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"><head nonce=\"\"><meta charSet=\"utf-8\"/><meta name=\"viewport\" content=\"width=device-width, initial-sc"
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/management'",
+        "reproductionUrl": "https://cal.com/management",
+        "responseIndicators": [
+          "notranslate",
+          " lang=",
+          " dir=",
+          " data-nextjs-router=",
+          "><head nonce=",
+          "Response body contains: <!DOCTYPE html><html class=\"notranslate\" translate=\"no\" lang=\"en\" dir=\"ltr\" data-nextjs-router=\"app\"...",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "954f917e-7a77-4ebb-a41f-e5b682c1826a",
+      "category": "xxe",
+      "severity": "low",
+      "title": "XML DTD Processing Enabled (Potential XXE)",
+      "description": "The endpoint accepts XML with DTD processing enabled. While direct file read was not confirmed, DTD processing is a prerequisite for XXE. This may be exploitable with out-of-band (OOB) XXE techniques.",
+      "url": "https://cal.com/api/geolocation",
+      "evidence": "Technique: classic-file-read\nDTD processing detected in response\nResponse snippet: <!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!",
+      "request": {
+        "method": "POST",
+        "url": "https://cal.com/api/geolocation",
+        "headers": {
+          "Content-Type": "application/xml"
+        }
+      },
+      "response": {
+        "status": 403,
+        "bodySnippet": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!"
+      },
+      "timestamp": "2026-03-22T11:47:14.940Z",
+      "confidence": "low",
+      "evidencePack": {
+        "detectionMethod": "entity-expansion",
+        "httpExchange": {
+          "request": {
+            "method": "POST",
+            "url": "https://cal.com/api/geolocation",
+            "headers": {
+              "Content-Type": "application/xml"
+            }
+          },
+          "response": {
+            "status": 403,
+            "body": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!"
+          }
+        },
+        "curlCommand": "curl \\\n  -X POST \\\n  -H 'Content-Type: application/xml' \\\n  -L \\\n  -i \\\n  'https://cal.com/api/geolocation'",
+        "reproductionUrl": "https://cal.com/api/geolocation",
+        "responseIndicators": [
+          "no-js ie6 oldie",
+          "en-US",
+          "no-js ie7 oldie",
+          "en-US",
+          "no-js ie8 oldie",
+          "Response body contains: <!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if I...",
+          "HTTP 403"
+        ]
+      }
+    },
+    {
+      "id": "3c761d71-93d2-4776-a8d3-7567842dcacb",
+      "category": "xxe",
+      "severity": "high",
+      "title": "XML External Entity (XXE) Injection — parameter-entity",
+      "description": "The endpoint accepts XML input and is vulnerable to XXE injection. Parameter entity XXE — uses % entity for blind detection. An attacker can read arbitrary files from the server, perform SSRF, or cause denial of service.",
+      "url": "https://cal.com/api/geolocation",
+      "evidence": "Technique: parameter-entity\nDescription: Parameter entity XXE — uses % entity for blind detection\nDetection: XXE payload \"parameter-entity\" succeeded — response matches indicator: /root:.*:0:0|\\/bin\\/(ba)?sh|error|DTD/i\nResponse status: 403\nResponse snippet: <!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!",
+      "request": {
+        "method": "POST",
+        "url": "https://cal.com/api/geolocation",
+        "headers": {
+          "Content-Type": "application/xml"
+        },
+        "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE foo [\n  <!ENTITY % xxe SYSTEM \"file:///etc/passwd\">\n  %xxe;\n]>\n<root>test</root>"
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "content-type": "text/html; charset=UTF-8"
+        },
+        "bodySnippet": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n<title>Attention Required! | Cloudflare</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" "
+      },
+      "timestamp": "2026-03-22T11:47:15.512Z",
+      "confidence": "medium",
+      "evidencePack": {
+        "detectionMethod": "entity-expansion",
+        "httpExchange": {
+          "request": {
+            "method": "POST",
+            "url": "https://cal.com/api/geolocation",
+            "headers": {
+              "Content-Type": "application/xml"
+            },
+            "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE foo [\n  <!ENTITY % xxe SYSTEM \"file:///etc/passwd\">\n  %xxe;\n]>\n<root>test</root>"
+          },
+          "response": {
+            "status": 403,
+            "headers": {
+              "content-type": "text/html; charset=UTF-8"
+            },
+            "body": "<!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]-->\n<head>\n<title>Attention Required! | Cloudflare</title>\n<meta charset=\"UTF-8\" />\n<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n<meta http-equiv=\"X-UA-Compatible\" "
+          }
+        },
+        "curlCommand": "curl \\\n  -X POST \\\n  -H 'Content-Type: application/xml' \\\n  -d '<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE foo [\n  <!ENTITY % xxe SYSTEM \"file:///etc/passwd\">\n  %xxe;\n]>\n<root>test</root>' \\\n  -L \\\n  -i \\\n  'https://cal.com/api/geolocation'",
+        "reproductionUrl": "https://cal.com/api/geolocation",
+        "responseIndicators": [
+          "parameter-entity",
+          "no-js ie6 oldie",
+          "en-US",
+          "no-js ie7 oldie",
+          "en-US",
+          "Response body contains: <!DOCTYPE html>\n<!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]-->\n<!--[if I...",
+          "HTTP 403"
+        ]
+      }
+    }
+  ],
+  "interpretedFindings": [
+    {
+      "title": "Directory Traversal / Path Traversal on API Endpoint",
+      "severity": "critical",
+      "confidence": "medium",
+      "owaspCategory": "A01:2021 - Broken Access Control",
+      "description": "The /api/geolocation endpoint appears vulnerable to directory traversal, potentially allowing an attacker to read arbitrary files from the server filesystem (e.g., /etc/passwd). However, given that AWS WAF and Cloudflare are in place, this finding should be manually verified — it may be a false positive caused by the scanner misinterpreting a generic error or redirect response as file content.",
+      "impact": "If genuine, an attacker could read sensitive server files including credentials, private keys, and configuration files, leading to full server compromise.",
+      "reproductionSteps": [
+        "Send a GET request to https://cal.com/api/../../../etc/passwd",
+        "Observe whether the response contains Unix passwd file content (root:.*:0:0 pattern)",
+        "Also try: https://cal.com/api/geolocation?path=../../../etc/passwd",
+        "Verify manually that the response body actually contains file contents and is not a false positive"
+      ],
+      "suggestedFix": "Validate and sanitize all file path inputs server-side. Use path.resolve() and verify the resolved path starts with the expected base directory. Never construct file paths from user-supplied input. Ensure the Next.js API route does not pass any request parameters directly to filesystem operations.",
+      "codeExample": "import path from 'path';\n\nconst BASE_DIR = path.resolve('./safe-directory');\n\nexport default function handler(req, res) {\n  const userInput = req.query.file;\n  const resolvedPath = path.resolve(BASE_DIR, userInput);\n  \n  // Ensure resolved path is within the allowed base directory\n  if (!resolvedPath.startsWith(BASE_DIR)) {\n    return res.status(400).json({ error: 'Invalid path' });\n  }\n  \n  // Proceed with safe path\n}",
+      "affectedUrls": [
+        "https://cal.com/api/geolocation"
+      ],
+      "rawFindingIds": [
+        "c3571c16-6b28-4ffa-92fe-2ee014a466f4"
+      ],
+      "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/api/../../../etc/passwd'",
+      "detectionMethod": "path-traversal-response",
+      "cvssScore": 9,
+      "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+    },
+    {
+      "title": "XXE Injection on API Endpoint",
+      "severity": "critical",
+      "confidence": "medium",
+      "owaspCategory": "A03:2021 - Injection",
+      "description": "The /api/geolocation endpoint reportedly accepts XML input and is vulnerable to XML External Entity (XXE) injection via parameter entities. This could allow an attacker to read local files, perform server-side request forgery (SSRF), or cause denial of service. Manual verification is recommended given the WAF/CDN layer in place.",
+      "impact": "Successful XXE exploitation can lead to arbitrary file read (e.g., /etc/passwd, application secrets), internal network scanning via SSRF, and potential denial of service through entity expansion attacks.",
+      "reproductionSteps": [
+        "Send a POST request to https://cal.com/api/geolocation with Content-Type: application/xml",
+        "Include payload: <?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % xxe SYSTEM \"file:///etc/passwd\"> %xxe;]><foo/>",
+        "Observe whether the response reflects file contents or triggers an out-of-band DNS/HTTP request to an attacker-controlled server",
+        "Use a tool like Burp Collaborator for blind XXE detection"
+      ],
+      "suggestedFix": "Disable external entity processing in your XML parser. If the endpoint does not need to accept XML, reject non-JSON content types. If XML is required, configure the parser to disallow DOCTYPE declarations and external entities.",
+      "codeExample": "// If using a Node.js XML parser like 'libxmljs' or similar:\n// Switch to a safe JSON-only API:\nexport default function handler(req, res) {\n  if (req.headers['content-type'] !== 'application/json') {\n    return res.status(415).json({ error: 'Only application/json is accepted' });\n  }\n  // process JSON safely...\n}\n\n// If XML is required, use a safe parser configuration:\n// For 'fast-xml-parser':\nimport { XMLParser } from 'fast-xml-parser';\nconst parser = new XMLParser({\n  allowBooleanAttributes: false,\n  processEntities: false,  // Disable entity processing\n  ignoreDeclaration: true\n});",
+      "affectedUrls": [
+        "https://cal.com/api/geolocation"
+      ],
+      "rawFindingIds": [
+        "3c761d71-93d2-4776-a8d3-7567842dcacb"
+      ],
+      "curlCommand": "curl \\\n  -X POST \\\n  -H 'Content-Type: application/xml' \\\n  -d '<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE foo [\n  <!ENTITY % xxe SYSTEM \"file:///etc/passwd\">\n  %xxe;\n]>\n<root>test</root>' \\\n  -L \\\n  -i \\\n  'https://cal.com/api/geolocation'",
+      "detectionMethod": "entity-expansion",
+      "cvssScore": 9.1,
+      "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:H"
+    },
+    {
+      "title": "Exposed Admin-Like Routes Without Verified Authentication",
+      "severity": "high",
+      "confidence": "low",
+      "owaspCategory": "A01:2021 - Broken Access Control",
+      "description": "Multiple paths (/admin, /administrator, /manage, /manager, /management) return HTTP 200 with large HTML bodies. The response snippets show a standard Next.js app shell, suggesting these may be legitimate public-facing routes (e.g., user dashboards or marketing pages) rather than unprotected admin panels. However, if any of these routes expose administrative functionality without authentication, it is a critical issue. Manual verification is required.",
+      "impact": "If these routes expose administrative functionality without authentication, an attacker could gain full control over the application, user data, and system configuration.",
+      "reproductionSteps": [
+        "Visit https://cal.com/admin in a browser while logged out",
+        "Check whether the page renders sensitive admin functionality or redirects to login",
+        "Repeat for /administrator, /manage, /manager, /management",
+        "Inspect the rendered page content for admin controls, user lists, or configuration options"
+      ],
+      "suggestedFix": "Ensure all administrative routes are protected by server-side authentication middleware. In Next.js App Router, use middleware.ts to redirect unauthenticated users. Do not rely solely on client-side route guards.",
+      "codeExample": "// middleware.ts\nimport { withAuth } from 'next-auth/middleware';\nimport { NextResponse } from 'next/server';\n\nexport default withAuth(\n  function middleware(req) {\n    const token = req.nextauth.token;\n    const isAdminRoute = req.nextUrl.pathname.startsWith('/admin');\n    \n    if (isAdminRoute && token?.role !== 'ADMIN') {\n      return NextResponse.redirect(new URL('/auth/login', req.url));\n    }\n  },\n  { callbacks: { authorized: ({ token }) => !!token } }\n);\n\nexport const config = {\n  matcher: ['/admin/:path*', '/manage/:path*', '/manager/:path*', '/management/:path*']\n};",
+      "affectedUrls": [
+        "https://cal.com/admin",
+        "https://cal.com/administrator",
+        "https://cal.com/manage",
+        "https://cal.com/manager",
+        "https://cal.com/management"
+      ],
+      "rawFindingIds": [
+        "6d9f2dd7-4451-498a-ae4f-e4775d0c4c79",
+        "65a39305-aaac-470c-bad4-0a757143eddd",
+        "7255621b-f784-4b8d-a00b-fb6240c51ce4",
+        "e420b44e-a00a-41dc-9284-f62c089db99f",
+        "33f9850f-26be-4d60-aa60-230bdffe0538"
+      ],
+      "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/admin'",
+      "detectionMethod": "endpoint-replay",
+      "cvssScore": 8.1,
+      "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"
+    },
+    {
+      "title": "Sensitive Token Exposed in URL Query Parameter",
+      "severity": "high",
+      "confidence": "medium",
+      "owaspCategory": "A02:2021 - Cryptographic Failures",
+      "description": "A token value is passed as a query parameter in the URL https://cal.com/api/web_experiments/?token=. Query parameters are routinely logged in server access logs, CDN logs, browser history, and may be leaked via the Referer header to third-party scripts. This is particularly concerning given the multiple third-party analytics scripts loaded on the page.",
+      "impact": "Token leakage via logs or Referer headers could allow attackers to hijack sessions, impersonate users, or access experiment configurations. CDN and proxy logs (Cloudflare) will capture these tokens.",
+      "reproductionSteps": [
+        "Load https://cal.com/ and inspect network requests in browser DevTools",
+        "Find the request to /api/web_experiments/?token=",
+        "Note the token value in the URL",
+        "Check whether the same token appears in Referer headers sent to third-party analytics endpoints"
+      ],
+      "suggestedFix": "Move sensitive tokens from URL query parameters to HTTP request headers (e.g., Authorization: Bearer <token>) or POST request bodies. If the token must be in a URL (e.g., for GET requests), ensure it is short-lived, single-use, and not a long-lived secret.",
+      "codeExample": "// Instead of: fetch('/api/web_experiments/?token=' + token)\n// Use a POST request or Authorization header:\nfetch('/api/web_experiments/', {\n  method: 'GET',\n  headers: {\n    'Authorization': `Bearer ${token}`,\n    'Content-Type': 'application/json'\n  }\n});\n\n// Server-side: read from header, not query param\nexport default function handler(req, res) {\n  const token = req.headers['authorization']?.replace('Bearer ', '');\n  if (!token) return res.status(401).json({ error: 'Unauthorized' });\n  // validate token...\n}",
+      "affectedUrls": [
+        "https://cal.com/api/web_experiments/"
+      ],
+      "rawFindingIds": [
+        "846fbd06-6327-4826-a9aa-99924e191999"
+      ],
+      "curlCommand": "curl -s -i -L \\\n  'https://cal.com/'",
+      "cvssScore": 7,
+      "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"
+    },
+    {
+      "title": "Missing Rate Limiting on Authentication Endpoint",
+      "severity": "medium",
+      "confidence": "medium",
+      "owaspCategory": "A05:2021 - Security Misconfiguration",
+      "description": "The /api/auth/session endpoint accepts at least 15 rapid successive requests without returning a 429 Too Many Requests response or any rate-limit headers. This could facilitate brute-force attacks or credential stuffing. Note that AWS WAF may provide some protection at the infrastructure level that is not reflected in response headers.",
+      "impact": "Without rate limiting, attackers can attempt unlimited authentication requests, enabling brute-force password attacks, credential stuffing, and account enumeration at scale.",
+      "reproductionSteps": [
+        "Send 20+ rapid POST requests to https://cal.com/api/auth/session",
+        "Observe that all requests return HTTP 200 with no X-RateLimit-* or Retry-After headers",
+        "Confirm no 429 response is received"
+      ],
+      "suggestedFix": "Implement rate limiting on authentication endpoints using a library like 'next-rate-limit' or 'upstash/ratelimit'. Apply stricter limits to auth endpoints than general API endpoints. Also ensure AWS WAF rate-based rules are configured for this path.",
+      "codeExample": "// Using @upstash/ratelimit with Redis:\nimport { Ratelimit } from '@upstash/ratelimit';\nimport { Redis } from '@upstash/redis';\n\nconst ratelimit = new Ratelimit({\n  redis: Redis.fromEnv(),\n  limiter: Ratelimit.slidingWindow(10, '1 m'), // 10 requests per minute\n  analytics: true,\n});\n\nexport default async function handler(req, res) {\n  const identifier = req.headers['x-forwarded-for'] || req.socket.remoteAddress;\n  const { success, limit, remaining, reset } = await ratelimit.limit(identifier);\n  \n  res.setHeader('X-RateLimit-Limit', limit);\n  res.setHeader('X-RateLimit-Remaining', remaining);\n  \n  if (!success) {\n    return res.status(429).json({ error: 'Too many requests' });\n  }\n  // proceed with auth logic\n}",
+      "affectedUrls": [
+        "https://cal.com/api/auth/session",
+        "https://cal.com/api/geolocation"
+      ],
+      "rawFindingIds": [
+        "c0fbd4c5-fc22-4dce-831b-0515b8aebfd1",
+        "287735c1-f98b-4516-b458-cb30d3183c7b"
+      ],
+      "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/api/auth/session'",
+      "detectionMethod": "brute-force-probe",
+      "cvssScore": 5.3,
+      "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"
+    },
+    {
+      "title": "OAuth State Parameter Not Enforced (CSRF on OAuth Flow)",
+      "severity": "medium",
+      "confidence": "low",
+      "owaspCategory": "A05:2021 - Security Misconfiguration",
+      "description": "The /api/auth/session endpoint responds with HTTP 200 when called with OAuth parameters but without a state parameter. The state parameter is required by OAuth 2.0 (RFC 6749) to prevent CSRF attacks on the authorization flow. However, /api/auth/session is a NextAuth.js session endpoint, not a standard OAuth authorization endpoint — this may be a false positive from the scanner probing the wrong endpoint.",
+      "impact": "If the OAuth flow genuinely lacks state parameter validation, an attacker could trick a user into authorizing a malicious OAuth application, potentially hijacking their account.",
+      "reproductionSteps": [
+        "Initiate an OAuth login flow on cal.com",
+        "Intercept the authorization request and remove the state parameter",
+        "Observe whether the flow completes successfully without the state parameter",
+        "If it does, the CSRF protection is missing"
+      ],
+      "suggestedFix": "NextAuth.js handles state parameter generation automatically for OAuth providers. Ensure you are using an up-to-date version of NextAuth.js and have not disabled CSRF protection. Verify that custom OAuth implementations include state parameter generation and validation.",
+      "codeExample": "// NextAuth.js handles this automatically when configured correctly.\n// Ensure your [...nextauth].ts config does not disable CSRF:\nimport NextAuth from 'next-auth';\nimport GoogleProvider from 'next-auth/providers/google';\n\nexport default NextAuth({\n  providers: [\n    GoogleProvider({\n      clientId: process.env.GOOGLE_CLIENT_ID,\n      clientSecret: process.env.GOOGLE_CLIENT_SECRET,\n      // Do NOT set checks: [] as that disables state/PKCE\n    })\n  ],\n  // NextAuth generates and validates state automatically\n  // Do not override or disable the built-in CSRF protection\n});",
+      "affectedUrls": [
+        "https://cal.com/api/auth/session"
+      ],
+      "rawFindingIds": [
+        "c975c67c-8c7b-426a-af74-7d6f6d02c713",
+        "a54e2a8b-5954-4732-a40e-645d970e294b"
+      ],
+      "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://cal.com/api/auth/session?response_type=code&client_id=test&redirect_uri=https%3A%2F%2Fcal.com%2Fcallback'",
+      "detectionMethod": "flow-analysis",
+      "cvssScore": 6.9,
+      "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:H/I:H/A:N"
+    },
+    {
+      "title": "Missing Subresource Integrity (SRI) on External Scripts",
+      "severity": "medium",
+      "confidence": "high",
+      "owaspCategory": "A08:2021 - Software and Data Integrity Failures",
+      "description": "Seven external JavaScript resources are loaded without integrity attributes. These include third-party analytics and advertising scripts from CloudFront, PostHog, and Twitter Ads. If any of these external hosts are compromised, malicious code could be injected and executed in users' browsers without detection.",
+      "impact": "A supply chain attack on any of these third-party CDNs could result in malicious JavaScript executing in all cal.com users' browsers, enabling credential theft, session hijacking, or data exfiltration.",
+      "reproductionSteps": [
+        "View page source of https://cal.com/",
+        "Search for <script src= tags pointing to external domains",
+        "Verify that none have integrity=\"sha384-...\" attributes",
+        "Affected domains include ddwl4m2hdecbv.cloudfront.net, eu-assets.i.posthog.com, and static.ads-twitter.com"
+      ],
+      "suggestedFix": "Add integrity and crossorigin attributes to all external script tags. For dynamically loaded or frequently updated third-party scripts (like analytics), consider self-hosting them or using a strict Content Security Policy as a compensating control. Note: SRI is not practical for scripts that update frequently without version pinning.",
+      "codeExample": "<!-- Generate hash: openssl dgst -sha384 -binary script.js | openssl base64 -A -->\n<script\n  src=\"https://eu-assets.i.posthog.com/static/array.js\"\n  integrity=\"sha384-<generated-hash-here>\"\n  crossorigin=\"anonymous\"\n></script>\n\n<!-- In Next.js, use the Script component with integrity prop -->\nimport Script from 'next/script';\n\n<Script\n  src=\"https://eu-assets.i.posthog.com/static/array.js\"\n  integrity=\"sha384-<hash>\"\n  crossOrigin=\"anonymous\"\n/>\n\n// Alternatively, strengthen CSP as a compensating control:\n// Content-Security-Policy: script-src 'self' https://eu-assets.i.posthog.com 'sha384-...'",
+      "affectedUrls": [
+        "https://cal.com/"
+      ],
+      "rawFindingIds": [
+        "168f9775-18bf-4557-aed3-71c88f66002a"
+      ],
+      "curlCommand": "curl -s -i -L \\\n  'https://cal.com/'",
+      "detectionMethod": "integrity-check",
+      "cvssScore": 4.2,
+      "cvssVector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:N"
+    },
+    {
+      "title": "Auth Cookie Missing HttpOnly Flag",
+      "severity": "low",
+      "confidence": "high",
+      "owaspCategory": "A05:2021 - Security Misconfiguration",
+      "description": "The __Secure-next-auth.callback-url cookie is set without the HttpOnly flag, making it accessible to JavaScript running on the page. While this specific cookie stores a callback URL (not a session token), it can still be read and manipulated by malicious scripts. The __Secure- prefix correctly enforces HTTPS-only transmission.",
+      "impact": "If an XSS vulnerability exists (currently none found), this cookie could be read by attacker-injected JavaScript. An attacker could also manipulate the callback URL to redirect users to malicious sites after authentication.",
+      "reproductionSteps": [
+        "Visit https://cal.com/ and open browser DevTools",
+        "Go to Application > Cookies > https://cal.com",
+        "Find __Secure-next-auth.callback-url",
+        "Confirm HttpOnly column shows false/unchecked",
+        "Run in console: document.cookie — verify the cookie value is accessible"
+      ],
+      "suggestedFix": "Set the HttpOnly flag on all authentication-related cookies, including callback URL cookies. In NextAuth.js, configure cookie options to include httpOnly: true. Validate the callback URL server-side to prevent open redirect abuse regardless of cookie flags.",
+      "codeExample": "// In your NextAuth.js configuration:\nexport default NextAuth({\n  cookies: {\n    callbackUrl: {\n      name: '__Secure-next-auth.callback-url',\n      options: {\n        httpOnly: true,      // Add this\n        sameSite: 'lax',\n        path: '/',\n        secure: true\n      }\n    }\n  },\n  callbacks: {\n    async redirect({ url, baseUrl }) {\n      // Validate callback URL to prevent open redirect\n      if (url.startsWith(baseUrl)) return url;\n      if (url.startsWith('/')) return `${baseUrl}${url}`;\n      return baseUrl;\n    }\n  }\n});",
+      "affectedUrls": [
+        "https://cal.com/"
+      ],
+      "rawFindingIds": [
+        "3a5f83ad-c118-4382-b4cc-dde885cd411e"
+      ],
+      "curlCommand": "curl -sI \\\n  'https://cal.com/'",
+      "detectionMethod": "header-absence",
+      "cvssScore": 3.9,
+      "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"
+    }
+  ],
+  "summary": {
+    "totalRawFindings": 14,
+    "totalInterpretedFindings": 8,
+    "bySeverity": {
+      "critical": 2,
+      "high": 2,
+      "medium": 3,
+      "low": 1,
+      "info": 0
+    },
+    "topIssues": [
+      "Manually verify and remediate the directory traversal and XXE findings on /api/geolocation — if confirmed, these represent critical RCE/file-read risks",
+      "Verify that /admin, /manage, /manager, /management, /administrator routes enforce server-side authentication — scanner evidence suggests these may be legitimate public routes but must be confirmed",
+      "Move the web_experiments API token from URL query parameters to Authorization headers to prevent token leakage via server logs and Referer headers"
+    ],
+    "passedChecks": [
+      "info-leakage",
+      "mixed-content",
+      "xss",
+      "sqli",
+      "cors",
+      "redirect",
+      "ssrf",
+      "ssti",
+      "cmdi",
+      "idor",
+      "tls",
+      "js-cve",
+      "crlf",
+      "jwt",
+      "race",
+      "graphql",
+      "host-header",
+      "api-version",
+      "file-upload",
+      "business-logic",
+      "websocket",
+      "access-control",
+      "subdomain-takeover",
+      "cache-poisoning",
+      "csrf",
+      "prototype-pollution",
+      "insecure-deserialization",
+      "request-smuggling",
+      "ldap-injection",
+      "user-enum",
+      "mass-assignment",
+      "content-type-confusion",
+      "method-override",
+      "email-injection",
+      "bfla",
+      "clickjacking",
+      "timing-attack",
+      "verbose-errors",
+      "xpath-injection"
+    ]
+  },
+  "recon": {
+    "techStack": {
+      "server": "cloudflare",
+      "cdn": "Cloudflare",
+      "languages": [],
+      "detected": [
+        "Server: cloudflare",
+        "CDN: Cloudflare",
+        "Generator: Framer 391af0a"
+      ]
+    },
+    "waf": {
+      "detected": true,
+      "name": "AWS WAF",
+      "confidence": "high",
+      "evidence": [
+        "cf-ray header present",
+        "Server: cloudflare",
+        "Header \"x-amzn-requestid: 115d1f9a-ee7a-4122-8b56-97c74a3e425b\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-69a5200c-1fb8bec668236e8e1f15db01;Parent=3c570a915227be67;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 3be45404-61a9-49c0-ac79-e945359216a3\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-69aed9e3-5995e3d84fe4eba70fe4411b;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 59d1888e-5b48-4736-8978-0ea6f65f3916\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-698ef600-18bb298c06a3f63022fa2440;Parent=538006959375a71d;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: be506f85-e717-46f0-bc15-e286014d426a\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-6936af27-15035bff442343d51b031215;Parent=3b469c411864d075;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: b8bb48f0-3a54-4869-9683-bb1a693cfc16\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-69a55e77-708a406171f367250c676069;Parent=478e75248438fb17;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 9394a87d-582d-4865-97e2-18b8c1a45a41\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-6936b2a2-35cb85885fbb12b12346f8b9;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 8c704d83-86ce-4b89-b9d8-f4c563ffe7cb\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-6936b2cb-150758793954b9d514534564;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 7dee1c98-b15e-4540-b20d-b8223ed3e51e\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-6986f21f-764c01fc2cfda88b2e92094d;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: ec011eef-8dad-4d73-ac40-a71417308374\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-6950976d-5367da3756f816033474d0e0;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 49e490fd-56dd-4d67-a62d-0e4978326680\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68ac6258-3fee58606bc63e4221c676b0;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 98eea0d4-ea80-4763-b7f3-4d3ee9327390\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-6936b2af-525905bb1c4978504c0907e0;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 69902d71-0519-473d-8718-c6c10cd7fd62\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68c31ab5-11564c2a32f77af25fcd891b;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 970b5589-1617-474f-a08c-a8fbc318ac5c\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68ac6258-35085a1a2f8dfe1e08f0e6d2;Parent=5036a96cb8dbdd5b;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: da519c3a-78dc-453d-8fbb-f7b136a78654\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68cbe53e-1b5c981c36254e696b2ee9f2;Parent=21416511e618322c;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: ff8d3a60-45ae-4afe-a828-6ad44742e4e9\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-69a9b527-70bbd6b151768e6f785e80a4;Parent=681391cb056bbdd1;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 441b9dc9-1e09-4d6f-b2de-6adcde271c83\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68cbe56a-7b9badf0313c74096497e431;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 28aabd41-73c8-4bef-98b1-d1159f4084e7\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68add73e-4058305e275fbe5e24329a2f;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 0f21daf8-7839-445b-a50c-1ab826cdf77f\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68add73e-5a6784aa629aa3735b0a6df5;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 3065d831-51f4-4063-9427-8bab95a7bddc\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68add73e-16ffeba932e3979c172b4096;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 703bbed6-72d8-4628-9f59-1ae7889d66d1\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68add73e-028abdef5cb627fe750de0bc;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 528e8c9e-df14-4163-b379-7a14bcabc9e4\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68cbe532-3665db1d6aee9ba915c76ccf;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 23df55c3-5b4e-4d02-9e0c-5b09cb2015c9\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68cbe532-3fe1baa95159e42a01874bbe;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: a086a486-e2ce-4fde-9f38-72b388539b99\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68ac6258-36538a0a229b38b83d5e92d7;Parent=03660c4a9abd12d9;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: a18f9684-9be5-4990-b430-21a44c16edbd\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-698dd0a8-0610a97777e187dc5326e2f1;Parent=5e6d2ba014598c63;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 186685cd-3c2d-4d89-bf89-d1249fdda8f4\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-69bd257c-53f600023fb92fff37fe3e3c;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 31e900ca-20c5-4d93-8ad0-b2c88afc624b\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68add73e-7d39fad15979663f0e73ba58;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 2f19f584-80b9-4e16-99d0-de780e4e7771\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68add73e-065a79a14beb9a7c6e457e5c;Parent=0fc4e6b5919627eb;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: b9c1dde9-3495-4ef5-8d26-2c6286891d05\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-69bc29ea-6b0a492455a3add60322e7d1;Parent=716cc1a57e3e53d0;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 6aba61ff-7cd6-4cf9-80f7-2aa6adffd8d4\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-69b49a02-2d8900fb1977a28316de4459;Parent=646cfa09bf999463;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 6792ec81-ba5e-44e1-a1e4-a9a9d802e769\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68036a58-170eaa192e1bf9135191c73e;Parent=05cb975efb550f04;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: b67e41b8-8860-421c-a6b1-ff5fd1619fa1\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68cbe532-78e29d3b4f98e38a10779e00;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 58c71111-2253-4429-a8f5-c68c1b1d9882\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-698dd27b-3210dcbf2d06f2e12a370a3f;Parent=6d53ccbd35fc1462;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 5f4c254b-df31-4059-aba2-095635be9252\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-698dd27b-08919c42158cbf1a62145d71;Parent=0bd9e92721c7bda4;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: d64e3de7-f20e-4f49-981d-c03801bd15d4\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-69acd7f0-18cd8a442cafb6e936faddc2;Parent=73e0b3cb2311a263;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 4624281b-c5c7-41cc-9fff-0ca45747977d\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68c97080-5d0e28870c5a27d07aa84f92;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: a9038311-2c18-43e2-b857-d679591bcb42\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-69bfd451-0dac716e0acdc1fe538beb73\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: 89a7fdc7-b620-46b1-9241-be83328b12e3\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-69bfd451-3d89b8403977411e70761808;Parent=5e3f6c47143f56c9;Sampled=0;Lineage=1:c457ad49:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: b2bc52f6-4348-46f6-8218-d3f9455bf535\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-68cbe5cb-22b769167df05f0a017a17e3;Sampled=1;Lineage=1:f456f256:0\" matches AWS WAF pattern",
+        "Header \"x-amzn-requestid: cdb487b8-9db7-4539-abff-b30b3184268d\" matches AWS WAF pattern",
+        "Header \"x-amzn-trace-id: Root=1-698dd0eb-2395c43d7fda8b842325349b;Parent=19acb14541846331;Sampled=0;Lineage=1:f456f256:0\" matches AWS WAF pattern"
+      ],
+      "recommendedTechniques": [
+        "url-encoding",
+        "unicode-encoding",
+        "sql-comment-obfuscation",
+        "http-parameter-pollution",
+        "content-type-manipulation",
+        "json-body-injection"
+      ]
+    },
+    "framework": {
+      "confidence": "low",
+      "evidence": []
+    },
+    "endpoints": {
+      "pages": [
+        "https://cal.com/",
+        "https://cal.com/sitemap_en.xml",
+        "https://cal.com/sitemap_de-DE.xml",
+        "https://cal.com/sitemap_fr-FR.xml",
+        "https://cal.com/sitemap_nl-NL.xml"
+      ],
+      "apiRoutes": [
+        "https://cal.com/api/web_experiments/?token=",
+        "https://cal.com/api/early_access_features/?token=",
+        "https://cal.com/api/product_tours/?token=",
+        "https://cal.com/api/surveys/?token=",
+        "https://ui-avatars.com/api/Mickey/512/000000/757575/2/0.4"
+      ],
+      "forms": [],
+      "staticAssets": [],
+      "graphql": []
+    }
+  },
+  "validatedFindings": [
+    {
+      "findingId": "3a5f83ad-c118-4382-b4cc-dde885cd411e",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "846fbd06-6327-4826-a9aa-99924e191999",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "168f9775-18bf-4557-aed3-71c88f66002a",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "c0fbd4c5-fc22-4dce-831b-0515b8aebfd1",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "287735c1-f98b-4516-b458-cb30d3183c7b",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "c975c67c-8c7b-426a-af74-7d6f6d02c713",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "a54e2a8b-5954-4732-a40e-645d970e294b",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "c3571c16-6b28-4ffa-92fe-2ee014a466f4",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "6d9f2dd7-4451-498a-ae4f-e4775d0c4c79",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "65a39305-aaac-470c-bad4-0a757143eddd",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "7255621b-f784-4b8d-a00b-fb6240c51ce4",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "e420b44e-a00a-41dc-9284-f62c089db99f",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "33f9850f-26be-4d60-aa60-230bdffe0538",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "3c761d71-93d2-4776-a8d3-7567842dcacb",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    }
+  ],
+  "exitCode": 1,
+  "scanDuration": 824098,
+  "checksRun": [
+    "security-headers",
+    "cookie-flags",
+    "info-leakage",
+    "mixed-content",
+    "sensitive-url-data",
+    "cross-origin-policy",
+    "xss",
+    "sqli",
+    "cors",
+    "redirect",
+    "ssrf",
+    "ssti",
+    "cmdi",
+    "idor",
+    "tls",
+    "sri",
+    "info-disclosure",
+    "js-cve",
+    "crlf",
+    "rate-limit",
+    "jwt",
+    "race",
+    "graphql",
+    "host-header",
+    "api-version",
+    "file-upload",
+    "business-logic",
+    "websocket",
+    "access-control",
+    "subdomain-takeover",
+    "oauth",
+    "cache-poisoning",
+    "csrf",
+    "prototype-pollution",
+    "xxe",
+    "insecure-deserialization",
+    "request-smuggling",
+    "ldap-injection",
+    "user-enum",
+    "mass-assignment",
+    "content-type-confusion",
+    "method-override",
+    "email-injection",
+    "bfla",
+    "clickjacking",
+    "timing-attack",
+    "verbose-errors",
+    "xpath-injection"
+  ],
+  "checkAudit": [
+    {
+      "name": "api-version",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 4
+    },
+    {
+      "name": "subdomain-takeover",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 4
+    },
+    {
+      "name": "csrf",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 3
+    },
+    {
+      "name": "xpath-injection",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "tls",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 81
+    },
+    {
+      "name": "verbose-errors",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 432
+    },
+    {
+      "name": "sri",
+      "status": "completed",
+      "findingsCount": 1,
+      "durationMs": 1249
+    },
+    {
+      "name": "js-cve",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1330
+    },
+    {
+      "name": "oauth",
+      "status": "completed",
+      "findingsCount": 2,
+      "durationMs": 4490
+    },
+    {
+      "name": "jwt",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 5098
+    },
+    {
+      "name": "cors",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 6013
+    },
+    {
+      "name": "timing-attack",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 10966
+    },
+    {
+      "name": "rate-limit",
+      "status": "completed",
+      "findingsCount": 2,
+      "durationMs": 11232
+    },
+    {
+      "name": "host-header",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 18815
+    },
+    {
+      "name": "cache-poisoning",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 37840
+    },
+    {
+      "name": "info-disclosure",
+      "status": "completed",
+      "findingsCount": 1,
+      "durationMs": 38876
+    },
+    {
+      "name": "graphql",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 65475
+    },
+    {
+      "name": "clickjacking",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120000,
+      "error": "Check \"clickjacking\" timed out after 120s"
+    },
+    {
+      "name": "xss",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120000,
+      "error": "Check \"xss\" timed out after 120s"
+    },
+    {
+      "name": "sqli",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 6936
+    },
+    {
+      "name": "redirect",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120000,
+      "error": "Check \"redirect\" timed out after 120s"
+    },
+    {
+      "name": "traversal",
+      "status": "completed",
+      "findingsCount": 6,
+      "durationMs": 6815
+    },
+    {
+      "name": "ssrf",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120000,
+      "error": "Check \"ssrf\" timed out after 120s"
+    },
+    {
+      "name": "ssti",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "cmdi",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "idor",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "crlf",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "race",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "file-upload",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "business-logic",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 2
+    },
+    {
+      "name": "websocket",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1249
+    },
+    {
+      "name": "access-control",
+      "status": "completed",
+      "findingsCount": 5,
+      "durationMs": 77534
+    },
+    {
+      "name": "prototype-pollution",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 32099
+    },
+    {
+      "name": "xxe",
+      "status": "completed",
+      "findingsCount": 2,
+      "durationMs": 1098
+    },
+    {
+      "name": "insecure-deserialization",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 17252
+    },
+    {
+      "name": "request-smuggling",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 4744
+    },
+    {
+      "name": "ldap-injection",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "user-enum",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "mass-assignment",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "content-type-confusion",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "method-override",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 18364
+    },
+    {
+      "name": "email-injection",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "bfla",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 46826,
+      "error": "Cannot read properties of undefined (reading 'match')"
+    }
+  ],
+  "tokenUsage": {
+    "inputTokens": 3466,
+    "outputTokens": 5261,
+    "totalTokens": 8727
+  }
+}

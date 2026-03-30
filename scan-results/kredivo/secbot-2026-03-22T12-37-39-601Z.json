@@ -1,0 +1,1195 @@
+{
+  "targetUrl": "https://blog.kredivo.com/",
+  "profile": "stealth",
+  "startedAt": "2026-03-22T12:37:39.601Z",
+  "completedAt": "2026-03-22T12:47:05.789Z",
+  "pagesScanned": 10,
+  "rawFindings": [
+    {
+      "id": "f30b597e-c2b5-4599-8723-c6cbbdb46bae",
+      "category": "security-headers",
+      "severity": "high",
+      "confidence": "medium",
+      "title": "Missing Content-Security-Policy Header",
+      "description": "No CSP header found. This makes the application more susceptible to XSS attacks.",
+      "url": "https://blog.kredivo.com/",
+      "evidence": "Header \"content-security-policy\" not present in response",
+      "response": {
+        "status": 403,
+        "headers": {
+          "alt-svc": "h3=\":443\"; ma=86400",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+          "server": "nginx",
+          "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+          "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+          "strict-transport-security": "max-age=31536000"
+        }
+      },
+      "affectedUrls": [
+        "https://blog.kredivo.com/",
+        "https://blog.kredivo.com/post-sitemap.xml",
+        "https://blog.kredivo.com/page-sitemap.xml",
+        "https://blog.kredivo.com/vn-sitemap.xml",
+        "https://blog.kredivo.com/category-sitemap.xml",
+        "https://blog.kredivo.com/post_tag-sitemap.xml",
+        "https://blog.kredivo.com/vn_category-sitemap.xml",
+        "https://blog.kredivo.com/vietnam_tag-sitemap.xml",
+        "https://blog.kredivo.com/author-sitemap.xml",
+        "https://blog.kredivo.com/login"
+      ],
+      "timestamp": "2026-03-22T12:38:21.085Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://blog.kredivo.com/"
+          },
+          "response": {
+            "status": 403,
+            "headers": {
+              "alt-svc": "h3=\":443\"; ma=86400",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+              "server": "nginx",
+              "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+              "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+              "strict-transport-security": "max-age=31536000"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://blog.kredivo.com/'",
+        "reproductionUrl": "https://blog.kredivo.com/",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "content-security-policy",
+          "HTTP 403"
+        ]
+      }
+    },
+    {
+      "id": "65c9857c-b252-4429-8ba2-57e45519c1a7",
+      "category": "security-headers",
+      "severity": "medium",
+      "confidence": "low",
+      "title": "Missing X-Frame-Options Header",
+      "description": "The X-Frame-Options header is missing, potentially allowing clickjacking attacks.",
+      "url": "https://blog.kredivo.com/",
+      "evidence": "Header \"x-frame-options\" not present in response",
+      "response": {
+        "status": 403,
+        "headers": {
+          "alt-svc": "h3=\":443\"; ma=86400",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+          "server": "nginx",
+          "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+          "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+          "strict-transport-security": "max-age=31536000"
+        }
+      },
+      "affectedUrls": [
+        "https://blog.kredivo.com/",
+        "https://blog.kredivo.com/post-sitemap.xml",
+        "https://blog.kredivo.com/page-sitemap.xml",
+        "https://blog.kredivo.com/vn-sitemap.xml",
+        "https://blog.kredivo.com/category-sitemap.xml",
+        "https://blog.kredivo.com/post_tag-sitemap.xml",
+        "https://blog.kredivo.com/vn_category-sitemap.xml",
+        "https://blog.kredivo.com/vietnam_tag-sitemap.xml",
+        "https://blog.kredivo.com/author-sitemap.xml",
+        "https://blog.kredivo.com/login"
+      ],
+      "timestamp": "2026-03-22T12:38:21.085Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://blog.kredivo.com/"
+          },
+          "response": {
+            "status": 403,
+            "headers": {
+              "alt-svc": "h3=\":443\"; ma=86400",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+              "server": "nginx",
+              "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+              "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+              "strict-transport-security": "max-age=31536000"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://blog.kredivo.com/'",
+        "reproductionUrl": "https://blog.kredivo.com/",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "x-frame-options",
+          "HTTP 403"
+        ]
+      }
+    },
+    {
+      "id": "2bd59960-0e60-4d3e-84cf-722f1c9ad1a2",
+      "category": "security-headers",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Missing X-Content-Type-Options Header",
+      "description": "Missing X-Content-Type-Options: nosniff header. Browsers may MIME-sniff responses.",
+      "url": "https://blog.kredivo.com/",
+      "evidence": "Header \"x-content-type-options\" not present in response",
+      "response": {
+        "status": 403,
+        "headers": {
+          "alt-svc": "h3=\":443\"; ma=86400",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+          "server": "nginx",
+          "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+          "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+          "strict-transport-security": "max-age=31536000"
+        }
+      },
+      "affectedUrls": [
+        "https://blog.kredivo.com/",
+        "https://blog.kredivo.com/post-sitemap.xml",
+        "https://blog.kredivo.com/page-sitemap.xml",
+        "https://blog.kredivo.com/vn-sitemap.xml",
+        "https://blog.kredivo.com/category-sitemap.xml",
+        "https://blog.kredivo.com/post_tag-sitemap.xml",
+        "https://blog.kredivo.com/vn_category-sitemap.xml",
+        "https://blog.kredivo.com/vietnam_tag-sitemap.xml",
+        "https://blog.kredivo.com/author-sitemap.xml",
+        "https://blog.kredivo.com/login"
+      ],
+      "timestamp": "2026-03-22T12:38:21.085Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://blog.kredivo.com/"
+          },
+          "response": {
+            "status": 403,
+            "headers": {
+              "alt-svc": "h3=\":443\"; ma=86400",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+              "server": "nginx",
+              "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+              "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+              "strict-transport-security": "max-age=31536000"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://blog.kredivo.com/'",
+        "reproductionUrl": "https://blog.kredivo.com/",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "x-content-type-options",
+          "HTTP 403"
+        ]
+      }
+    },
+    {
+      "id": "98b9cdc1-f2e8-414c-80c0-5728892d6e21",
+      "category": "security-headers",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Missing Referrer-Policy Header",
+      "description": "No Referrer-Policy set. Sensitive data in URLs may leak via the Referer header.",
+      "url": "https://blog.kredivo.com/",
+      "evidence": "Header \"referrer-policy\" not present in response",
+      "response": {
+        "status": 403,
+        "headers": {
+          "alt-svc": "h3=\":443\"; ma=86400",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+          "server": "nginx",
+          "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+          "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+          "strict-transport-security": "max-age=31536000"
+        }
+      },
+      "affectedUrls": [
+        "https://blog.kredivo.com/",
+        "https://blog.kredivo.com/post-sitemap.xml",
+        "https://blog.kredivo.com/page-sitemap.xml",
+        "https://blog.kredivo.com/vn-sitemap.xml",
+        "https://blog.kredivo.com/category-sitemap.xml",
+        "https://blog.kredivo.com/post_tag-sitemap.xml",
+        "https://blog.kredivo.com/vn_category-sitemap.xml",
+        "https://blog.kredivo.com/vietnam_tag-sitemap.xml",
+        "https://blog.kredivo.com/author-sitemap.xml",
+        "https://blog.kredivo.com/login"
+      ],
+      "timestamp": "2026-03-22T12:38:21.085Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://blog.kredivo.com/"
+          },
+          "response": {
+            "status": 403,
+            "headers": {
+              "alt-svc": "h3=\":443\"; ma=86400",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+              "server": "nginx",
+              "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+              "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+              "strict-transport-security": "max-age=31536000"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://blog.kredivo.com/'",
+        "reproductionUrl": "https://blog.kredivo.com/",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "referrer-policy",
+          "HTTP 403"
+        ]
+      }
+    },
+    {
+      "id": "da121e04-87a7-4035-83e6-30f9b70a52fe",
+      "category": "security-headers",
+      "severity": "info",
+      "confidence": "low",
+      "title": "Missing Permissions-Policy Header",
+      "description": "No Permissions-Policy header. Browser features like camera/microphone are not explicitly restricted.",
+      "url": "https://blog.kredivo.com/",
+      "evidence": "Header \"permissions-policy\" not present in response",
+      "response": {
+        "status": 403,
+        "headers": {
+          "alt-svc": "h3=\":443\"; ma=86400",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+          "server": "nginx",
+          "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+          "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+          "strict-transport-security": "max-age=31536000"
+        }
+      },
+      "affectedUrls": [
+        "https://blog.kredivo.com/",
+        "https://blog.kredivo.com/post-sitemap.xml",
+        "https://blog.kredivo.com/page-sitemap.xml",
+        "https://blog.kredivo.com/vn-sitemap.xml",
+        "https://blog.kredivo.com/category-sitemap.xml",
+        "https://blog.kredivo.com/post_tag-sitemap.xml",
+        "https://blog.kredivo.com/vn_category-sitemap.xml",
+        "https://blog.kredivo.com/vietnam_tag-sitemap.xml",
+        "https://blog.kredivo.com/author-sitemap.xml",
+        "https://blog.kredivo.com/login"
+      ],
+      "timestamp": "2026-03-22T12:38:21.085Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://blog.kredivo.com/"
+          },
+          "response": {
+            "status": 403,
+            "headers": {
+              "alt-svc": "h3=\":443\"; ma=86400",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+              "server": "nginx",
+              "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+              "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+              "strict-transport-security": "max-age=31536000"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://blog.kredivo.com/'",
+        "reproductionUrl": "https://blog.kredivo.com/",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "permissions-policy",
+          "HTTP 403"
+        ]
+      }
+    },
+    {
+      "id": "e760e673-b333-4506-85b9-678ae5613f81",
+      "category": "cross-origin-policy",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Missing Cross-Origin-Opener-Policy Header",
+      "description": "The Cross-Origin-Opener-Policy header is missing. This header isolates the browsing context, preventing cross-origin attacks like Spectre.",
+      "url": "https://blog.kredivo.com/",
+      "evidence": "Header \"cross-origin-opener-policy\" not present in response",
+      "response": {
+        "status": 403,
+        "headers": {
+          "alt-svc": "h3=\":443\"; ma=86400",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+          "server": "nginx",
+          "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+          "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+          "strict-transport-security": "max-age=31536000"
+        }
+      },
+      "affectedUrls": [
+        "https://blog.kredivo.com/",
+        "https://blog.kredivo.com/post-sitemap.xml",
+        "https://blog.kredivo.com/page-sitemap.xml",
+        "https://blog.kredivo.com/vn-sitemap.xml",
+        "https://blog.kredivo.com/category-sitemap.xml",
+        "https://blog.kredivo.com/post_tag-sitemap.xml",
+        "https://blog.kredivo.com/vn_category-sitemap.xml",
+        "https://blog.kredivo.com/vietnam_tag-sitemap.xml",
+        "https://blog.kredivo.com/author-sitemap.xml",
+        "https://blog.kredivo.com/login"
+      ],
+      "timestamp": "2026-03-22T12:38:21.085Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://blog.kredivo.com/"
+          },
+          "response": {
+            "status": 403,
+            "headers": {
+              "alt-svc": "h3=\":443\"; ma=86400",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+              "server": "nginx",
+              "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+              "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+              "strict-transport-security": "max-age=31536000"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://blog.kredivo.com/'",
+        "reproductionUrl": "https://blog.kredivo.com/",
+        "responseIndicators": [
+          "cross-origin-opener-policy",
+          "HTTP 403"
+        ]
+      }
+    },
+    {
+      "id": "b1b1cfc0-aff6-4e9c-864c-5b0f2fbcd474",
+      "category": "cross-origin-policy",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Missing Cross-Origin-Embedder-Policy Header",
+      "description": "The Cross-Origin-Embedder-Policy header is missing. This header ensures all cross-origin resources are loaded with CORS or CORP, enabling cross-origin isolation.",
+      "url": "https://blog.kredivo.com/",
+      "evidence": "Header \"cross-origin-embedder-policy\" not present in response",
+      "response": {
+        "status": 403,
+        "headers": {
+          "alt-svc": "h3=\":443\"; ma=86400",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+          "server": "nginx",
+          "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+          "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+          "strict-transport-security": "max-age=31536000"
+        }
+      },
+      "affectedUrls": [
+        "https://blog.kredivo.com/",
+        "https://blog.kredivo.com/post-sitemap.xml",
+        "https://blog.kredivo.com/page-sitemap.xml",
+        "https://blog.kredivo.com/vn-sitemap.xml",
+        "https://blog.kredivo.com/category-sitemap.xml",
+        "https://blog.kredivo.com/post_tag-sitemap.xml",
+        "https://blog.kredivo.com/vn_category-sitemap.xml",
+        "https://blog.kredivo.com/vietnam_tag-sitemap.xml",
+        "https://blog.kredivo.com/author-sitemap.xml",
+        "https://blog.kredivo.com/login"
+      ],
+      "timestamp": "2026-03-22T12:38:21.085Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://blog.kredivo.com/"
+          },
+          "response": {
+            "status": 403,
+            "headers": {
+              "alt-svc": "h3=\":443\"; ma=86400",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+              "server": "nginx",
+              "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+              "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+              "strict-transport-security": "max-age=31536000"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://blog.kredivo.com/'",
+        "reproductionUrl": "https://blog.kredivo.com/",
+        "responseIndicators": [
+          "cross-origin-embedder-policy",
+          "HTTP 403"
+        ]
+      }
+    },
+    {
+      "id": "89594dca-062a-41ae-bc96-019ec42a18f5",
+      "category": "cross-origin-policy",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Missing Cross-Origin-Resource-Policy Header",
+      "description": "The Cross-Origin-Resource-Policy header is missing. This header prevents other origins from loading this resource, mitigating side-channel attacks.",
+      "url": "https://blog.kredivo.com/",
+      "evidence": "Header \"cross-origin-resource-policy\" not present in response",
+      "response": {
+        "status": 403,
+        "headers": {
+          "alt-svc": "h3=\":443\"; ma=86400",
+          "content-type": "text/html",
+          "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+          "server": "nginx",
+          "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+          "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+          "strict-transport-security": "max-age=31536000"
+        }
+      },
+      "affectedUrls": [
+        "https://blog.kredivo.com/",
+        "https://blog.kredivo.com/post-sitemap.xml",
+        "https://blog.kredivo.com/page-sitemap.xml",
+        "https://blog.kredivo.com/vn-sitemap.xml",
+        "https://blog.kredivo.com/category-sitemap.xml",
+        "https://blog.kredivo.com/post_tag-sitemap.xml",
+        "https://blog.kredivo.com/vn_category-sitemap.xml",
+        "https://blog.kredivo.com/vietnam_tag-sitemap.xml",
+        "https://blog.kredivo.com/author-sitemap.xml",
+        "https://blog.kredivo.com/login"
+      ],
+      "timestamp": "2026-03-22T12:38:21.085Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://blog.kredivo.com/"
+          },
+          "response": {
+            "status": 403,
+            "headers": {
+              "alt-svc": "h3=\":443\"; ma=86400",
+              "content-type": "text/html",
+              "date": "Sun, 22 Mar 2026 12:37:52 GMT",
+              "server": "nginx",
+              "server-timing": "a8c-cdn, dc;desc=sin, cache;desc=BYPASS;dur=0.0",
+              "set-cookie": "_hcc=MDcxNjU3OWVhODExNjUyM2EwMzE4M2ZjZGI4NGRmYTBjOTY2Yjc4ZjMxY2NhODUxNGY1MWRlM2M4NmU3MjU0Mw==:MTU4LjE0MC4xNjcuMzd8MTc3NDE4MzA3MnxTWmBCakxuX3F6a0ltdXJRWVJLa1tUXkRoWExnVV9DYHwx; Max-Age=30; Path=/",
+              "strict-transport-security": "max-age=31536000"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://blog.kredivo.com/'",
+        "reproductionUrl": "https://blog.kredivo.com/",
+        "responseIndicators": [
+          "cross-origin-resource-policy",
+          "HTTP 403"
+        ]
+      }
+    },
+    {
+      "id": "cd2d6363-c53f-4a7a-b69e-491be280d319",
+      "category": "cookie-flags",
+      "severity": "medium",
+      "confidence": "medium",
+      "title": "Cookie \"_hcc\" Missing HttpOnly Flag",
+      "description": "The cookie \"_hcc\" is accessible via JavaScript, increasing XSS impact.",
+      "url": "https://blog.kredivo.com/",
+      "evidence": "Cookie: _hcc; HttpOnly=false",
+      "timestamp": "2026-03-22T12:38:21.086Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://blog.kredivo.com/'",
+        "reproductionUrl": "https://blog.kredivo.com/",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "393a39d5-b689-440b-8af1-ba7151e20af4",
+      "category": "cookie-flags",
+      "severity": "medium",
+      "confidence": "medium",
+      "title": "Cookie \"_hcc\" Missing Secure Flag",
+      "description": "The cookie \"_hcc\" can be transmitted over unencrypted connections.",
+      "url": "https://blog.kredivo.com/",
+      "evidence": "Cookie: _hcc; Secure=false",
+      "timestamp": "2026-03-22T12:38:21.086Z",
+      "evidencePack": {
+        "curlCommand": "curl -sI \\\n  'https://blog.kredivo.com/'",
+        "reproductionUrl": "https://blog.kredivo.com/",
+        "detectionMethod": "header-absence"
+      }
+    },
+    {
+      "id": "b25d0622-c567-459b-b4ec-2fe60d5fe890",
+      "category": "tls",
+      "severity": "info",
+      "title": "HSTS Not Eligible for Preload",
+      "description": "The HSTS header is present but does not meet preload requirements: missing includeSubDomains. Consider adding includeSubDomains and setting max-age to at least 1 year for HSTS preload list eligibility.",
+      "url": "https://blog.kredivo.com/",
+      "evidence": "Strict-Transport-Security: max-age=31536000",
+      "timestamp": "2026-03-22T12:38:22.019Z",
+      "confidence": "low",
+      "evidencePack": {
+        "detectionMethod": "tls-probe",
+        "curlCommand": "curl -s -i -L \\\n  'https://blog.kredivo.com/'",
+        "reproductionUrl": "https://blog.kredivo.com/"
+      }
+    },
+    {
+      "id": "ac7a662e-53f8-49eb-9b96-126dbf6f7993",
+      "category": "info-disclosure",
+      "severity": "low",
+      "title": "WordPress login page detected",
+      "description": "A WordPress login page is publicly accessible. This confirms the CMS in use and provides a target for brute-force or credential-stuffing attacks.",
+      "url": "https://blog.kredivo.com/wp-login.php",
+      "evidence": "Response (200): \n<!DOCTYPE html>\n\t<html lang=\"en-US\" itemscope itemtype=\"https://schema.org/WebSite\">\n\t<head>\n\t<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n\t<title>Log In &lsaquo; Kredivo &#8212; WordPress</title>\n\t<meta name='robots' content='noindex, follow' />\n<link rel='dns-prefetch' href='//www.google.com' />\n<link rel='preconnect' href='//c0.wp.com' />\n<script type=\"text/javascript\" src=\"https://www.google.com/recaptcha/api.js?render=6Lcq-sgZAAAAAKO4bLDFjEvdj3ItNQopxmyb3LHq&amp;ve",
+      "response": {
+        "status": 200,
+        "bodySnippet": "\n<!DOCTYPE html>\n\t<html lang=\"en-US\" itemscope itemtype=\"https://schema.org/WebSite\">\n\t<head>\n\t<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n\t<title>Log In &lsaquo; Kredivo &#8"
+      },
+      "timestamp": "2026-03-22T12:38:42.382Z",
+      "confidence": "low",
+      "evidencePack": {
+        "detectionMethod": "file-probe",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://blog.kredivo.com/wp-login.php"
+          },
+          "response": {
+            "status": 200,
+            "body": "\n<!DOCTYPE html>\n\t<html lang=\"en-US\" itemscope itemtype=\"https://schema.org/WebSite\">\n\t<head>\n\t<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n\t<title>Log In &lsaquo; Kredivo &#8"
+          }
+        },
+        "curlCommand": "curl -s -i -L \\\n  'https://blog.kredivo.com/wp-login.php'",
+        "reproductionUrl": "https://blog.kredivo.com/wp-login.php",
+        "responseIndicators": [
+          "en-US",
+          "https://schema.org/WebSite",
+          "Content-Type",
+          "text/html; charset=UTF-8",
+          "robots",
+          "Response body contains: \n<!DOCTYPE html>\n\t<html lang=\"en-US\" itemscope itemtype=\"https://schema.org/WebSite\">\n\t<head>\n\t<meta...",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "0a818d5c-22ff-4311-b2a2-63f5989003fe",
+      "category": "rate-limit",
+      "severity": "medium",
+      "title": "Missing Rate Limiting on Authentication Endpoint",
+      "description": "The authentication endpoint at /login does not enforce rate limiting. An attacker can perform brute-force password attacks, credential stuffing, or account enumeration without being throttled.",
+      "url": "https://blog.kredivo.com/login",
+      "evidence": "Sent 15 rapid requests — all returned HTTP 200 with no rate-limit headers (X-RateLimit-*, Retry-After, etc.) and no 429 response.",
+      "request": {
+        "method": "GET",
+        "url": "https://blog.kredivo.com/login"
+      },
+      "response": {
+        "status": 200
+      },
+      "timestamp": "2026-03-22T12:38:53.585Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "brute-force-probe",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://blog.kredivo.com/login"
+          },
+          "response": {
+            "status": 200
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://blog.kredivo.com/login'",
+        "reproductionUrl": "https://blog.kredivo.com/login",
+        "responseIndicators": [
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "5ff75110-f427-40bb-8b6d-c5c6d9c6bb17",
+      "category": "broken-access-control",
+      "severity": "medium",
+      "title": "Exposed Internal Endpoint: /wp-login.php",
+      "description": "The path \"/wp-login.php\" is accessible without authentication (HTTP 200). Debug and internal endpoints should not be publicly accessible.",
+      "url": "https://blog.kredivo.com/wp-login.php",
+      "evidence": "Path: /wp-login.php\nStatus: 200\nBody length: 9360\nResponse snippet: \n<!DOCTYPE html>\n\t<html lang=\"en-US\" itemscope itemtype=\"https://schema.org/WebSite\">\n\t<head>\n\t<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n\t<title>Log In &lsaquo; Kredivo &#8212; WordPress</title>\n\t<meta name='robots' content='noindex, follow' />\n<link rel='dns-prefetch' hr",
+      "request": {
+        "method": "GET",
+        "url": "https://blog.kredivo.com/wp-login.php"
+      },
+      "response": {
+        "status": 200,
+        "bodySnippet": "\n<!DOCTYPE html>\n\t<html lang=\"en-US\" itemscope itemtype=\"https://schema.org/WebSite\">\n\t<head>\n\t<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n\t<title>Log In &lsaquo; Kredivo &#8"
+      },
+      "timestamp": "2026-03-22T12:44:44.936Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "endpoint-replay",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://blog.kredivo.com/wp-login.php"
+          },
+          "response": {
+            "status": 200,
+            "body": "\n<!DOCTYPE html>\n\t<html lang=\"en-US\" itemscope itemtype=\"https://schema.org/WebSite\">\n\t<head>\n\t<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\n\t<title>Log In &lsaquo; Kredivo &#8"
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://blog.kredivo.com/wp-login.php'",
+        "reproductionUrl": "https://blog.kredivo.com/wp-login.php",
+        "responseIndicators": [
+          "en-US",
+          "https://schema.org/WebSite",
+          "Content-Type",
+          "text/html; charset=UTF-8",
+          "robots",
+          "Response body contains: \n<!DOCTYPE html>\n\t<html lang=\"en-US\" itemscope itemtype=\"https://schema.org/WebSite\">\n\t<head>\n\t<meta...",
+          "HTTP 200"
+        ]
+      }
+    }
+  ],
+  "interpretedFindings": [
+    {
+      "title": "Exposed WordPress Login Page (/wp-login.php) Without Protection",
+      "severity": "high",
+      "confidence": "high",
+      "owaspCategory": "A01:2021 - Broken Access Control",
+      "description": "The WordPress admin login page at /wp-login.php is publicly accessible and returns HTTP 200. This is a high-value target for brute-force attacks, credential stuffing, and exploitation of WordPress-specific vulnerabilities. Combined with the missing rate limiting finding, this endpoint is particularly exposed.",
+      "impact": "Attackers can attempt unlimited login attempts against the WordPress admin account, potentially gaining full administrative control of the blog, injecting malicious content, or pivoting to the underlying server.",
+      "reproductionSteps": [
+        "Navigate to https://blog.kredivo.com/wp-login.php",
+        "Observe the WordPress login form is rendered with HTTP 200",
+        "Attempt repeated login requests — no throttling or lockout is enforced"
+      ],
+      "suggestedFix": "Restrict access to /wp-login.php by IP allowlist, add HTTP Basic Auth as a second layer, or use a WordPress security plugin (e.g., Wordfence, Solid Security) to enforce login protection. Also implement rate limiting and account lockout. If using Nginx, add IP restrictions at the server level.",
+      "codeExample": "# Nginx: Restrict wp-login.php to specific IPs\nlocation = /wp-login.php {\n    allow 203.0.113.10;  # Your office/VPN IP\n    deny all;\n    fastcgi_pass unix:/run/php/php8.1-fpm.sock;\n    include fastcgi_params;\n    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n}\n\n# Apache: Add to .htaccess\n<Files wp-login.php>\n    Order Deny,Allow\n    Deny from all\n    Allow from 203.0.113.10\n</Files>",
+      "affectedUrls": [
+        "https://blog.kredivo.com/wp-login.php"
+      ],
+      "rawFindingIds": [
+        "5ff75110-f427-40bb-8b6d-c5c6d9c6bb17",
+        "0a818d5c-22ff-4311-b2a2-63f5989003fe"
+      ],
+      "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://blog.kredivo.com/wp-login.php'",
+      "detectionMethod": "endpoint-replay",
+      "cvssScore": 8.1,
+      "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N"
+    },
+    {
+      "title": "Missing Content-Security-Policy Header",
+      "severity": "high",
+      "confidence": "high",
+      "owaspCategory": "A05:2021 - Security Misconfiguration",
+      "description": "The application does not set a Content-Security-Policy (CSP) HTTP response header. Without CSP, browsers have no instruction to block or restrict inline scripts, unauthorized external script sources, or data exfiltration attempts. This significantly increases the blast radius of any XSS vulnerability that may be discovered in the future.",
+      "impact": "If an XSS vulnerability exists or is introduced, the absence of CSP means attackers can freely execute arbitrary JavaScript, load external malicious scripts, steal session cookies, and exfiltrate data without any browser-level mitigation.",
+      "reproductionSteps": [
+        "Send a GET request to https://blog.kredivo.com/",
+        "Inspect the response headers",
+        "Confirm the 'content-security-policy' header is absent"
+      ],
+      "suggestedFix": "Add a Content-Security-Policy header to all responses. Start with a report-only policy to identify violations before enforcing. For a WordPress blog, a reasonable starting policy is provided below. Tune it based on actual script/style sources used.",
+      "codeExample": "# Nginx: Add to server block\nadd_header Content-Security-Policy \"default-src 'self'; script-src 'self' 'unsafe-inline' https://www.google-analytics.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';\" always;\n\n# WordPress (wp-config.php or plugin): Use report-only first\n# header(\"Content-Security-Policy-Report-Only: default-src 'self'; report-uri /csp-report-endpoint\");",
+      "affectedUrls": [
+        "https://blog.kredivo.com/"
+      ],
+      "rawFindingIds": [
+        "f30b597e-c2b5-4599-8723-c6cbbdb46bae"
+      ],
+      "curlCommand": "curl -sI \\\n  'https://blog.kredivo.com/'",
+      "detectionMethod": "header-absence",
+      "cvssScore": 7,
+      "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+    },
+    {
+      "title": "Cookie '_hcc' Missing HttpOnly and Secure Flags",
+      "severity": "medium",
+      "confidence": "high",
+      "owaspCategory": "A05:2021 - Security Misconfiguration",
+      "description": "The cookie '_hcc' is set without both the HttpOnly and Secure flags. Without HttpOnly, the cookie is accessible via JavaScript (document.cookie), making it stealable in an XSS attack. Without the Secure flag, the cookie may be transmitted over unencrypted HTTP connections, exposing it to network interception.",
+      "impact": "If an XSS vulnerability is exploited, the '_hcc' cookie can be stolen via JavaScript. Additionally, if a user accesses the site over HTTP (e.g., via redirect or direct HTTP URL), the cookie is transmitted in plaintext and can be intercepted by a network attacker (MITM).",
+      "reproductionSteps": [
+        "Navigate to https://blog.kredivo.com/",
+        "Open browser DevTools → Application → Cookies",
+        "Locate the '_hcc' cookie and confirm HttpOnly and Secure columns are unchecked",
+        "Alternatively, run: document.cookie in the browser console and observe '_hcc' is visible"
+      ],
+      "suggestedFix": "Set the HttpOnly and Secure flags on the '_hcc' cookie. If this cookie is set by a WordPress plugin or theme, configure it there. If set server-side, update the Set-Cookie header. If it's a third-party analytics/tracking cookie (e.g., HubSpot _hcc), check the vendor's configuration options for cookie security settings.",
+      "codeExample": "# If set via PHP (WordPress):\nsetcookie('_hcc', $value, [\n    'expires'  => time() + 3600,\n    'path'     => '/',\n    'domain'   => 'blog.kredivo.com',\n    'secure'   => true,   // Only send over HTTPS\n    'httponly' => true,   // Not accessible via JavaScript\n    'samesite' => 'Lax'  // CSRF protection bonus\n]);\n\n# If set via Nginx (proxy cookie modification):\nproxy_cookie_flags _hcc secure httponly;",
+      "affectedUrls": [
+        "https://blog.kredivo.com/"
+      ],
+      "rawFindingIds": [
+        "cd2d6363-c53f-4a7a-b69e-491be280d319",
+        "393a39d5-b689-440b-8af1-ba7151e20af4"
+      ],
+      "curlCommand": "curl -sI \\\n  'https://blog.kredivo.com/'",
+      "detectionMethod": "header-absence",
+      "cvssScore": 5.3,
+      "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"
+    }
+  ],
+  "summary": {
+    "totalRawFindings": 5,
+    "totalInterpretedFindings": 3,
+    "bySeverity": {
+      "critical": 0,
+      "high": 2,
+      "medium": 1,
+      "low": 0,
+      "info": 0
+    },
+    "topIssues": [
+      "Restrict /wp-login.php access via IP allowlist and enforce rate limiting — this is the most immediately exploitable attack surface",
+      "Add a Content-Security-Policy header to reduce XSS blast radius across the entire site",
+      "Set HttpOnly and Secure flags on the '_hcc' cookie to prevent JavaScript access and plaintext transmission"
+    ],
+    "passedChecks": [
+      "info-leakage",
+      "mixed-content",
+      "sensitive-url-data",
+      "xss",
+      "sqli",
+      "cors",
+      "redirect",
+      "ssrf",
+      "ssti",
+      "cmdi",
+      "idor",
+      "sri",
+      "js-cve",
+      "crlf",
+      "jwt",
+      "race",
+      "graphql",
+      "host-header",
+      "api-version",
+      "file-upload",
+      "business-logic",
+      "websocket",
+      "access-control",
+      "subdomain-takeover",
+      "oauth",
+      "cache-poisoning",
+      "csrf",
+      "prototype-pollution",
+      "xxe",
+      "insecure-deserialization",
+      "request-smuggling",
+      "ldap-injection",
+      "user-enum",
+      "mass-assignment",
+      "content-type-confusion",
+      "method-override",
+      "email-injection",
+      "bfla",
+      "clickjacking",
+      "timing-attack",
+      "verbose-errors",
+      "xpath-injection"
+    ]
+  },
+  "recon": {
+    "techStack": {
+      "server": "nginx",
+      "languages": [],
+      "detected": [
+        "Server: nginx"
+      ]
+    },
+    "waf": {
+      "detected": false,
+      "confidence": "medium",
+      "evidence": []
+    },
+    "framework": {
+      "confidence": "low",
+      "evidence": []
+    },
+    "endpoints": {
+      "pages": [
+        "https://blog.kredivo.com/",
+        "https://blog.kredivo.com/post-sitemap.xml",
+        "https://blog.kredivo.com/page-sitemap.xml",
+        "https://blog.kredivo.com/vn-sitemap.xml",
+        "https://blog.kredivo.com/category-sitemap.xml",
+        "https://blog.kredivo.com/post_tag-sitemap.xml",
+        "https://blog.kredivo.com/vn_category-sitemap.xml",
+        "https://blog.kredivo.com/vietnam_tag-sitemap.xml",
+        "https://blog.kredivo.com/author-sitemap.xml",
+        "https://blog.kredivo.com/login"
+      ],
+      "apiRoutes": [],
+      "forms": [],
+      "staticAssets": [],
+      "graphql": []
+    }
+  },
+  "validatedFindings": [
+    {
+      "findingId": "f30b597e-c2b5-4599-8723-c6cbbdb46bae",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "cd2d6363-c53f-4a7a-b69e-491be280d319",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "393a39d5-b689-440b-8af1-ba7151e20af4",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "0a818d5c-22ff-4311-b2a2-63f5989003fe",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "5ff75110-f427-40bb-8b6d-c5c6d9c6bb17",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    }
+  ],
+  "exitCode": 1,
+  "scanDuration": 566188,
+  "checksRun": [
+    "security-headers",
+    "cookie-flags",
+    "info-leakage",
+    "mixed-content",
+    "sensitive-url-data",
+    "cross-origin-policy",
+    "xss",
+    "sqli",
+    "cors",
+    "redirect",
+    "ssrf",
+    "ssti",
+    "cmdi",
+    "idor",
+    "tls",
+    "sri",
+    "info-disclosure",
+    "js-cve",
+    "crlf",
+    "rate-limit",
+    "jwt",
+    "race",
+    "graphql",
+    "host-header",
+    "api-version",
+    "file-upload",
+    "business-logic",
+    "websocket",
+    "access-control",
+    "subdomain-takeover",
+    "oauth",
+    "cache-poisoning",
+    "csrf",
+    "prototype-pollution",
+    "xxe",
+    "insecure-deserialization",
+    "request-smuggling",
+    "ldap-injection",
+    "user-enum",
+    "mass-assignment",
+    "content-type-confusion",
+    "method-override",
+    "email-injection",
+    "bfla",
+    "clickjacking",
+    "timing-attack",
+    "verbose-errors",
+    "xpath-injection"
+  ],
+  "checkAudit": [
+    {
+      "name": "api-version",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 3
+    },
+    {
+      "name": "subdomain-takeover",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 3
+    },
+    {
+      "name": "csrf",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 2
+    },
+    {
+      "name": "xpath-injection",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "oauth",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 3
+    },
+    {
+      "name": "verbose-errors",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 351
+    },
+    {
+      "name": "tls",
+      "status": "completed",
+      "findingsCount": 1,
+      "durationMs": 894
+    },
+    {
+      "name": "js-cve",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 5513
+    },
+    {
+      "name": "sri",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 5609
+    },
+    {
+      "name": "jwt",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 9725
+    },
+    {
+      "name": "timing-attack",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 9906
+    },
+    {
+      "name": "cache-poisoning",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 10082
+    },
+    {
+      "name": "host-header",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 25276
+    },
+    {
+      "name": "rate-limit",
+      "status": "completed",
+      "findingsCount": 1,
+      "durationMs": 32957
+    },
+    {
+      "name": "info-disclosure",
+      "status": "completed",
+      "findingsCount": 1,
+      "durationMs": 41987
+    },
+    {
+      "name": "cors",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 68669
+    },
+    {
+      "name": "graphql",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 75522
+    },
+    {
+      "name": "clickjacking",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120003,
+      "error": "Check \"clickjacking\" timed out after 120s"
+    },
+    {
+      "name": "xss",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120001,
+      "error": "Check \"xss\" timed out after 120s"
+    },
+    {
+      "name": "sqli",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "redirect",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120002,
+      "error": "Check \"redirect\" timed out after 120s"
+    },
+    {
+      "name": "traversal",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "ssrf",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "ssti",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "cmdi",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "idor",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "crlf",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "race",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "file-upload",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "business-logic",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "websocket",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 4646
+    },
+    {
+      "name": "access-control",
+      "status": "completed",
+      "findingsCount": 1,
+      "durationMs": 86227
+    },
+    {
+      "name": "prototype-pollution",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 16630
+    },
+    {
+      "name": "xxe",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "insecure-deserialization",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "request-smuggling",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 12662
+    },
+    {
+      "name": "ldap-injection",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "user-enum",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "mass-assignment",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "content-type-confusion",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 0
+    },
+    {
+      "name": "method-override",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "email-injection",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "bfla",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    }
+  ],
+  "tokenUsage": {
+    "inputTokens": 1694,
+    "outputTokens": 1979,
+    "totalTokens": 3673
+  }
+}

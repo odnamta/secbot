@@ -346,6 +346,12 @@ export function determineRelevantChecks(
     relevant.push('xpath-injection');
   }
 
+  // Auth diff — relevant ONLY when both auth states are available
+  // (We can't check config here, but we always include it so the AI planner
+  //  can reference it; the actual check gates on config.authStorageState + config.idorAltAuthState)
+  // Note: the planner user prompt includes auth info, so the AI will know to skip it
+  relevant.push('auth-diff');
+
   return relevant;
 }
 
@@ -958,6 +964,18 @@ export function buildDefaultPlan(
     });
   } else {
     skipReasons['xpath-injection'] = 'No parameterized URLs or forms for XPath injection testing';
+  }
+
+  // Auth diff: two-user authorization testing (requires --auth + --idor-alt-auth at runtime)
+  // Always include in the plan; the check self-gates if auth states are missing
+  if (apiEndpoints.length > 0) {
+    checks.push({
+      name: 'auth-diff',
+      priority: priority++,
+      reason: `${apiEndpoints.length} API endpoints — replay as alternate user to detect broken access control (requires --auth + --idor-alt-auth)`,
+    });
+  } else {
+    skipReasons['auth-diff'] = 'No API endpoints found for cross-user authorization testing';
   }
 
   // ─── Learning-based reordering (v1.0) ───────────────────────────────

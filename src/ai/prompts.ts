@@ -52,7 +52,8 @@ export type PlannerCheckType =
   | 'clickjacking'
   | 'timing-attack'
   | 'verbose-errors'
-  | 'xpath-injection';
+  | 'xpath-injection'
+  | 'auth-diff';
 
 export const ALL_PLANNER_CHECKS: PlannerCheckType[] = [
   'xss', 'sqli', 'cors', 'redirect', 'traversal',
@@ -68,6 +69,7 @@ export const ALL_PLANNER_CHECKS: PlannerCheckType[] = [
   'timing-attack',
   'verbose-errors',
   'xpath-injection',
+  'auth-diff',
 ];
 
 // ─── Planner Prompt Sections ────────────────────────────────────────
@@ -220,6 +222,9 @@ const CHECK_SECTIONS: Record<PlannerCheckType, string> = {
 
   'xpath-injection': `- xpath-injection: XPath Injection — tests for XPath query manipulation via error-based and boolean-based detection (CWE-643)
   Rule: Recommend when parameterized URLs or forms with text inputs exist. Injects XPath syntax and detects error messages (15 patterns) or response differences from tautology/contradiction payloads. Profile-scaled payloads. Parallel-safe.`,
+
+  'auth-diff': `- auth-diff: Two-User Authorization Testing — crawl as User A, replay all API requests as User B, detect cross-user data access (CWE-639, CWE-284)
+  Rule: Recommend ONLY when both --auth AND --idor-alt-auth are configured. Tests every API endpoint for broken access control by comparing responses between two authenticated users. The #1 accepted bug bounty finding type. Skip if either auth state is missing.`,
 };
 
 /**

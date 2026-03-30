@@ -1,0 +1,11 @@
+# Program: Cal.com
+# Platform: HackerOne
+# Bounty: $100 - $3,000 (estimated)
+# Notes: Open-source scheduling (Next.js/TypeScript), code on GitHub, small startup
+
+In Scope
+app.cal.com
+*.companyhub.com
+
+Out of Scope
+- cal.com (marketing site only, not the app)

@@ -36,11 +36,12 @@ import { validateCliOptions } from './utils/cli-validation.js';
 import { CallbackServer } from './scanner/oob/callback-server.js';
 import { waitForDelayedCallbacks, getDefaultWaitMs } from './scanner/oob/delayed-detection.js';
 import { convertHitsToFindings } from './scanner/oob/hit-converter.js';
+import { InteractshClient, interactionsToCallbackHits } from './scanner/oob/interactsh-client.js';
 import { startInteractiveMode } from './interactive/repl.js';
 import { authenticate } from './scanner/auth/authenticator.js';
 import { SessionManager } from './scanner/auth/session-manager.js';
 import { SessionGuard } from './scanner/auth/session-guard.js';
-import { enumerateSubdomains } from './scanner/recon/subdomain.js';
+import { enumerateAndProbeSubdomains } from './scanner/recon/subdomain.js';
 import { parseScopeFile, scopeToScanConfig } from './utils/scope-parser.js';
 import { detectChains } from './scanner/active/chain-detector.js';
 import { getHistoryPath, loadHistory, addToHistory, saveHistory, getTrendSummary } from './utils/scan-history.js';
@@ -59,6 +60,14 @@ import { PayloadStats } from './learning/payload-stats.js';
 import type { LearningContext } from './learning/types.js';
 import type { ScanConfig, ScanProfile, ScanResult, CheckCategory, CheckAuditEntry, AuthOptions } from './scanner/types.js';
 import { enrichAllFindings } from './utils/evidence.js';
+import { discoverContent, mergeIntoEndpoints } from './scanner/discovery/content-discovery.js';
+import { runTemplates } from './scanner/templates/engine.js';
+import { BUILTIN_TEMPLATES } from './scanner/templates/builtin-templates.js';
+import { FastEngine } from './scanner/fast-engine.js';
+import { discoverParams, discoveredParamsToUrls } from './scanner/discovery/param-discovery.js';
+import { analyzeJavaScript } from './scanner/discovery/js-analysis.js';
+import type { JSAnalysisResult } from './scanner/discovery/js-analysis.js';
+import { analyzeGaps, formatGapReport } from './learning/gap-analysis.js';
 import { autoTriageFindings } from './hunting/auto-triage.js';
 import type { TriageInfo } from './hunting/notify.js';
 import { submitReport as h1SubmitReport, mapCategoryToH1Weakness, getCredentialsFromEnv as getH1Credentials } from './hunting/platforms/hackerone.js';
@@ -110,6 +119,8 @@ program
   .option('--credentials <user:pass>', 'Username:password pair for login (use with --login-url)')
   .option('--credentials-file <path>', 'Path to file containing credentials (user:pass on first line)')
   .option('--callback-server <port>', 'Auto-start built-in OOB callback server on specified port')
+  .option('--interactsh [url]', 'Use Interactsh for real OOB detection (default: https://oast.fun, or provide custom server URL)')
+  .option('--interactsh-token <token>', 'Auth token for self-hosted Interactsh server')
   .option('--oob-wait <seconds>', 'How long to wait for delayed OOB callbacks (default: 30)')
   .option('--no-ai', 'Skip AI interpretation (use rule-based fallback)')
   .option('--auth-cookie <cookies>', 'Pre-set cookies for authenticated scanning (name1=value1;name2=value2)')
@@ -119,6 +130,7 @@ program
   .option('--scope-file <path>', 'Bug bounty scope file (one domain/pattern per line)')
   .option('--subdomains', 'Enable subdomain enumeration (DNS brute-force)', false)
   .option('--verbose', 'Enable verbose logging', false)
+  .option('--max-scan-time <minutes>', 'Maximum total scan duration in minutes (default: 30)', '30')
   .action(async (url: string | undefined, options: Record<string, unknown>) => {
     if (options.verbose) {
       setLogLevel('debug');
@@ -485,6 +497,8 @@ program
 
     // ─── OOB Callback Server ──────────────────────────────────
     let callbackServer: CallbackServer | undefined;
+    let interactshClient: InteractshClient | undefined;
+
     if (config.callbackServerPort) {
       callbackServer = new CallbackServer();
       try {
@@ -497,6 +511,30 @@ program
       } catch (err) {
         log.error(`Failed to start callback server on port ${config.callbackServerPort}: ${(err as Error).message}`);
         process.exit(2);
+      }
+    }
+
+    // ─── Interactsh OOB Client (real public callbacks) ────────
+    const interactshFlag = options.interactsh as string | boolean | undefined;
+    if (interactshFlag !== undefined && interactshFlag !== false) {
+      const serverUrl = typeof interactshFlag === 'string' && interactshFlag !== ''
+        ? interactshFlag
+        : undefined; // uses default (oast.fun)
+      interactshClient = new InteractshClient({
+        serverUrl,
+        token: options.interactshToken as string | undefined,
+      });
+      const registered = await interactshClient.register();
+      if (registered) {
+        // Interactsh provides a publicly-reachable domain — use it as the callback URL
+        // This overrides the local callback server URL for real OOB detection
+        if (!config.callbackUrl || config.callbackUrl.includes('127.0.0.1')) {
+          config.callbackUrl = interactshClient.getHttpUrl();
+          log.info(`Interactsh callback URL: ${config.callbackUrl}`);
+        }
+      } else {
+        log.warn('Interactsh registration failed — falling back to local callback server if available');
+        interactshClient = undefined;
       }
     }
 
@@ -538,6 +576,17 @@ program
       ? new RequestLogger(outputDir, scanId)
       : undefined;
 
+    // ─── Global Scan Timeout (graceful — partial results preserved) ─
+    const maxScanTimeMinutes = parseInt(options.maxScanTime as string, 10) || 30;
+    const maxScanTime = maxScanTimeMinutes * 60 * 1000;
+    let globalTimeoutFired = false;
+    const scanTimeout = setTimeout(() => {
+      log.error(`Scan exceeded ${maxScanTimeMinutes} minute(s) — generating partial report with findings so far`);
+      globalTimeoutFired = true;
+    }, maxScanTime);
+    // Prevent the timer from keeping the process alive if everything else is done
+    if (scanTimeout.unref) scanTimeout.unref();
+
     try {
       // ─── Load Plugins ────────────────────────────────────────────
       await loadAndRegisterPlugins();
@@ -550,24 +599,49 @@ program
       }
       const seedUrls = discoveredRoutes.map((r) => r.url);
 
-      // ─── Phase 0b: Subdomain Enumeration (optional) ────────────
+      // ─── Phase 0b: Subdomain Enumeration + HTTP Probing (optional) ──
       if (options.subdomains) {
         const targetHost = new URL(targetUrl).hostname;
         // Strip leading "www." to get base domain for enumeration
         const baseDomain = targetHost.replace(/^www\./, '');
-        log.info('Phase 0b: Enumerating subdomains...');
-        const subdomainResults = await enumerateSubdomains(baseDomain);
-        if (subdomainResults.length > 0) {
-          log.info(`Discovered ${subdomainResults.length} subdomain(s):`);
-          for (const sub of subdomainResults) {
+        log.info('Phase 0b: Enumerating subdomains (DNS + HTTP probing)...');
+        const subEnum = await enumerateAndProbeSubdomains(baseDomain, {
+          dnsConcurrency: 10,
+          httpConcurrency: 20,
+          requestDelay: config.profile === 'stealth' ? 200 : 50,
+          proxy: config.proxy,
+          userAgent: config.userAgent,
+        });
+
+        if (subEnum.resolved.length > 0) {
+          log.info(`DNS: ${subEnum.resolved.length} subdomain(s) resolved`);
+          for (const sub of subEnum.resolved) {
             const cnameInfo = sub.cname ? ` (CNAME: ${sub.cname})` : '';
             log.info(`  ${sub.subdomain} -> ${sub.ips.join(', ')}${cnameInfo}`);
           }
-          log.warn('Discovered subdomains are reported only — not added as scan targets (may be out of scope)');
-          // Wire results into config so subdomain-takeover check can use them
-          config.subdomainResults = subdomainResults;
+          // Wire DNS results into config so subdomain-takeover check can use them
+          config.subdomainResults = subEnum.resolved;
         } else {
           log.info('No subdomains discovered via DNS brute-force');
+        }
+
+        if (subEnum.httpAlive.length > 0) {
+          log.info(`HTTP: ${subEnum.httpAlive.length} subdomain(s) serving web content`);
+          for (const probe of subEnum.httpAlive) {
+            const titleInfo = probe.title ? ` — "${probe.title}"` : '';
+            const serverInfo = probe.server ? ` [${probe.server}]` : '';
+            log.info(`  ${probe.url} (${probe.status}) ${probe.timeMs}ms${serverInfo}${titleInfo}`);
+          }
+          config.subdomainHttpResults = subEnum.httpAlive;
+
+          // Feed HTTP-alive subdomain URLs into seed URLs so they get crawled + scanned
+          for (const probe of subEnum.httpAlive) {
+            const probeUrl = probe.finalUrl ?? probe.url;
+            if (!seedUrls.includes(probeUrl)) {
+              seedUrls.push(probeUrl);
+            }
+          }
+          log.info(`Added ${subEnum.httpAlive.length} subdomain URLs to scan targets`);
         }
       }
 
@@ -611,6 +685,14 @@ program
         process.exit(1);
       }
 
+      // ─── WAF Block Detection ────────────────────────────────
+      const blockedPages = pages.filter(p => p.status === 403 || p.status === 429);
+      const wafBlocked = blockedPages.length > pages.length * 0.5;
+      if (wafBlocked) {
+        log.warn(`${blockedPages.length}/${pages.length} pages returned 403/429 — target may be blocking the scanner. Active checks may be ineffective.`);
+        log.warn('Consider: --proxy, --profile stealth, or --auth-cookie to bypass blocks.');
+      }
+
       try {
         // ─── Phase 2: Recon ──────────────────────────────────────
         log.info('Phase 2: Running reconnaissance...');
@@ -619,12 +701,236 @@ program
         // Pass WAF detection to config so active checks can use WAF-aware encoding
         config.wafDetection = recon.waf;
 
+        // Pass WAF block flag so active check runner can skip slow timing-based checks
+        config.wafBlocked = wafBlocked;
+
         // Pass detected SPA framework to config so active checks skip re-detection.
         // Use the first framework found across crawled pages (single-framework apps).
         const crawledFramework = pages.find((p) => p.framework)?.framework;
         if (crawledFramework) {
           config.detectedFramework = crawledFramework;
           log.info(`Threading framework to active checks: ${crawledFramework.name}${crawledFramework.version ? ` v${crawledFramework.version}` : ''}`);
+        }
+
+        // ─── Phase 2b: Content Discovery ───────────────────────────
+        // Run directory brute-forcing on standard/deep profiles to find hidden endpoints
+        if (globalTimeoutFired) {
+          log.warn('Time budget exceeded — skipping content discovery and remaining discovery phases');
+        } else if (config.profile !== 'quick') {
+          log.info('Phase 2b: Content discovery (directory brute-forcing)...');
+          try {
+            const discovered = await discoverContent({
+              targetUrl,
+              concurrency: config.profile === 'deep' ? 30 : 20,
+              requestDelay: config.profile === 'stealth' ? 200 : 50,
+              proxy: config.proxy,
+              userAgent: config.userAgent,
+              detectedFramework: crawledFramework?.name ?? recon.framework.name,
+              maxPaths: config.profile === 'deep' ? 500 : 300,
+              extraHeaders: config.extraHeaders,
+            });
+
+            if (discovered.length > 0) {
+              const { newPages, newApiRoutes } = mergeIntoEndpoints(
+                discovered,
+                recon.endpoints.pages,
+                recon.endpoints.apiRoutes,
+              );
+
+              // Merge into recon endpoints so planner/active checks see them
+              if (newPages.length > 0) {
+                recon.endpoints.pages.push(...newPages);
+                log.info(`Content discovery: +${newPages.length} new pages`);
+              }
+              if (newApiRoutes.length > 0) {
+                recon.endpoints.apiRoutes.push(...newApiRoutes);
+                log.info(`Content discovery: +${newApiRoutes.length} new API routes`);
+              }
+
+              // Also inject discovered pages into CrawledPage[] so active checks can target them
+              for (const url of newPages) {
+                pages.push({
+                  url,
+                  status: 200,
+                  headers: {},
+                  title: '',
+                  forms: [],
+                  links: [],
+                  scripts: [],
+                  cookies: [],
+                });
+              }
+              for (const url of newApiRoutes) {
+                pages.push({
+                  url,
+                  status: 200,
+                  headers: {},
+                  title: '',
+                  forms: [],
+                  links: [],
+                  scripts: [],
+                  cookies: [],
+                });
+              }
+            }
+          } catch (err) {
+            log.warn(`Content discovery failed: ${(err as Error).message}`);
+          }
+        }
+
+        // ─── Phase 2d: Param Discovery ───────────────────────────
+        // Probe pages for hidden parameters not visible in HTML source
+        if (globalTimeoutFired) {
+          log.warn('Time budget exceeded — skipping param discovery');
+        } else if (config.profile !== 'quick') {
+          log.info('Phase 2d: Hidden parameter discovery...');
+          try {
+            // Select pages + API routes to test (prefer pages that had no visible params)
+            const paramlessPages = recon.endpoints.pages.filter(u => !u.includes('?'));
+            const candidateUrls = [
+              ...paramlessPages.slice(0, config.profile === 'deep' ? 8 : 5),
+              ...recon.endpoints.apiRoutes.slice(0, config.profile === 'deep' ? 5 : 2),
+            ];
+
+            if (candidateUrls.length > 0) {
+              const discoveredHiddenParams = await discoverParams(candidateUrls, {
+                concurrency: config.profile === 'deep' ? 15 : 10,
+                requestDelay: config.profile === 'stealth' ? 200 : 50,
+                proxy: config.proxy,
+                userAgent: config.userAgent,
+                maxParams: config.profile === 'deep' ? 120 : 80,
+                maxUrls: config.profile === 'deep' ? 10 : 5,
+                extraHeaders: config.extraHeaders,
+              });
+
+              if (discoveredHiddenParams.length > 0) {
+                const newParamUrls = discoveredParamsToUrls(discoveredHiddenParams);
+                // Inject hidden-param URLs into crawled pages so buildTargets picks them up
+                for (const url of newParamUrls) {
+                  pages.push({
+                    url,
+                    status: 200,
+                    headers: {},
+                    title: '',
+                    forms: [],
+                    links: [],
+                    scripts: [],
+                    cookies: [],
+                  });
+                }
+                log.info(
+                  `Param discovery: ${discoveredHiddenParams.length} hidden params → ` +
+                  `${newParamUrls.length} new parameterized URLs injected`,
+                );
+              }
+            }
+          } catch (err) {
+            log.warn(`Param discovery failed: ${(err as Error).message}`);
+          }
+        }
+
+        // ─── Phase 2e: JS Bundle Analysis ────────────────────────
+        // Deep analysis of JavaScript bundles to extract endpoints, GraphQL ops, params, secrets
+        let jsAnalysis: JSAnalysisResult | undefined;
+        if (globalTimeoutFired) {
+          log.warn('Time budget exceeded — skipping JS bundle analysis');
+        } else if (config.profile !== 'quick') {
+          log.info('Phase 2e: Deep JS bundle analysis...');
+          try {
+            // Collect all script URLs from crawled pages
+            const allScriptUrls = pages.flatMap((p) => p.scripts);
+
+            jsAnalysis = await analyzeJavaScript(allScriptUrls, targetUrl, {
+              maxFiles: config.profile === 'deep' ? 50 : 30,
+              maxFileSize: 2 * 1024 * 1024,
+              concurrency: config.profile === 'deep' ? 15 : 10,
+              proxy: config.proxy,
+              userAgent: config.userAgent,
+              extraHeaders: config.extraHeaders,
+            });
+
+            // Feed discovered API endpoints into recon
+            if (jsAnalysis.apiEndpoints.length > 0) {
+              const existingApiSet = new Set(recon.endpoints.apiRoutes);
+              let newApiCount = 0;
+              for (const ep of jsAnalysis.apiEndpoints) {
+                // Resolve relative paths to full URLs
+                let fullUrl: string;
+                try {
+                  fullUrl = ep.startsWith('http') ? ep : new URL(ep, targetUrl).href;
+                } catch {
+                  continue;
+                }
+                if (!existingApiSet.has(fullUrl)) {
+                  recon.endpoints.apiRoutes.push(fullUrl);
+                  existingApiSet.add(fullUrl);
+                  newApiCount++;
+                  // Also inject as a CrawledPage so active checks can target it
+                  pages.push({
+                    url: fullUrl,
+                    status: 200,
+                    headers: {},
+                    title: '',
+                    forms: [],
+                    links: [],
+                    scripts: [],
+                    cookies: [],
+                  });
+                }
+              }
+              if (newApiCount > 0) {
+                log.info(`JS analysis: +${newApiCount} new API routes from JS bundles`);
+              }
+            }
+
+            // Feed discovered GraphQL operations into recon
+            if (jsAnalysis.graphqlOperations.length > 0) {
+              log.info(`JS analysis: ${jsAnalysis.graphqlOperations.length} GraphQL operations discovered`);
+            }
+
+            // Feed discovered param names into pages (as parameterized URLs on existing pages)
+            if (jsAnalysis.paramNames.length > 0) {
+              const paramlessPages = recon.endpoints.pages.filter(u => !u.includes('?'));
+              // Add up to 3 pages with discovered params to expand attack surface
+              const paramPages = paramlessPages.slice(0, 3);
+              const jsParamUrls: string[] = [];
+              for (const pageUrl of paramPages) {
+                // Only add the most interesting params (first 5)
+                for (const param of jsAnalysis.paramNames.slice(0, 5)) {
+                  try {
+                    const u = new URL(pageUrl);
+                    u.searchParams.set(param, '1');
+                    jsParamUrls.push(u.href);
+                  } catch {
+                    // skip
+                  }
+                }
+              }
+              if (jsParamUrls.length > 0) {
+                for (const url of jsParamUrls) {
+                  pages.push({
+                    url,
+                    status: 200,
+                    headers: {},
+                    title: '',
+                    forms: [],
+                    links: [],
+                    scripts: [],
+                    cookies: [],
+                  });
+                }
+                log.info(`JS analysis: ${jsParamUrls.length} parameterized URLs from ${jsAnalysis.paramNames.length} discovered params`);
+              }
+            }
+
+            // Secrets from JS bundles become findings later in the pipeline
+            // (handled by info-disclosure check which already scans JS)
+            if (jsAnalysis.secrets.length > 0) {
+              log.info(`JS analysis: ${jsAnalysis.secrets.length} potential secrets found in JS bundles`);
+            }
+          } catch (err) {
+            log.warn(`JS analysis failed: ${(err as Error).message}`);
+          }
         }
 
         // ─── Load Learning Data ──────────────────────────────────
@@ -687,7 +993,9 @@ program
 
         // ─── Phase 3: AI Attack Plan ─────────────────────────────
         let attackPlan;
-        if (config.useAI) {
+        if (globalTimeoutFired) {
+          log.warn('Time budget exceeded — skipping AI planning');
+        } else if (config.useAI) {
           log.info('Phase 3: AI planning attack strategy...');
           attackPlan = await planAttack(targetUrl, recon, pages, config.profile, payloadContext, learningContext, responses);
         } else {
@@ -697,6 +1005,42 @@ program
         // ─── Phase 4: Passive Scanning ───────────────────────────
         log.info('Phase 4: Running passive security checks...');
         const passiveFindings = runPassiveChecks(pages, responses, recon);
+
+        // ─── Phase 4b: Template Scanning ──────────────────────────
+        // Run vulnerability templates on standard/deep profiles using FastEngine
+        let templateFindings: import('./scanner/types.js').RawFinding[] = [];
+        if (globalTimeoutFired) {
+          log.warn('Time budget exceeded — skipping template scanning');
+        } else if (config.profile !== 'quick') {
+          log.info('Phase 4b: Running vulnerability template checks...');
+          const templateEngine = new FastEngine({
+            concurrency: config.profile === 'deep' ? 20 : 10,
+            requestDelay: config.profile === 'stealth' ? 200 : 50,
+            userAgent: config.userAgent ?? 'Mozilla/5.0 (compatible; SecBot/2.0)',
+            proxy: config.proxy,
+            defaultHeaders: config.extraHeaders,
+            rateLimitRps: config.rateLimitRps,
+          });
+          const detectedTech = [
+            ...recon.techStack.languages,
+            ...recon.techStack.detected,
+            recon.techStack.server,
+            recon.techStack.poweredBy,
+            recon.framework.name,
+            crawledFramework?.name,
+          ].filter((t): t is string => !!t);
+
+          try {
+            templateFindings = await runTemplates(
+              BUILTIN_TEMPLATES,
+              targetUrl,
+              templateEngine,
+              detectedTech,
+            );
+          } catch (err) {
+            log.warn(`Template scan error: ${(err as Error).message}`);
+          }
+        }
 
         // ─── Session Guard: monitor for session expiry during active scanning ─
         let sessionGuard: SessionGuard | undefined;
@@ -714,10 +1058,14 @@ program
         }
 
         // ─── Phase 5: Active Scanning ────────────────────────────
-        log.info('Phase 5: Running active security checks...');
+        if (globalTimeoutFired) {
+          log.warn('Time budget exceeded — skipping active scanning');
+        } else {
+          log.info('Phase 5: Running active security checks...');
+        }
 
         // Verify browser context is still alive before active checks
-        let browserDead = false;
+        let browserDead = globalTimeoutFired;
         try {
           const healthPage = await context.newPage();
           await healthPage.close();
@@ -744,7 +1092,9 @@ program
 
         // ─── Phase 5b: AI Response Analysis ──────────────────────
         let aiResponseFindings: import('./scanner/types.js').RawFinding[] = [];
-        if (config.useAI) {
+        if (globalTimeoutFired) {
+          log.warn('Time budget exceeded — skipping AI response analysis');
+        } else if (config.useAI) {
           const { analyzeResponses } = await import('./ai/response-analyzer.js');
           log.info('Phase 5b: AI analyzing HTTP responses...');
           aiResponseFindings = await analyzeResponses(targetUrl, pages, recon);
@@ -761,7 +1111,7 @@ program
           }
         }
 
-        let allRawFindings = [...passiveFindings, ...activeFindings, ...aiResponseFindings];
+        let allRawFindings = [...passiveFindings, ...templateFindings, ...activeFindings, ...aiResponseFindings];
 
         // ─── Evidence Enrichment ─────────────────────────────────
         // Enrich ALL raw findings before dedup so evidence packs are preserved
@@ -865,6 +1215,23 @@ program
             log.info(`Added ${oobFindings.length} OOB finding(s) to validation pipeline`);
           } else {
             log.info('OOB callback server received no hits during scan');
+          }
+        }
+
+        // ─── Interactsh OOB Polling (real public callbacks) ─────
+        if (interactshClient) {
+          const oobWait = config.oobWaitMs ?? getDefaultWaitMs();
+          log.info(`Polling Interactsh for ${Math.round(oobWait / 1000)}s...`);
+          const interactions = await interactshClient.waitForInteractions(oobWait);
+
+          if (interactions.length > 0) {
+            log.info(`Interactsh received ${interactions.length} interaction(s)`);
+            const interactshHits = interactionsToCallbackHits(interactions);
+            const oobFindings = convertHitsToFindings(interactshHits);
+            findingsForValidation = [...findingsForValidation, ...oobFindings];
+            log.info(`Added ${oobFindings.length} Interactsh OOB finding(s) to validation pipeline`);
+          } else {
+            log.info('Interactsh received no interactions during scan');
           }
         }
 
@@ -1027,6 +1394,15 @@ program
         saveBaseline(dedupedFindings, baselineOutPath);
         log.info(`Baseline saved: ${baselineOutPath}`);
 
+        // ─── Phase 9: Gap Analysis & Confidence Calibration ─────
+        log.info('Phase 9: Analyzing scan gaps...');
+        const gapAnalysis = analyzeGaps(scanResult);
+        scanResult.gapAnalysis = gapAnalysis;
+        if (formats.includes('terminal')) {
+          console.log(formatGapReport(gapAnalysis));
+        }
+        log.info(`Scan quality score: ${gapAnalysis.qualityScore}/100`);
+
         // ─── Scan History + Trend Tracking ──────────────────────
         try {
           const historyPath = getHistoryPath(outputDir, targetUrl);
@@ -1105,14 +1481,17 @@ program
           log.debug(`Learning data save failed: ${(err as Error).message}`);
         }
 
-        // Post-scan callback URL reminder (external callback, not our server)
-        if (config.callbackUrl && !callbackServer) {
+        // Post-scan callback URL reminder (external callback, not our server/interactsh)
+        if (config.callbackUrl && !callbackServer && !interactshClient) {
           log.info('Callback URLs injected for blind detection. Check your callback server for hits.');
         }
 
-        // ─── Stop OOB Server ──────────────────────────────────
+        // ─── Stop OOB Server + Deregister Interactsh ──────────
         if (callbackServer) {
           await callbackServer.stop();
+        }
+        if (interactshClient) {
+          await interactshClient.deregister();
         }
 
         log.info('Scan complete!');
@@ -1135,6 +1514,10 @@ program
       if (callbackServer?.isRunning()) {
         try { await callbackServer.stop(); } catch { /* best effort */ }
       }
+      // Clean up Interactsh on error
+      if (interactshClient?.isRegistered()) {
+        try { await interactshClient.deregister(); } catch { /* best effort */ }
+      }
       // Clean up auth temp files on error path too
       if (authTmpDir) {
         try {
@@ -1147,6 +1530,8 @@ program
         console.error(err);
       }
       process.exit(2);
+    } finally {
+      clearTimeout(scanTimeout);
     }
   });
 
@@ -1526,6 +1911,27 @@ program
     const stats = tracker.getStats();
     console.log(chalk.green(`Outcome recorded: ${findingId} → ${result}`));
     console.log(chalk.gray(`Total: ${stats.total} outcomes | ${stats.accepted} accepted | $${stats.totalBounty} earned`));
+  });
+
+// ─── Update Command ──────────────────────────────────────────
+program
+  .command('update')
+  .description('Update wordlists and vulnerability templates')
+  .option('--wordlists-only', 'Only update wordlists')
+  .option('--templates-only', 'Only update templates')
+  .action(async (options: Record<string, unknown>) => {
+    log.banner();
+
+    if (!options.templatesOnly) {
+      const { updateWordlists } = await import('./utils/updater.js');
+      await updateWordlists();
+    }
+    if (!options.wordlistsOnly) {
+      const { updateTemplates } = await import('./utils/updater.js');
+      await updateTemplates();
+    }
+
+    log.info('Update complete.');
   });
 
 program.parse();

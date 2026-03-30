@@ -1,0 +1,11 @@
+# Program: OpenProject
+# Platform: YesWeHack
+# Bounty: EUR 100 - EUR 5,000
+# Notes: Open-source project management (Rails + Angular), code on GitHub, EU Commission funded
+
+In Scope
+community.openproject.org
+openproject.org
+
+Out of Scope
+- github.com/opf/openproject

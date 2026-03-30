@@ -1,0 +1,107 @@
+[
+  {
+    "fingerprint": "112ced682f9984cb8d90c0b3dae505c5e4a640ad43572c8f137c939cfb471271",
+    "category": "security-headers",
+    "url": "https://community.openproject.org/",
+    "title": "Missing Permissions-Policy Header",
+    "firstSeen": "2026-03-26T08:09:20.779Z"
+  },
+  {
+    "fingerprint": "ed57a0df94b1103b0118e39af9f947dc3ed7bd3fc85bb05d8b4cdb67036d98a8",
+    "category": "security-headers",
+    "url": "https://community.openproject.org/",
+    "title": "CSP Allows Unsafe Inline Styles",
+    "firstSeen": "2026-03-26T08:09:20.779Z"
+  },
+  {
+    "fingerprint": "a8f864740f8ab2d64478abef664eced0eb1db414f5062a40019c9b22c6911d25",
+    "category": "cross-origin-policy",
+    "url": "https://community.openproject.org/",
+    "title": "Missing Cross-Origin-Opener-Policy Header",
+    "firstSeen": "2026-03-26T08:09:20.779Z"
+  },
+  {
+    "fingerprint": "b3b52cdbbddf4319b9c5850a2069dbb2233cd56d8fa5612555a8bf011ab43898",
+    "category": "cross-origin-policy",
+    "url": "https://community.openproject.org/",
+    "title": "Missing Cross-Origin-Embedder-Policy Header",
+    "firstSeen": "2026-03-26T08:09:20.779Z"
+  },
+  {
+    "fingerprint": "93545a95b740639609613ed56a64d92f71aa3219d557d94b8c32e3ee809ac555",
+    "category": "cross-origin-policy",
+    "url": "https://community.openproject.org/",
+    "title": "Missing Cross-Origin-Resource-Policy Header",
+    "firstSeen": "2026-03-26T08:09:20.779Z"
+  },
+  {
+    "fingerprint": "ba828abb81a732aaeb55e7990a17798a6e13708a68473b28d647984e7cce381c",
+    "category": "security-headers",
+    "url": "https://community.openproject.org/api/v3/configuration",
+    "title": "Missing X-Frame-Options Header",
+    "firstSeen": "2026-03-26T08:09:20.785Z"
+  },
+  {
+    "fingerprint": "c366b922bd2e4d196fd8d27d5278fc369e7929948e2d1a122a1fb70e8aaed4a8",
+    "category": "security-headers",
+    "url": "https://community.openproject.org/api/v3/configuration",
+    "title": "Missing X-Content-Type-Options Header",
+    "firstSeen": "2026-03-26T08:09:20.785Z"
+  },
+  {
+    "fingerprint": "69fa132bc2c69ede222e7aae68ac10998fd7182c853dfc6c89a225beb1948ca0",
+    "category": "security-headers",
+    "url": "https://community.openproject.org/api/v3/configuration",
+    "title": "Missing Referrer-Policy Header",
+    "firstSeen": "2026-03-26T08:09:20.785Z"
+  },
+  {
+    "fingerprint": "958a9d661032212638be1c6b676fd4deee8d2cfef5d8bbfe8f2fab8ade336f1b",
+    "category": "security-headers",
+    "url": "https://community.openproject.org/login.php",
+    "title": "Missing HSTS Header",
+    "firstSeen": "2026-03-26T08:09:20.792Z"
+  },
+  {
+    "fingerprint": "d663cc90c7da8a930759e829438ba058eec4f3f8a2e65065caa36be4357ff00d",
+    "category": "security-headers",
+    "url": "https://community.openproject.org/login.php",
+    "title": "Missing Content-Security-Policy Header",
+    "firstSeen": "2026-03-26T08:09:20.792Z"
+  },
+  {
+    "fingerprint": "214d847feded079938aaafbff4a4e72df3f83e49c9bbb3028f63b19926d45d92",
+    "category": "info-disclosure",
+    "url": "https://community.openproject.org/",
+    "title": "HTTP TRACE Method Enabled",
+    "firstSeen": "2026-03-26T08:09:29.634Z"
+  },
+  {
+    "fingerprint": "037bc8a0b7b1659c72760d852f267984f1c696b22f25324455c5d8d56e93c6e9",
+    "category": "rate-limit",
+    "url": "https://community.openproject.org/login",
+    "title": "Missing Rate Limiting on Authentication Endpoint",
+    "firstSeen": "2026-03-26T08:09:40.057Z"
+  },
+  {
+    "fingerprint": "80a364984862a96f28c138feae438156d617b673c2f956c87e6aa7c5901df6b7",
+    "category": "rate-limit",
+    "url": "https://community.openproject.org/api/v3/configuration",
+    "title": "Missing Rate Limiting on API Endpoint",
+    "firstSeen": "2026-03-26T08:10:05.026Z"
+  },
+  {
+    "fingerprint": "81f75d5723eff0047475566047facafacc28ac6e8b58d6bb2b08021afe977a6b",
+    "category": "broken-access-control",
+    "url": "https://community.openproject.org/login?layout=1",
+    "title": "Potential Session Fixation: \"_open_project_session\" Not Regenerated",
+    "firstSeen": "2026-03-26T08:29:47.370Z"
+  },
+  {
+    "fingerprint": "84308a57f233c428a998a306bf2f4c77c23511994ae25b2f0eb8ee99ab88a100",
+    "category": "info-disclosure",
+    "url": "https://community.openproject.org/login",
+    "title": "Username Enumeration — login form (timing/status-based)",
+    "firstSeen": "2026-03-26T08:32:25.991Z"
+  }
+]

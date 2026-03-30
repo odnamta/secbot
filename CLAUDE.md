@@ -314,3 +314,51 @@ Note: Some checks share categories — content-type-confusion→csrf, method-ove
 
 ## Testing Target
 First scan target: `https://atmando-finance.vercel.app` (our own app)
+
+## Autonomous Operations
+
+### Hunt Registry
+- **File:** `hunt-registry.yaml` — YAML list of bounty programs for `secbot hunt`
+- **Scope files:** `scopes/<program>.txt` — HackerOne/Bugcrowd-format scope definitions
+- **Run:** `secbot hunt --registry hunt-registry.yaml`
+- **Current targets:** kredivo (RedStorm), anytask (Bugcrowd), moneybird (HackerOne), openproject (YesWeHack), calcom (HackerOne)
+- **Profile:** All targets use `stealth` to avoid WAF/rate limit triggers
+
+### Scheduled Remote Agents (Claude Code Triggers)
+Three remote agents run in Anthropic's cloud on cron schedules. They operate on the GitHub repo (not local machine) and create PRs or issues.
+
+| Agent | Schedule | What It Does |
+|-------|----------|--------------|
+| **Bounty Scout** | Every Monday 8am WIB | Researches new bounty programs, updates `hunt-registry.yaml` + `scopes/`, creates PR |
+| **Test Guardian** | Daily 6am WIB | Runs `npm test` + `npm run build`, emails dioatmando@gmail.com on failure, creates GitHub issue |
+| **Report Drafter** | Wed + Sat 8am WIB | Triages scan results, drafts bounty submissions in `bounty-pool/pending/`, updates `TRIAGE.md`, creates PR |
+
+Manage at: https://claude.ai/code/scheduled
+
+### Bounty Pool Workflow
+```
+SecBot scan → findings saved to ~/.secbot/results/
+  → Report Drafter triages (remote, Wed+Sat)
+  → Drafts land in bounty-pool/pending/ via PR
+  → Dio reviews + verifies in browser
+  → Moves to bounty-pool/submitted/ after platform submission
+  → Records outcome: secbot outcome <id> accepted|duplicate|informative
+  → Learning loop improves future scans
+```
+
+### Known FP Patterns (from real-world validation)
+- Third-party cookie flags (analytics, marketing, consent widgets) — not bounty-worthy
+- CORS on marketing CDN or static assets — not exploitable
+- Missing headers on marketing/landing pages — auto-rejected as informative
+- postMessage from chat widgets (Intercom, Drift, Zendesk) — by design, not a vuln
+- XSS in Cloudflare challenge tokens — not real XSS
+- GraphQL introspection on public/documented APIs — by design
+- DOM XSS where innerHTML sink exists but input is sanitized/URL-encoded — FP
+
+### Target Selection Criteria (for hunt registry)
+- Web apps with login, forms, dashboards, APIs (NOT marketing sites)
+- Smaller companies (50-500 employees, less competition)
+- Programs that allow automated scanning tools
+- Tech stacks: PHP/Laravel, Rails, Node.js, Next.js, Django
+- Indonesian/SEA programs are high priority (home advantage, low competition)
+- Must pay bounties (not just VDP), minimum $100+ for medium findings

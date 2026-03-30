@@ -1,0 +1,2174 @@
+{
+  "targetUrl": "https://community.openproject.org/",
+  "profile": "stealth",
+  "startedAt": "2026-03-22T12:38:03.985Z",
+  "completedAt": "2026-03-22T13:06:28.919Z",
+  "pagesScanned": 8,
+  "rawFindings": [
+    {
+      "id": "890e4fb0-c14d-4e31-9124-e6431eccabd9",
+      "category": "security-headers",
+      "severity": "info",
+      "confidence": "low",
+      "title": "Missing Permissions-Policy Header",
+      "description": "No Permissions-Policy header. Browser features like camera/microphone are not explicitly restricted.",
+      "url": "https://community.openproject.org/",
+      "evidence": "Header \"permissions-policy\" not present in response",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "max-age=0, private, must-revalidate",
+          "content-encoding": "gzip",
+          "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-1siEH0Lzkfyzd5oRenSz5g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+          "content-type": "text/html; charset=utf-8",
+          "date": "Sun, 22 Mar 2026 12:38:38 GMT",
+          "etag": "W/\"0dd17880c29598db9d1cdaf3a8aabd5d\"",
+          "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "a658b771-dc27-40b6-8a5f-04f4ba8d87a2",
+          "x-runtime": "0.111037",
+          "x-upstream": "aws-de-community"
+        }
+      },
+      "affectedUrls": [
+        "https://community.openproject.org/",
+        "https://community.openproject.org/login",
+        "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin",
+        "https://community.openproject.org/portfolios",
+        "https://community.openproject.org/projects",
+        "https://community.openproject.org/work_packages",
+        "https://community.openproject.org/gantt?query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D&name=all_open",
+        "https://community.openproject.org/calendars"
+      ],
+      "timestamp": "2026-03-22T12:39:54.739Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "max-age=0, private, must-revalidate",
+              "content-encoding": "gzip",
+              "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-1siEH0Lzkfyzd5oRenSz5g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+              "content-type": "text/html; charset=utf-8",
+              "date": "Sun, 22 Mar 2026 12:38:38 GMT",
+              "etag": "W/\"0dd17880c29598db9d1cdaf3a8aabd5d\"",
+              "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "server": "nginx",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff",
+              "x-download-options": "noopen",
+              "x-frame-options": "SAMEORIGIN",
+              "x-permitted-cross-domain-policies": "none",
+              "x-request-id": "a658b771-dc27-40b6-8a5f-04f4ba8d87a2",
+              "x-runtime": "0.111037",
+              "x-upstream": "aws-de-community"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://community.openproject.org/'",
+        "reproductionUrl": "https://community.openproject.org/",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "permissions-policy",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "275572ad-9511-45f1-8f55-dff8d8dcf943",
+      "category": "security-headers",
+      "severity": "info",
+      "confidence": "low",
+      "title": "CSP Allows Unsafe Inline Styles",
+      "description": "The Content-Security-Policy includes 'unsafe-inline' in style-src only. While this weakens style injection protections, it is common practice and has minimal XSS impact when script-src is properly restricted.",
+      "url": "https://community.openproject.org/",
+      "evidence": "CSP: default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-1siEH0Lzkfyzd5oRenSz5g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "max-age=0, private, must-revalidate",
+          "content-encoding": "gzip",
+          "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-1siEH0Lzkfyzd5oRenSz5g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+          "content-type": "text/html; charset=utf-8",
+          "date": "Sun, 22 Mar 2026 12:38:38 GMT",
+          "etag": "W/\"0dd17880c29598db9d1cdaf3a8aabd5d\"",
+          "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "a658b771-dc27-40b6-8a5f-04f4ba8d87a2",
+          "x-runtime": "0.111037",
+          "x-upstream": "aws-de-community"
+        }
+      },
+      "timestamp": "2026-03-22T12:39:54.739Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "max-age=0, private, must-revalidate",
+              "content-encoding": "gzip",
+              "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-1siEH0Lzkfyzd5oRenSz5g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+              "content-type": "text/html; charset=utf-8",
+              "date": "Sun, 22 Mar 2026 12:38:38 GMT",
+              "etag": "W/\"0dd17880c29598db9d1cdaf3a8aabd5d\"",
+              "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "server": "nginx",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff",
+              "x-download-options": "noopen",
+              "x-frame-options": "SAMEORIGIN",
+              "x-permitted-cross-domain-policies": "none",
+              "x-request-id": "a658b771-dc27-40b6-8a5f-04f4ba8d87a2",
+              "x-runtime": "0.111037",
+              "x-upstream": "aws-de-community"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://community.openproject.org/'",
+        "reproductionUrl": "https://community.openproject.org/",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "self",
+          "self",
+          "self",
+          "self",
+          "self",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "749181be-71f9-4730-8c6f-70582ba68478",
+      "category": "cross-origin-policy",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Missing Cross-Origin-Opener-Policy Header",
+      "description": "The Cross-Origin-Opener-Policy header is missing. This header isolates the browsing context, preventing cross-origin attacks like Spectre.",
+      "url": "https://community.openproject.org/",
+      "evidence": "Header \"cross-origin-opener-policy\" not present in response",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "max-age=0, private, must-revalidate",
+          "content-encoding": "gzip",
+          "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-1siEH0Lzkfyzd5oRenSz5g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+          "content-type": "text/html; charset=utf-8",
+          "date": "Sun, 22 Mar 2026 12:38:38 GMT",
+          "etag": "W/\"0dd17880c29598db9d1cdaf3a8aabd5d\"",
+          "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "a658b771-dc27-40b6-8a5f-04f4ba8d87a2",
+          "x-runtime": "0.111037",
+          "x-upstream": "aws-de-community"
+        }
+      },
+      "affectedUrls": [
+        "https://community.openproject.org/",
+        "https://community.openproject.org/login",
+        "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin",
+        "https://community.openproject.org/portfolios",
+        "https://community.openproject.org/projects",
+        "https://community.openproject.org/work_packages",
+        "https://community.openproject.org/gantt?query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D&name=all_open",
+        "https://community.openproject.org/calendars"
+      ],
+      "timestamp": "2026-03-22T12:39:54.739Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "max-age=0, private, must-revalidate",
+              "content-encoding": "gzip",
+              "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-1siEH0Lzkfyzd5oRenSz5g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+              "content-type": "text/html; charset=utf-8",
+              "date": "Sun, 22 Mar 2026 12:38:38 GMT",
+              "etag": "W/\"0dd17880c29598db9d1cdaf3a8aabd5d\"",
+              "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "server": "nginx",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff",
+              "x-download-options": "noopen",
+              "x-frame-options": "SAMEORIGIN",
+              "x-permitted-cross-domain-policies": "none",
+              "x-request-id": "a658b771-dc27-40b6-8a5f-04f4ba8d87a2",
+              "x-runtime": "0.111037",
+              "x-upstream": "aws-de-community"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://community.openproject.org/'",
+        "reproductionUrl": "https://community.openproject.org/",
+        "responseIndicators": [
+          "cross-origin-opener-policy",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "bd7d14c2-f5ce-45df-b835-a96df98cf5e9",
+      "category": "cross-origin-policy",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Missing Cross-Origin-Embedder-Policy Header",
+      "description": "The Cross-Origin-Embedder-Policy header is missing. This header ensures all cross-origin resources are loaded with CORS or CORP, enabling cross-origin isolation.",
+      "url": "https://community.openproject.org/",
+      "evidence": "Header \"cross-origin-embedder-policy\" not present in response",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "max-age=0, private, must-revalidate",
+          "content-encoding": "gzip",
+          "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-1siEH0Lzkfyzd5oRenSz5g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+          "content-type": "text/html; charset=utf-8",
+          "date": "Sun, 22 Mar 2026 12:38:38 GMT",
+          "etag": "W/\"0dd17880c29598db9d1cdaf3a8aabd5d\"",
+          "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "a658b771-dc27-40b6-8a5f-04f4ba8d87a2",
+          "x-runtime": "0.111037",
+          "x-upstream": "aws-de-community"
+        }
+      },
+      "affectedUrls": [
+        "https://community.openproject.org/",
+        "https://community.openproject.org/login",
+        "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin",
+        "https://community.openproject.org/portfolios",
+        "https://community.openproject.org/projects",
+        "https://community.openproject.org/work_packages",
+        "https://community.openproject.org/gantt?query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D&name=all_open",
+        "https://community.openproject.org/calendars"
+      ],
+      "timestamp": "2026-03-22T12:39:54.739Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "max-age=0, private, must-revalidate",
+              "content-encoding": "gzip",
+              "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-1siEH0Lzkfyzd5oRenSz5g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+              "content-type": "text/html; charset=utf-8",
+              "date": "Sun, 22 Mar 2026 12:38:38 GMT",
+              "etag": "W/\"0dd17880c29598db9d1cdaf3a8aabd5d\"",
+              "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "server": "nginx",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff",
+              "x-download-options": "noopen",
+              "x-frame-options": "SAMEORIGIN",
+              "x-permitted-cross-domain-policies": "none",
+              "x-request-id": "a658b771-dc27-40b6-8a5f-04f4ba8d87a2",
+              "x-runtime": "0.111037",
+              "x-upstream": "aws-de-community"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://community.openproject.org/'",
+        "reproductionUrl": "https://community.openproject.org/",
+        "responseIndicators": [
+          "cross-origin-embedder-policy",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "99ad9b11-21e8-4b4f-aee4-5200334ab6ab",
+      "category": "cross-origin-policy",
+      "severity": "low",
+      "confidence": "low",
+      "title": "Missing Cross-Origin-Resource-Policy Header",
+      "description": "The Cross-Origin-Resource-Policy header is missing. This header prevents other origins from loading this resource, mitigating side-channel attacks.",
+      "url": "https://community.openproject.org/",
+      "evidence": "Header \"cross-origin-resource-policy\" not present in response",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "max-age=0, private, must-revalidate",
+          "content-encoding": "gzip",
+          "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-1siEH0Lzkfyzd5oRenSz5g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+          "content-type": "text/html; charset=utf-8",
+          "date": "Sun, 22 Mar 2026 12:38:38 GMT",
+          "etag": "W/\"0dd17880c29598db9d1cdaf3a8aabd5d\"",
+          "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "a658b771-dc27-40b6-8a5f-04f4ba8d87a2",
+          "x-runtime": "0.111037",
+          "x-upstream": "aws-de-community"
+        }
+      },
+      "affectedUrls": [
+        "https://community.openproject.org/",
+        "https://community.openproject.org/login",
+        "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin",
+        "https://community.openproject.org/portfolios",
+        "https://community.openproject.org/projects",
+        "https://community.openproject.org/work_packages",
+        "https://community.openproject.org/gantt?query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D&name=all_open",
+        "https://community.openproject.org/calendars"
+      ],
+      "timestamp": "2026-03-22T12:39:54.739Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "max-age=0, private, must-revalidate",
+              "content-encoding": "gzip",
+              "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-1siEH0Lzkfyzd5oRenSz5g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+              "content-type": "text/html; charset=utf-8",
+              "date": "Sun, 22 Mar 2026 12:38:38 GMT",
+              "etag": "W/\"0dd17880c29598db9d1cdaf3a8aabd5d\"",
+              "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "server": "nginx",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff",
+              "x-download-options": "noopen",
+              "x-frame-options": "SAMEORIGIN",
+              "x-permitted-cross-domain-policies": "none",
+              "x-request-id": "a658b771-dc27-40b6-8a5f-04f4ba8d87a2",
+              "x-runtime": "0.111037",
+              "x-upstream": "aws-de-community"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://community.openproject.org/'",
+        "reproductionUrl": "https://community.openproject.org/",
+        "responseIndicators": [
+          "cross-origin-resource-policy",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "3becf5d7-aac5-4217-bcb7-8d2ccdc3ae2f",
+      "category": "security-headers",
+      "severity": "info",
+      "confidence": "low",
+      "title": "CSP Allows Unsafe Inline Styles",
+      "description": "The Content-Security-Policy includes 'unsafe-inline' in style-src only. While this weakens style injection protections, it is common practice and has minimal XSS impact when script-src is properly restricted.",
+      "url": "https://community.openproject.org/login",
+      "evidence": "CSP: default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-gOUoRfoK5hyCQJ4IQaP6/g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "max-age=0, private, must-revalidate",
+          "content-encoding": "gzip",
+          "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-gOUoRfoK5hyCQJ4IQaP6/g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+          "content-type": "text/html; charset=utf-8",
+          "date": "Sun, 22 Mar 2026 12:38:50 GMT",
+          "etag": "W/\"a76110aabcdf6fde6b151bd1e755e6f8\"",
+          "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "64268fcb-0be5-4441-9a15-27e267d6a4c7",
+          "x-runtime": "0.064021",
+          "x-upstream": "aws-de-community"
+        }
+      },
+      "timestamp": "2026-03-22T12:39:54.743Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/login"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "max-age=0, private, must-revalidate",
+              "content-encoding": "gzip",
+              "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-gOUoRfoK5hyCQJ4IQaP6/g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+              "content-type": "text/html; charset=utf-8",
+              "date": "Sun, 22 Mar 2026 12:38:50 GMT",
+              "etag": "W/\"a76110aabcdf6fde6b151bd1e755e6f8\"",
+              "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "server": "nginx",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff",
+              "x-download-options": "noopen",
+              "x-frame-options": "SAMEORIGIN",
+              "x-permitted-cross-domain-policies": "none",
+              "x-request-id": "64268fcb-0be5-4441-9a15-27e267d6a4c7",
+              "x-runtime": "0.064021",
+              "x-upstream": "aws-de-community"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://community.openproject.org/login'",
+        "reproductionUrl": "https://community.openproject.org/login",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "self",
+          "self",
+          "self",
+          "self",
+          "self",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "17cab365-51fe-46ad-8cb3-06cce2d93173",
+      "category": "security-headers",
+      "severity": "info",
+      "confidence": "low",
+      "title": "CSP Allows Unsafe Inline Styles",
+      "description": "The Content-Security-Policy includes 'unsafe-inline' in style-src only. While this weakens style injection protections, it is common practice and has minimal XSS impact when script-src is properly restricted.",
+      "url": "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin",
+      "evidence": "CSP: default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-glrEib3TA41BGGfl6NF+0g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "max-age=0, private, must-revalidate",
+          "content-encoding": "gzip",
+          "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-glrEib3TA41BGGfl6NF+0g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+          "content-type": "text/html; charset=utf-8",
+          "date": "Sun, 22 Mar 2026 12:38:58 GMT",
+          "etag": "W/\"72d082c3e5a7123c56f46ce63031cb7a\"",
+          "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "c485d51a-95f3-4fe8-a620-0330a45347b9",
+          "x-runtime": "0.078791",
+          "x-upstream": "aws-de-community"
+        }
+      },
+      "timestamp": "2026-03-22T12:39:54.744Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "max-age=0, private, must-revalidate",
+              "content-encoding": "gzip",
+              "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-glrEib3TA41BGGfl6NF+0g=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+              "content-type": "text/html; charset=utf-8",
+              "date": "Sun, 22 Mar 2026 12:38:58 GMT",
+              "etag": "W/\"72d082c3e5a7123c56f46ce63031cb7a\"",
+              "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "server": "nginx",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff",
+              "x-download-options": "noopen",
+              "x-frame-options": "SAMEORIGIN",
+              "x-permitted-cross-domain-policies": "none",
+              "x-request-id": "c485d51a-95f3-4fe8-a620-0330a45347b9",
+              "x-runtime": "0.078791",
+              "x-upstream": "aws-de-community"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin'",
+        "reproductionUrl": "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "self",
+          "self",
+          "self",
+          "self",
+          "self",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "9496ba1d-b21b-48d9-a477-e5c18dd13df3",
+      "category": "security-headers",
+      "severity": "info",
+      "confidence": "low",
+      "title": "CSP Allows Unsafe Inline Styles",
+      "description": "The Content-Security-Policy includes 'unsafe-inline' in style-src only. While this weakens style injection protections, it is common practice and has minimal XSS impact when script-src is properly restricted.",
+      "url": "https://community.openproject.org/portfolios",
+      "evidence": "CSP: default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-XwJPYcA9g3wFR37ulFVtfg=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "max-age=0, private, must-revalidate",
+          "content-encoding": "gzip",
+          "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-XwJPYcA9g3wFR37ulFVtfg=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+          "content-type": "text/html; charset=utf-8",
+          "date": "Sun, 22 Mar 2026 12:39:05 GMT",
+          "etag": "W/\"5f8efc85aa07143095bdb3b0bff38dc6\"",
+          "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "0608bc42-ab7b-4796-8bfc-e04eb3829281",
+          "x-runtime": "0.103278",
+          "x-upstream": "aws-de-community"
+        }
+      },
+      "timestamp": "2026-03-22T12:39:54.745Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/portfolios"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "max-age=0, private, must-revalidate",
+              "content-encoding": "gzip",
+              "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-XwJPYcA9g3wFR37ulFVtfg=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+              "content-type": "text/html; charset=utf-8",
+              "date": "Sun, 22 Mar 2026 12:39:05 GMT",
+              "etag": "W/\"5f8efc85aa07143095bdb3b0bff38dc6\"",
+              "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "server": "nginx",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff",
+              "x-download-options": "noopen",
+              "x-frame-options": "SAMEORIGIN",
+              "x-permitted-cross-domain-policies": "none",
+              "x-request-id": "0608bc42-ab7b-4796-8bfc-e04eb3829281",
+              "x-runtime": "0.103278",
+              "x-upstream": "aws-de-community"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://community.openproject.org/portfolios'",
+        "reproductionUrl": "https://community.openproject.org/portfolios",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "self",
+          "self",
+          "self",
+          "self",
+          "self",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "3621e8bf-895e-4c66-bdcc-076709a31116",
+      "category": "security-headers",
+      "severity": "info",
+      "confidence": "low",
+      "title": "CSP Allows Unsafe Inline Styles",
+      "description": "The Content-Security-Policy includes 'unsafe-inline' in style-src only. While this weakens style injection protections, it is common practice and has minimal XSS impact when script-src is properly restricted.",
+      "url": "https://community.openproject.org/projects",
+      "evidence": "CSP: default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-zID4+DhPlUETse+YoHTJpA=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "max-age=0, private, must-revalidate",
+          "content-encoding": "gzip",
+          "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-zID4+DhPlUETse+YoHTJpA=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+          "content-type": "text/html; charset=utf-8",
+          "date": "Sun, 22 Mar 2026 12:39:14 GMT",
+          "etag": "W/\"fa6ad6fa432a4e843cb8f6cc6e3faa86\"",
+          "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "52416346-9e21-460a-af9b-80e333ad1ee6",
+          "x-runtime": "0.281632",
+          "x-upstream": "aws-de-community"
+        }
+      },
+      "timestamp": "2026-03-22T12:39:54.745Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/projects"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "max-age=0, private, must-revalidate",
+              "content-encoding": "gzip",
+              "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-zID4+DhPlUETse+YoHTJpA=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+              "content-type": "text/html; charset=utf-8",
+              "date": "Sun, 22 Mar 2026 12:39:14 GMT",
+              "etag": "W/\"fa6ad6fa432a4e843cb8f6cc6e3faa86\"",
+              "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "server": "nginx",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff",
+              "x-download-options": "noopen",
+              "x-frame-options": "SAMEORIGIN",
+              "x-permitted-cross-domain-policies": "none",
+              "x-request-id": "52416346-9e21-460a-af9b-80e333ad1ee6",
+              "x-runtime": "0.281632",
+              "x-upstream": "aws-de-community"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://community.openproject.org/projects'",
+        "reproductionUrl": "https://community.openproject.org/projects",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "self",
+          "self",
+          "self",
+          "self",
+          "self",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "c08a9bf6-c806-422c-8aee-197e062b0f37",
+      "category": "security-headers",
+      "severity": "info",
+      "confidence": "low",
+      "title": "CSP Allows Unsafe Inline Styles",
+      "description": "The Content-Security-Policy includes 'unsafe-inline' in style-src only. While this weakens style injection protections, it is common practice and has minimal XSS impact when script-src is properly restricted.",
+      "url": "https://community.openproject.org/work_packages",
+      "evidence": "CSP: default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-RO/R3i421Zmfu2vkkWc+Rg=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "max-age=0, private, must-revalidate",
+          "content-encoding": "gzip",
+          "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-RO/R3i421Zmfu2vkkWc+Rg=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+          "content-type": "text/html; charset=utf-8",
+          "date": "Sun, 22 Mar 2026 12:39:23 GMT",
+          "etag": "W/\"04a43805b0bd23faf7385835af175e97\"",
+          "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "2bbe29f5-8ece-4753-aaaa-e365b7a7937d",
+          "x-runtime": "0.284386",
+          "x-upstream": "aws-de-community"
+        }
+      },
+      "timestamp": "2026-03-22T12:39:54.746Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/work_packages"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "max-age=0, private, must-revalidate",
+              "content-encoding": "gzip",
+              "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-RO/R3i421Zmfu2vkkWc+Rg=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+              "content-type": "text/html; charset=utf-8",
+              "date": "Sun, 22 Mar 2026 12:39:23 GMT",
+              "etag": "W/\"04a43805b0bd23faf7385835af175e97\"",
+              "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "server": "nginx",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff",
+              "x-download-options": "noopen",
+              "x-frame-options": "SAMEORIGIN",
+              "x-permitted-cross-domain-policies": "none",
+              "x-request-id": "2bbe29f5-8ece-4753-aaaa-e365b7a7937d",
+              "x-runtime": "0.284386",
+              "x-upstream": "aws-de-community"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://community.openproject.org/work_packages'",
+        "reproductionUrl": "https://community.openproject.org/work_packages",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "self",
+          "self",
+          "self",
+          "self",
+          "self",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "6351ba66-7bb5-4dca-ab9e-159b1560c624",
+      "category": "security-headers",
+      "severity": "info",
+      "confidence": "low",
+      "title": "CSP Allows Unsafe Inline Styles",
+      "description": "The Content-Security-Policy includes 'unsafe-inline' in style-src only. While this weakens style injection protections, it is common practice and has minimal XSS impact when script-src is properly restricted.",
+      "url": "https://community.openproject.org/gantt?query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D&name=all_open",
+      "evidence": "CSP: default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-fDbU2dmM5tKSSUqUPUizPA=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "max-age=0, private, must-revalidate",
+          "content-encoding": "gzip",
+          "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-fDbU2dmM5tKSSUqUPUizPA=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+          "content-type": "text/html; charset=utf-8",
+          "date": "Sun, 22 Mar 2026 12:39:34 GMT",
+          "etag": "W/\"bf1730bdad4783457eee4c7481441cc1\"",
+          "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "a5370152-c15f-4326-a01c-4a5ba5afa052",
+          "x-runtime": "0.092660",
+          "x-upstream": "aws-de-community"
+        }
+      },
+      "timestamp": "2026-03-22T12:39:54.747Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/gantt?query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D&name=all_open"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "max-age=0, private, must-revalidate",
+              "content-encoding": "gzip",
+              "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-fDbU2dmM5tKSSUqUPUizPA=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+              "content-type": "text/html; charset=utf-8",
+              "date": "Sun, 22 Mar 2026 12:39:34 GMT",
+              "etag": "W/\"bf1730bdad4783457eee4c7481441cc1\"",
+              "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "server": "nginx",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff",
+              "x-download-options": "noopen",
+              "x-frame-options": "SAMEORIGIN",
+              "x-permitted-cross-domain-policies": "none",
+              "x-request-id": "a5370152-c15f-4326-a01c-4a5ba5afa052",
+              "x-runtime": "0.092660",
+              "x-upstream": "aws-de-community"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://community.openproject.org/gantt?query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D&name=all_open'",
+        "reproductionUrl": "https://community.openproject.org/gantt?query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D&name=all_open",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "self",
+          "self",
+          "self",
+          "self",
+          "self",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "8b1d2210-9977-45db-9b41-505cb7d66bb6",
+      "category": "security-headers",
+      "severity": "info",
+      "confidence": "low",
+      "title": "CSP Allows Unsafe Inline Styles",
+      "description": "The Content-Security-Policy includes 'unsafe-inline' in style-src only. While this weakens style injection protections, it is common practice and has minimal XSS impact when script-src is properly restricted.",
+      "url": "https://community.openproject.org/calendars",
+      "evidence": "CSP: default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-ZMbuBdednT1lYJ3sFWzEZw=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+      "response": {
+        "status": 200,
+        "headers": {
+          "cache-control": "max-age=0, private, must-revalidate",
+          "content-encoding": "gzip",
+          "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-ZMbuBdednT1lYJ3sFWzEZw=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+          "content-type": "text/html; charset=utf-8",
+          "date": "Sun, 22 Mar 2026 12:39:46 GMT",
+          "etag": "W/\"ca7c75c4454ea261fd36e533fc7658bb\"",
+          "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+          "referrer-policy": "strict-origin-when-cross-origin",
+          "server": "nginx",
+          "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+          "vary": "Accept-Encoding",
+          "x-content-type-options": "nosniff",
+          "x-download-options": "noopen",
+          "x-frame-options": "SAMEORIGIN",
+          "x-permitted-cross-domain-policies": "none",
+          "x-request-id": "8389ce4c-78c2-4121-8984-ea60a941ad5a",
+          "x-runtime": "0.202848",
+          "x-upstream": "aws-de-community"
+        }
+      },
+      "timestamp": "2026-03-22T12:39:54.747Z",
+      "evidencePack": {
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/calendars"
+          },
+          "response": {
+            "status": 200,
+            "headers": {
+              "cache-control": "max-age=0, private, must-revalidate",
+              "content-encoding": "gzip",
+              "content-security-policy": "default-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; base-uri 'self'; font-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com data: 'self'; form-action 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; frame-src https://*.chargebee.com 'self'; frame-ancestors 'self'; img-src * data: blob:; script-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com js.chargebee.com 'nonce-ZMbuBdednT1lYJ3sFWzEZw=='; script-src-attr 'none'; style-src 'self' cdn.aws-de-community.openproject.com https://*.chargebee.com 'unsafe-inline'; object-src https://releases.openproject.com/v1/check.svg; media-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com cdn.aws-de-community.openproject.com https://openproject-docs.s3.eu-central-1.amazonaws.com; connect-src 'self' saas-openproject-aws-de-community-20241119075553009700000002.s3.amazonaws.com saas-openproject-aws-de-community-20241119075553009700000002.s3.eu-central-1.amazonaws.com https://*.chargebee.com https://start.openproject.com cdn.aws-de-community.openproject.com saas-openproject-aws-de-community-20241119075553009700000002.s3-eu-central-1.amazonaws.com wss://aws-de-community.openproject.com",
+              "content-type": "text/html; charset=utf-8",
+              "date": "Sun, 22 Mar 2026 12:39:46 GMT",
+              "etag": "W/\"ca7c75c4454ea261fd36e533fc7658bb\"",
+              "link": "<https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js>; rel=preload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js>; rel=modulepreload; as=script; nopush,<https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css>; rel=preload; as=style; nopush,</highlighting/styles/844fb9414cabb94f9be88f8ac97b0725a0dbeaea068e129b3d43cc87a32f75a0.css>; rel=preload; as=style; nopush,<https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js>; rel=preload; as=script; nopush",
+              "referrer-policy": "strict-origin-when-cross-origin",
+              "server": "nginx",
+              "strict-transport-security": "max-age=63072000; includeSubDomains; preload",
+              "vary": "Accept-Encoding",
+              "x-content-type-options": "nosniff",
+              "x-download-options": "noopen",
+              "x-frame-options": "SAMEORIGIN",
+              "x-permitted-cross-domain-policies": "none",
+              "x-request-id": "8389ce4c-78c2-4121-8984-ea60a941ad5a",
+              "x-runtime": "0.202848",
+              "x-upstream": "aws-de-community"
+            }
+          }
+        },
+        "curlCommand": "curl -sI \\\n  'https://community.openproject.org/calendars'",
+        "reproductionUrl": "https://community.openproject.org/calendars",
+        "detectionMethod": "header-absence",
+        "responseIndicators": [
+          "self",
+          "self",
+          "self",
+          "self",
+          "self",
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "5d073629-e265-497a-beba-2d198a6a0589",
+      "category": "sri",
+      "severity": "medium",
+      "title": "Missing Subresource Integrity (SRI)",
+      "description": "Found 5 external resource(s) without integrity attributes on https://community.openproject.org/. Without SRI, if the CDN or external host is compromised, an attacker can inject malicious code that the browser will execute without verification. Add integrity=\"sha384-...\" and crossorigin=\"anonymous\" attributes to all external script and stylesheet tags.",
+      "url": "https://community.openproject.org/",
+      "evidence": "External resources without SRI:\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js\n<script> https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js\n<link> https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css",
+      "timestamp": "2026-03-22T12:40:12.869Z",
+      "affectedUrls": [
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js",
+        "https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css"
+      ],
+      "confidence": "medium",
+      "evidencePack": {
+        "detectionMethod": "integrity-check",
+        "curlCommand": "curl -s -i -L \\\n  'https://community.openproject.org/'",
+        "reproductionUrl": "https://community.openproject.org/"
+      }
+    },
+    {
+      "id": "3dead06f-2864-4a0c-a7ee-838bcafc3eb4",
+      "category": "sri",
+      "severity": "medium",
+      "title": "Missing Subresource Integrity (SRI)",
+      "description": "Found 5 external resource(s) without integrity attributes on https://community.openproject.org/login. Without SRI, if the CDN or external host is compromised, an attacker can inject malicious code that the browser will execute without verification. Add integrity=\"sha384-...\" and crossorigin=\"anonymous\" attributes to all external script and stylesheet tags.",
+      "url": "https://community.openproject.org/login",
+      "evidence": "External resources without SRI:\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js\n<script> https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js\n<link> https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css",
+      "timestamp": "2026-03-22T12:40:26.734Z",
+      "affectedUrls": [
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js",
+        "https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css"
+      ],
+      "confidence": "medium",
+      "evidencePack": {
+        "detectionMethod": "integrity-check",
+        "curlCommand": "curl -s -i -L \\\n  'https://community.openproject.org/login'",
+        "reproductionUrl": "https://community.openproject.org/login"
+      }
+    },
+    {
+      "id": "95502e84-3f2a-4a69-8991-6e6a82fa5e3c",
+      "category": "sri",
+      "severity": "medium",
+      "title": "Missing Subresource Integrity (SRI)",
+      "description": "Found 5 external resource(s) without integrity attributes on https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin. Without SRI, if the CDN or external host is compromised, an attacker can inject malicious code that the browser will execute without verification. Add integrity=\"sha384-...\" and crossorigin=\"anonymous\" attributes to all external script and stylesheet tags.",
+      "url": "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin",
+      "evidence": "External resources without SRI:\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js\n<script> https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js\n<link> https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css",
+      "timestamp": "2026-03-22T12:40:34.916Z",
+      "affectedUrls": [
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js",
+        "https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css"
+      ],
+      "confidence": "medium",
+      "evidencePack": {
+        "detectionMethod": "integrity-check",
+        "curlCommand": "curl -s -i -L \\\n  'https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin'",
+        "reproductionUrl": "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin"
+      }
+    },
+    {
+      "id": "2ba04c09-70e4-412a-b104-c78bd9edb8e1",
+      "category": "sri",
+      "severity": "medium",
+      "title": "Missing Subresource Integrity (SRI)",
+      "description": "Found 5 external resource(s) without integrity attributes on https://community.openproject.org/portfolios. Without SRI, if the CDN or external host is compromised, an attacker can inject malicious code that the browser will execute without verification. Add integrity=\"sha384-...\" and crossorigin=\"anonymous\" attributes to all external script and stylesheet tags.",
+      "url": "https://community.openproject.org/portfolios",
+      "evidence": "External resources without SRI:\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js\n<script> https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js\n<link> https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css",
+      "timestamp": "2026-03-22T12:40:46.776Z",
+      "affectedUrls": [
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js",
+        "https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css"
+      ],
+      "confidence": "medium",
+      "evidencePack": {
+        "detectionMethod": "integrity-check",
+        "curlCommand": "curl -s -i -L \\\n  'https://community.openproject.org/portfolios'",
+        "reproductionUrl": "https://community.openproject.org/portfolios"
+      }
+    },
+    {
+      "id": "8ffb2bd4-08bb-4b2e-8ef0-edfcff142833",
+      "category": "sri",
+      "severity": "medium",
+      "title": "Missing Subresource Integrity (SRI)",
+      "description": "Found 5 external resource(s) without integrity attributes on https://community.openproject.org/projects. Without SRI, if the CDN or external host is compromised, an attacker can inject malicious code that the browser will execute without verification. Add integrity=\"sha384-...\" and crossorigin=\"anonymous\" attributes to all external script and stylesheet tags.",
+      "url": "https://community.openproject.org/projects",
+      "evidence": "External resources without SRI:\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js\n<script> https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js\n<link> https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css",
+      "timestamp": "2026-03-22T12:40:54.283Z",
+      "affectedUrls": [
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js",
+        "https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css"
+      ],
+      "confidence": "medium",
+      "evidencePack": {
+        "detectionMethod": "integrity-check",
+        "curlCommand": "curl -s -i -L \\\n  'https://community.openproject.org/projects'",
+        "reproductionUrl": "https://community.openproject.org/projects"
+      }
+    },
+    {
+      "id": "2fcfc45d-5d5e-4f47-9b4a-c05f13897fdd",
+      "category": "sri",
+      "severity": "medium",
+      "title": "Missing Subresource Integrity (SRI)",
+      "description": "Found 5 external resource(s) without integrity attributes on https://community.openproject.org/work_packages. Without SRI, if the CDN or external host is compromised, an attacker can inject malicious code that the browser will execute without verification. Add integrity=\"sha384-...\" and crossorigin=\"anonymous\" attributes to all external script and stylesheet tags.",
+      "url": "https://community.openproject.org/work_packages",
+      "evidence": "External resources without SRI:\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js\n<script> https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js\n<link> https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css",
+      "timestamp": "2026-03-22T12:41:02.453Z",
+      "affectedUrls": [
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js",
+        "https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css"
+      ],
+      "confidence": "medium",
+      "evidencePack": {
+        "detectionMethod": "integrity-check",
+        "curlCommand": "curl -s -i -L \\\n  'https://community.openproject.org/work_packages'",
+        "reproductionUrl": "https://community.openproject.org/work_packages"
+      }
+    },
+    {
+      "id": "767c0346-422b-4d9d-a450-5b7ae6782cd2",
+      "category": "sri",
+      "severity": "medium",
+      "title": "Missing Subresource Integrity (SRI)",
+      "description": "Found 5 external resource(s) without integrity attributes on https://community.openproject.org/gantt?query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D&name=all_open. Without SRI, if the CDN or external host is compromised, an attacker can inject malicious code that the browser will execute without verification. Add integrity=\"sha384-...\" and crossorigin=\"anonymous\" attributes to all external script and stylesheet tags.",
+      "url": "https://community.openproject.org/gantt?query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D&name=all_open",
+      "evidence": "External resources without SRI:\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js\n<script> https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js\n<link> https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css",
+      "timestamp": "2026-03-22T12:41:09.308Z",
+      "affectedUrls": [
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js",
+        "https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css"
+      ],
+      "confidence": "medium",
+      "evidencePack": {
+        "detectionMethod": "integrity-check",
+        "curlCommand": "curl -s -i -L \\\n  'https://community.openproject.org/gantt?query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D&name=all_open'",
+        "reproductionUrl": "https://community.openproject.org/gantt?query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D&name=all_open"
+      }
+    },
+    {
+      "id": "fa29ca1a-1360-4eb2-8f1d-f95655080482",
+      "category": "sri",
+      "severity": "medium",
+      "title": "Missing Subresource Integrity (SRI)",
+      "description": "Found 5 external resource(s) without integrity attributes on https://community.openproject.org/calendars. Without SRI, if the CDN or external host is compromised, an attacker can inject malicious code that the browser will execute without verification. Add integrity=\"sha384-...\" and crossorigin=\"anonymous\" attributes to all external script and stylesheet tags.",
+      "url": "https://community.openproject.org/calendars",
+      "evidence": "External resources without SRI:\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js\n<script> https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js\n<script> https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js\n<link> https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css",
+      "timestamp": "2026-03-22T12:41:15.379Z",
+      "affectedUrls": [
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/polyfills-2A2EJ5YK.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/main-YDS5LJXW.js",
+        "https://cdn.aws-de-community.openproject.com/assets/multitenancy/settings-a842672bb70962aad5426026c736d9ddc4e6c23fa077396a1aba7a6c99740f97.js",
+        "https://cdn.aws-de-community.openproject.com/assets/frontend/styles-HGPCG7H4.css"
+      ],
+      "confidence": "medium",
+      "evidencePack": {
+        "detectionMethod": "integrity-check",
+        "curlCommand": "curl -s -i -L \\\n  'https://community.openproject.org/calendars'",
+        "reproductionUrl": "https://community.openproject.org/calendars"
+      }
+    },
+    {
+      "id": "bb9a5786-01ce-4ccc-a6fa-4435b6d369f6",
+      "category": "rate-limit",
+      "severity": "medium",
+      "title": "Missing Rate Limiting on Authentication Endpoint",
+      "description": "The authentication endpoint at /login does not enforce rate limiting. An attacker can perform brute-force password attacks, credential stuffing, or account enumeration without being throttled.",
+      "url": "https://community.openproject.org/login",
+      "evidence": "Sent 15 rapid requests — all returned HTTP 200 with no rate-limit headers (X-RateLimit-*, Retry-After, etc.) and no 429 response.",
+      "request": {
+        "method": "GET",
+        "url": "https://community.openproject.org/login"
+      },
+      "response": {
+        "status": 200
+      },
+      "timestamp": "2026-03-22T12:40:02.110Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "brute-force-probe",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/login"
+          },
+          "response": {
+            "status": 200
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://community.openproject.org/login'",
+        "reproductionUrl": "https://community.openproject.org/login",
+        "responseIndicators": [
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "a9405057-5f16-4a04-9291-434dc7ef8774",
+      "category": "rate-limit",
+      "severity": "medium",
+      "title": "Missing Rate Limiting on Authentication Endpoint",
+      "description": "The authentication endpoint at /login does not enforce rate limiting. An attacker can perform brute-force password attacks, credential stuffing, or account enumeration without being throttled.",
+      "url": "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin",
+      "evidence": "Sent 15 rapid requests — all returned HTTP 200 with no rate-limit headers (X-RateLimit-*, Retry-After, etc.) and no 429 response.",
+      "request": {
+        "method": "GET",
+        "url": "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin"
+      },
+      "response": {
+        "status": 200
+      },
+      "timestamp": "2026-03-22T12:40:08.484Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "brute-force-probe",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin"
+          },
+          "response": {
+            "status": 200
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin'",
+        "reproductionUrl": "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin",
+        "responseIndicators": [
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "ed0b5d35-b121-4e79-affe-e834a4e26454",
+      "category": "rate-limit",
+      "severity": "low",
+      "title": "Missing Rate Limiting on API Endpoint",
+      "description": "The API endpoint at /api/v3/attachments/120892/content does not enforce rate limiting. This may allow abuse, scraping, or resource exhaustion attacks.",
+      "url": "https://community.openproject.org/api/v3/attachments/120892/content",
+      "evidence": "Sent 15 rapid requests — all returned HTTP 200 with no rate-limit headers (X-RateLimit-*, Retry-After, etc.) and no 429 response.",
+      "request": {
+        "method": "GET",
+        "url": "https://community.openproject.org/api/v3/attachments/120892/content"
+      },
+      "response": {
+        "status": 200
+      },
+      "timestamp": "2026-03-22T12:40:22.209Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "brute-force-probe",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/api/v3/attachments/120892/content"
+          },
+          "response": {
+            "status": 200
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://community.openproject.org/api/v3/attachments/120892/content'",
+        "reproductionUrl": "https://community.openproject.org/api/v3/attachments/120892/content",
+        "responseIndicators": [
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "bf795b32-62bd-44fc-942c-e1058365bff2",
+      "category": "rate-limit",
+      "severity": "low",
+      "title": "Missing Rate Limiting on API Endpoint",
+      "description": "The API endpoint at /api/v3/configuration does not enforce rate limiting. This may allow abuse, scraping, or resource exhaustion attacks.",
+      "url": "https://community.openproject.org/api/v3/configuration",
+      "evidence": "Sent 15 rapid requests — all returned HTTP 200 with no rate-limit headers (X-RateLimit-*, Retry-After, etc.) and no 429 response.",
+      "request": {
+        "method": "GET",
+        "url": "https://community.openproject.org/api/v3/configuration"
+      },
+      "response": {
+        "status": 200
+      },
+      "timestamp": "2026-03-22T12:40:27.850Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "brute-force-probe",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/api/v3/configuration"
+          },
+          "response": {
+            "status": 200
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://community.openproject.org/api/v3/configuration'",
+        "reproductionUrl": "https://community.openproject.org/api/v3/configuration",
+        "responseIndicators": [
+          "HTTP 200"
+        ]
+      }
+    },
+    {
+      "id": "29f7ef3e-99d1-42d6-a4d7-dd0056548cc5",
+      "category": "rate-limit",
+      "severity": "low",
+      "title": "Missing Rate Limiting on API Endpoint",
+      "description": "The API endpoint at /api/v3/time_entries does not enforce rate limiting. This may allow abuse, scraping, or resource exhaustion attacks.",
+      "url": "https://community.openproject.org/api/v3/time_entries",
+      "evidence": "Sent 15 rapid requests — all returned HTTP 200 with no rate-limit headers (X-RateLimit-*, Retry-After, etc.) and no 429 response.",
+      "request": {
+        "method": "GET",
+        "url": "https://community.openproject.org/api/v3/time_entries"
+      },
+      "response": {
+        "status": 200
+      },
+      "timestamp": "2026-03-22T12:40:34.267Z",
+      "confidence": "high",
+      "evidencePack": {
+        "detectionMethod": "brute-force-probe",
+        "httpExchange": {
+          "request": {
+            "method": "GET",
+            "url": "https://community.openproject.org/api/v3/time_entries"
+          },
+          "response": {
+            "status": 200
+          }
+        },
+        "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://community.openproject.org/api/v3/time_entries'",
+        "reproductionUrl": "https://community.openproject.org/api/v3/time_entries",
+        "responseIndicators": [
+          "HTTP 200"
+        ]
+      }
+    }
+  ],
+  "interpretedFindings": [
+    {
+      "title": "Missing Rate Limiting on Authentication and API Endpoints",
+      "severity": "medium",
+      "confidence": "medium",
+      "owaspCategory": "A07:2021 - Identification and Authentication Failures",
+      "description": "Neither the login endpoint (/login) nor the API endpoint (/api/v3/attachments/...) enforce rate limiting. 15 rapid requests to each returned HTTP 200 with no rate-limit headers (X-RateLimit-*, Retry-After) and no 429 responses. The login endpoint is the higher-risk case, as it enables brute-force and credential stuffing attacks. The API endpoint risk is lower but could allow scraping or resource exhaustion.",
+      "impact": "An attacker can make unlimited login attempts to brute-force passwords or perform credential stuffing against user accounts. The unprotected API endpoint may allow bulk data scraping or contribute to server resource exhaustion.",
+      "reproductionSteps": [
+        "Send 15+ rapid POST requests to https://community.openproject.org/login with varying passwords for a known username.",
+        "Observe that all requests return HTTP 200 (or appropriate auth failure) with no 429 response and no rate-limit headers.",
+        "Repeat with GET requests to https://community.openproject.org/api/v3/attachments/120892/content and observe the same lack of throttling."
+      ],
+      "suggestedFix": "Implement rate limiting at the application or reverse-proxy level. For the login endpoint, enforce a strict limit (e.g., 5–10 attempts per IP per minute) with exponential backoff or CAPTCHA after repeated failures. For API endpoints, apply a broader limit (e.g., 60–100 req/min per IP or API key). Use Rack::Attack (Rails), express-rate-limit (Node), or configure limits in nginx/Cloudflare. Return standard 429 responses with Retry-After headers.",
+      "codeExample": "# Example using Rack::Attack (Ruby/Rails)\nRack::Attack.throttle('login/ip', limit: 5, period: 60) do |req|\n  req.ip if req.path == '/login' && req.post?\nend\n\nRack::Attack.throttle('api/ip', limit: 100, period: 60) do |req|\n  req.ip if req.path.start_with?('/api/')\nend\n\nRack::Attack.throttled_responder = lambda do |req|\n  [429, { 'Content-Type' => 'application/json', 'Retry-After' => '60' },\n   [{ error: 'Too many requests. Please try again later.' }.to_json]]\nend",
+      "affectedUrls": [
+        "https://community.openproject.org/login",
+        "https://community.openproject.org/api/v3/attachments/120892/content"
+      ],
+      "rawFindingIds": [
+        "bb9a5786-01ce-4ccc-a6fa-4435b6d369f6",
+        "ed0b5d35-b121-4e79-affe-e834a4e26454"
+      ],
+      "curlCommand": "curl \\\n  -L \\\n  -i \\\n  'https://community.openproject.org/login'",
+      "detectionMethod": "brute-force-probe",
+      "cvssScore": 5.3,
+      "cvssVector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"
+    },
+    {
+      "title": "Missing Subresource Integrity (SRI) on External Scripts",
+      "severity": "medium",
+      "confidence": "high",
+      "owaspCategory": "A08:2021 - Software and Data Integrity Failures",
+      "description": "At least 5 external resources (scripts and likely stylesheets) loaded from cdn.aws-de-community.openproject.com lack integrity attributes. Without SRI, the browser cannot verify that the fetched resource has not been tampered with. If the CDN is compromised or subject to a supply-chain attack, malicious code would execute in users' browsers with full page privileges.",
+      "impact": "A compromised CDN or man-in-the-middle attacker could inject arbitrary JavaScript that executes in the context of the application, potentially stealing session tokens, credentials, or performing actions on behalf of authenticated users.",
+      "reproductionSteps": [
+        "Navigate to https://community.openproject.org/ and view page source.",
+        "Locate script tags referencing https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js and similar resources.",
+        "Confirm that none of these tags include an integrity=\"sha384-...\" attribute."
+      ],
+      "suggestedFix": "Generate SRI hashes for each external resource and add integrity and crossorigin attributes to the corresponding HTML tags. Since these assets appear to be self-hosted on your own CDN (cdn.aws-de-community.openproject.com), you have full control over the files and can generate hashes at build/deploy time. Automate hash generation in your CI/CD pipeline so hashes are updated whenever assets change.",
+      "codeExample": "<!-- Generate hash: openssl dgst -sha384 -binary jquery.js | openssl base64 -A -->\n<!-- Then add to your template: -->\n<script\n  src=\"https://cdn.aws-de-community.openproject.com/assets/frontend/jquery.js\"\n  integrity=\"sha384-<generated-hash-here>\"\n  crossorigin=\"anonymous\">\n</script>\n\n<!-- For Angular build pipeline, use a post-build script: -->\n# generate-sri.sh\nfor file in dist/assets/*.js dist/assets/*.css; do\n  hash=$(openssl dgst -sha384 -binary \"$file\" | openssl base64 -A)\n  echo \"$file: sha384-$hash\"\ndone\n\n<!-- Or use the sri-hash webpack plugin / angular-sri-hash package -->",
+      "affectedUrls": [
+        "https://community.openproject.org/"
+      ],
+      "rawFindingIds": [
+        "5d073629-e265-497a-beba-2d198a6a0589"
+      ],
+      "curlCommand": "curl -s -i -L \\\n  'https://community.openproject.org/'",
+      "detectionMethod": "integrity-check",
+      "cvssScore": 4.2,
+      "cvssVector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:R/S:U/C:L/I:L/A:N"
+    }
+  ],
+  "summary": {
+    "totalRawFindings": 3,
+    "totalInterpretedFindings": 2,
+    "bySeverity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 2,
+      "low": 0,
+      "info": 0
+    },
+    "topIssues": [
+      "Add rate limiting to the /login endpoint to prevent brute-force and credential stuffing attacks — this is the highest-priority fix given direct account takeover risk.",
+      "Add SRI integrity attributes to all externally loaded scripts and stylesheets to protect against CDN supply-chain compromise.",
+      "Extend rate limiting to sensitive API endpoints to prevent scraping and resource exhaustion."
+    ],
+    "passedChecks": [
+      "cookie-flags",
+      "info-leakage",
+      "mixed-content",
+      "sensitive-url-data",
+      "xss",
+      "sqli",
+      "cors",
+      "redirect",
+      "ssrf",
+      "ssti",
+      "cmdi",
+      "idor",
+      "tls",
+      "info-disclosure",
+      "js-cve",
+      "crlf",
+      "jwt",
+      "race",
+      "graphql",
+      "host-header",
+      "api-version",
+      "file-upload",
+      "business-logic",
+      "websocket",
+      "access-control",
+      "subdomain-takeover",
+      "oauth",
+      "cache-poisoning",
+      "csrf",
+      "prototype-pollution",
+      "xxe",
+      "insecure-deserialization",
+      "request-smuggling",
+      "ldap-injection",
+      "user-enum",
+      "mass-assignment",
+      "content-type-confusion",
+      "method-override",
+      "email-injection",
+      "bfla",
+      "clickjacking",
+      "timing-attack",
+      "verbose-errors",
+      "xpath-injection"
+    ]
+  },
+  "recon": {
+    "techStack": {
+      "server": "nginx",
+      "languages": [],
+      "detected": [
+        "Server: nginx"
+      ]
+    },
+    "waf": {
+      "detected": false,
+      "confidence": "medium",
+      "evidence": []
+    },
+    "framework": {
+      "name": "Angular",
+      "version": "21.1.5",
+      "confidence": "high",
+      "evidence": [
+        "Crawl framework detection: angular v21.1.5"
+      ]
+    },
+    "endpoints": {
+      "pages": [
+        "https://community.openproject.org/",
+        "https://community.openproject.org/login",
+        "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin",
+        "https://community.openproject.org/portfolios",
+        "https://community.openproject.org/projects",
+        "https://community.openproject.org/work_packages",
+        "https://community.openproject.org/gantt?query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D&name=all_open",
+        "https://community.openproject.org/calendars"
+      ],
+      "apiRoutes": [
+        "https://www.openproject.org/docs/api/?go_to_locale=en"
+      ],
+      "forms": [
+        {
+          "action": "https://community.openproject.org/login",
+          "method": "POST",
+          "inputs": [
+            {
+              "name": "authenticity_token",
+              "type": "hidden",
+              "value": "ZHAUdBUi8GXJACxodnqIiKG7kUEJsLbZAwWLcJ3ouzEdKaHhWk7uPmFXxfQbumwLU473Bfot6tUfQs_dRxs0vg"
+            },
+            {
+              "name": "back_url",
+              "type": "hidden",
+              "value": "https://community.openproject.org/"
+            },
+            {
+              "name": "username",
+              "type": "text",
+              "value": ""
+            },
+            {
+              "name": "password",
+              "type": "password",
+              "value": ""
+            },
+            {
+              "name": "autologin",
+              "type": "hidden",
+              "value": "0"
+            },
+            {
+              "name": "autologin",
+              "type": "checkbox",
+              "value": "1"
+            }
+          ],
+          "pageUrl": "https://community.openproject.org/"
+        },
+        {
+          "action": "https://community.openproject.org/login",
+          "method": "POST",
+          "inputs": [
+            {
+              "name": "authenticity_token",
+              "type": "hidden",
+              "value": "AvDJab9yerXhrIropLDO_DGUZZTZvWLMorT3twEr-t97qXz88B5k7kn7Y3TJcCp_w6ED0CogPsC-87Ma29h1UA"
+            },
+            {
+              "name": "back_url",
+              "type": "hidden",
+              "value": "https://community.openproject.org/login"
+            },
+            {
+              "name": "username",
+              "type": "text",
+              "value": ""
+            },
+            {
+              "name": "password",
+              "type": "password",
+              "value": ""
+            },
+            {
+              "name": "autologin",
+              "type": "hidden",
+              "value": "0"
+            },
+            {
+              "name": "autologin",
+              "type": "checkbox",
+              "value": "1"
+            }
+          ],
+          "pageUrl": "https://community.openproject.org/login"
+        },
+        {
+          "action": "https://community.openproject.org/login",
+          "method": "POST",
+          "inputs": [
+            {
+              "name": "authenticity_token",
+              "type": "hidden",
+              "value": "J5zyySnVmKRFNA5MKYn8UEbemLFN59VnejyrwS0_padexUdcZrmG_-1j59BESRjTtOv-9b56iWtme-9s98wqKA"
+            },
+            {
+              "name": "back_url",
+              "type": "hidden",
+              "value": "https://community.openproject.org/login"
+            },
+            {
+              "name": "username",
+              "type": "text",
+              "value": ""
+            },
+            {
+              "name": "password",
+              "type": "password",
+              "value": ""
+            },
+            {
+              "name": "autologin",
+              "type": "hidden",
+              "value": "0"
+            },
+            {
+              "name": "autologin",
+              "type": "checkbox",
+              "value": "1"
+            }
+          ],
+          "pageUrl": "https://community.openproject.org/login"
+        },
+        {
+          "action": "https://community.openproject.org/login",
+          "method": "POST",
+          "inputs": [
+            {
+              "name": "authenticity_token",
+              "type": "hidden",
+              "value": "iPN5hSeaag9vaOJBkXeWHy-aYEeY4joJi4O4SbBoCmgUXb8vvLoZwi1jYtz2mEUl1C6RzueyhhBrNlm9_GOG0Q"
+            },
+            {
+              "name": "back_url",
+              "type": "hidden",
+              "value": "https://community.openproject.org/admin"
+            },
+            {
+              "name": "username",
+              "type": "text",
+              "value": ""
+            },
+            {
+              "name": "password",
+              "type": "password",
+              "value": ""
+            },
+            {
+              "name": "autologin",
+              "type": "hidden",
+              "value": "0"
+            },
+            {
+              "name": "autologin",
+              "type": "checkbox",
+              "value": "1"
+            }
+          ],
+          "pageUrl": "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin"
+        },
+        {
+          "action": "https://community.openproject.org/login",
+          "method": "POST",
+          "inputs": [
+            {
+              "name": "authenticity_token",
+              "type": "hidden",
+              "value": "80Q2ylgI4X2UxKwZ9mFKLTEjl_JMl5Y5GjIawL-UBkhv6vBgwyiSsNbPLISRjpkXypdmezPHKiD6h_s085-K8Q"
+            },
+            {
+              "name": "back_url",
+              "type": "hidden",
+              "value": "https://community.openproject.org/admin"
+            },
+            {
+              "name": "username",
+              "type": "text",
+              "value": ""
+            },
+            {
+              "name": "password",
+              "type": "password",
+              "value": ""
+            },
+            {
+              "name": "autologin",
+              "type": "hidden",
+              "value": "0"
+            },
+            {
+              "name": "autologin",
+              "type": "checkbox",
+              "value": "1"
+            }
+          ],
+          "pageUrl": "https://community.openproject.org/login?back_url=https%3A%2F%2Fcommunity.openproject.org%2Fadmin"
+        },
+        {
+          "action": "https://community.openproject.org/login",
+          "method": "POST",
+          "inputs": [
+            {
+              "name": "authenticity_token",
+              "type": "hidden",
+              "value": "u8Z1p4Cxl2RvfXMWyhFDi2YnUg3NEZP-4-niYgAU8mgnaLMNG5HkqS1284ut_pCxnZOjhLJBL-cDXAOWTB9-0Q"
+            },
+            {
+              "name": "back_url",
+              "type": "hidden",
+              "value": "https://community.openproject.org/portfolios"
+            },
+            {
+              "name": "username",
+              "type": "text",
+              "value": ""
+            },
+            {
+              "name": "password",
+              "type": "password",
+              "value": ""
+            },
+            {
+              "name": "autologin",
+              "type": "hidden",
+              "value": "0"
+            },
+            {
+              "name": "autologin",
+              "type": "checkbox",
+              "value": "1"
+            }
+          ],
+          "pageUrl": "https://community.openproject.org/portfolios"
+        },
+        {
+          "action": "https://community.openproject.org/login",
+          "method": "POST",
+          "inputs": [
+            {
+              "name": "authenticity_token",
+              "type": "hidden",
+              "value": "x0BiAw1LLp4sOCqsS1LlVYmBPxtGyiLJHEXytSR77txb7qSplmtdU24zqjEsvTZvcjXOkjmantD88BNBaHBiZQ"
+            },
+            {
+              "name": "back_url",
+              "type": "hidden",
+              "value": "https://community.openproject.org/projects"
+            },
+            {
+              "name": "username",
+              "type": "text",
+              "value": ""
+            },
+            {
+              "name": "password",
+              "type": "password",
+              "value": ""
+            },
+            {
+              "name": "autologin",
+              "type": "hidden",
+              "value": "0"
+            },
+            {
+              "name": "autologin",
+              "type": "checkbox",
+              "value": "1"
+            }
+          ],
+          "pageUrl": "https://community.openproject.org/projects"
+        },
+        {
+          "action": "https://community.openproject.org/login",
+          "method": "POST",
+          "inputs": [
+            {
+              "name": "authenticity_token",
+              "type": "hidden",
+              "value": "Vo-H6ynB3HsAPOlCA6aeUEtaYSXohMottuE4XzRB5zLKIUFBsuGvtkI3ad9kSU1qsO6QrJfUdjRWVNmreEpriw"
+            },
+            {
+              "name": "back_url",
+              "type": "hidden",
+              "value": "https://community.openproject.org/work_packages"
+            },
+            {
+              "name": "username",
+              "type": "text",
+              "value": ""
+            },
+            {
+              "name": "password",
+              "type": "password",
+              "value": ""
+            },
+            {
+              "name": "autologin",
+              "type": "hidden",
+              "value": "0"
+            },
+            {
+              "name": "autologin",
+              "type": "checkbox",
+              "value": "1"
+            }
+          ],
+          "pageUrl": "https://community.openproject.org/work_packages"
+        },
+        {
+          "action": "https://community.openproject.org/login",
+          "method": "POST",
+          "inputs": [
+            {
+              "name": "authenticity_token",
+              "type": "hidden",
+              "value": "5Fbm10HaygRU8RBPdQY_IdtInF0EWGLJHgtrTkh7g294-CB92vq5yRb6kNIS6ewbIPxt1HsI3tD-voq6BHAP1g"
+            },
+            {
+              "name": "back_url",
+              "type": "hidden",
+              "value": "https://community.openproject.org/gantt?name=all_open&query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D"
+            },
+            {
+              "name": "username",
+              "type": "text",
+              "value": ""
+            },
+            {
+              "name": "password",
+              "type": "password",
+              "value": ""
+            },
+            {
+              "name": "autologin",
+              "type": "hidden",
+              "value": "0"
+            },
+            {
+              "name": "autologin",
+              "type": "checkbox",
+              "value": "1"
+            }
+          ],
+          "pageUrl": "https://community.openproject.org/gantt?query_props=%7B%22tll%22%3A%22%7B%5C%22left%5C%22%3A%5C%22startDate%5C%22%2C%5C%22right%5C%22%3A%5C%22dueDate%5C%22%2C%5C%22farRight%5C%22%3A%5C%22subject%5C%22%7D%22%2C%22tzl%22%3A%22auto%22%2C%22tv%22%3Atrue%2C%22hi%22%3Atrue%2C%22t%22%3A%22start_date%3Aasc%22%2C%22c%22%3A%5B%22id%22%2C%22project%22%2C%22type%22%2C%22subject%22%2C%22status%22%2C%22startDate%22%2C%22dueDate%22%2C%22duration%22%5D%2C%22f%22%3A%5B%7B%22n%22%3A%22status%22%2C%22o%22%3A%22o%22%2C%22v%22%3A%5B%5D%7D%5D%7D&name=all_open"
+        },
+        {
+          "action": "https://community.openproject.org/login",
+          "method": "POST",
+          "inputs": [
+            {
+              "name": "authenticity_token",
+              "type": "hidden",
+              "value": "3PgzHgh4Lm638Dj3u89iArobhZ_7T6MTTd70mg2FzvRAVvW0k1hdo_X7uGrcILE4Qa90FoQfHwqtaxVuQY5CTQ"
+            },
+            {
+              "name": "back_url",
+              "type": "hidden",
+              "value": "https://community.openproject.org/calendars"
+            },
+            {
+              "name": "username",
+              "type": "text",
+              "value": ""
+            },
+            {
+              "name": "password",
+              "type": "password",
+              "value": ""
+            },
+            {
+              "name": "autologin",
+              "type": "hidden",
+              "value": "0"
+            },
+            {
+              "name": "autologin",
+              "type": "checkbox",
+              "value": "1"
+            }
+          ],
+          "pageUrl": "https://community.openproject.org/calendars"
+        }
+      ],
+      "staticAssets": [],
+      "graphql": []
+    }
+  },
+  "validatedFindings": [
+    {
+      "findingId": "5d073629-e265-497a-beba-2d198a6a0589",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "bb9a5786-01ce-4ccc-a6fa-4435b6d369f6",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    },
+    {
+      "findingId": "ed0b5d35-b121-4e79-affe-e834a4e26454",
+      "isValid": true,
+      "confidence": "medium",
+      "reasoning": "AI validation skipped"
+    }
+  ],
+  "exitCode": 0,
+  "scanDuration": 1704934,
+  "checksRun": [
+    "security-headers",
+    "cookie-flags",
+    "info-leakage",
+    "mixed-content",
+    "sensitive-url-data",
+    "cross-origin-policy",
+    "xss",
+    "sqli",
+    "cors",
+    "redirect",
+    "ssrf",
+    "ssti",
+    "cmdi",
+    "idor",
+    "tls",
+    "sri",
+    "info-disclosure",
+    "js-cve",
+    "crlf",
+    "rate-limit",
+    "jwt",
+    "race",
+    "graphql",
+    "host-header",
+    "api-version",
+    "file-upload",
+    "business-logic",
+    "websocket",
+    "access-control",
+    "subdomain-takeover",
+    "oauth",
+    "cache-poisoning",
+    "csrf",
+    "prototype-pollution",
+    "xxe",
+    "insecure-deserialization",
+    "request-smuggling",
+    "ldap-injection",
+    "user-enum",
+    "mass-assignment",
+    "content-type-confusion",
+    "method-override",
+    "email-injection",
+    "bfla",
+    "clickjacking",
+    "timing-attack",
+    "verbose-errors",
+    "xpath-injection"
+  ],
+  "checkAudit": [
+    {
+      "name": "subdomain-takeover",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 4
+    },
+    {
+      "name": "oauth",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 4
+    },
+    {
+      "name": "csrf",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 32
+    },
+    {
+      "name": "verbose-errors",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 605
+    },
+    {
+      "name": "tls",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1172
+    },
+    {
+      "name": "cache-poisoning",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 7435
+    },
+    {
+      "name": "timing-attack",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 19125
+    },
+    {
+      "name": "graphql",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 20962
+    },
+    {
+      "name": "api-version",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 26832
+    },
+    {
+      "name": "jwt",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 29363
+    },
+    {
+      "name": "host-header",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 31580
+    },
+    {
+      "name": "rate-limit",
+      "status": "completed",
+      "findingsCount": 5,
+      "durationMs": 39971
+    },
+    {
+      "name": "xpath-injection",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 48233
+    },
+    {
+      "name": "cors",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 55483
+    },
+    {
+      "name": "info-disclosure",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 79023
+    },
+    {
+      "name": "js-cve",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 79023
+    },
+    {
+      "name": "sri",
+      "status": "completed",
+      "findingsCount": 8,
+      "durationMs": 80584
+    },
+    {
+      "name": "clickjacking",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120001,
+      "error": "Check \"clickjacking\" timed out after 120s"
+    },
+    {
+      "name": "xss",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120001,
+      "error": "Check \"xss\" timed out after 120s"
+    },
+    {
+      "name": "sqli",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120002,
+      "error": "Check \"sqli\" timed out after 120s"
+    },
+    {
+      "name": "redirect",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120001,
+      "error": "Check \"redirect\" timed out after 120s"
+    },
+    {
+      "name": "traversal",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120002,
+      "error": "Check \"traversal\" timed out after 120s"
+    },
+    {
+      "name": "ssrf",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120001,
+      "error": "Check \"ssrf\" timed out after 120s"
+    },
+    {
+      "name": "ssti",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 102285
+    },
+    {
+      "name": "cmdi",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120000,
+      "error": "Check \"cmdi\" timed out after 120s"
+    },
+    {
+      "name": "idor",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 2
+    },
+    {
+      "name": "crlf",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120001,
+      "error": "Check \"crlf\" timed out after 120s"
+    },
+    {
+      "name": "race",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1232
+    },
+    {
+      "name": "file-upload",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "business-logic",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "websocket",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 64304
+    },
+    {
+      "name": "access-control",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 116493
+    },
+    {
+      "name": "prototype-pollution",
+      "status": "failed",
+      "findingsCount": 0,
+      "durationMs": 120001,
+      "error": "Check \"prototype-pollution\" timed out after 120s"
+    },
+    {
+      "name": "xxe",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 7184
+    },
+    {
+      "name": "insecure-deserialization",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 18567
+    },
+    {
+      "name": "request-smuggling",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 7177
+    },
+    {
+      "name": "ldap-injection",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 13054
+    },
+    {
+      "name": "user-enum",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 5614
+    },
+    {
+      "name": "mass-assignment",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 5951
+    },
+    {
+      "name": "content-type-confusion",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1408
+    },
+    {
+      "name": "method-override",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 33245
+    },
+    {
+      "name": "email-injection",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 1
+    },
+    {
+      "name": "bfla",
+      "status": "completed",
+      "findingsCount": 0,
+      "durationMs": 92831
+    }
+  ],
+  "tokenUsage": {
+    "inputTokens": 1531,
+    "outputTokens": 1648,
+    "totalTokens": 3179
+  }
+}

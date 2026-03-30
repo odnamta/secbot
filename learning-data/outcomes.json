@@ -1,0 +1,74 @@
+[
+  {
+    "findingId": "6d09cce8",
+    "program": "moneybird",
+    "category": "xss",
+    "techStack": [
+      "ruby",
+      "rails"
+    ],
+    "outcome": "not-applicable",
+    "submittedAt": "2026-03-22T13:04:53.900Z",
+    "notes": "DOM XSS FP: innerHTML sink exists but fragment value is URL-encoded by browser and not read unsafely into DOM"
+  },
+  {
+    "findingId": "6d09cce8",
+    "program": "moneybird",
+    "category": "xss",
+    "techStack": [
+      "ruby",
+      "rails"
+    ],
+    "outcome": "not-applicable",
+    "submittedAt": "2026-03-26T03:36:10.233Z",
+    "notes": "DOM XSS FP: innerHTML sink exists but browser URL-encodes fragment payload"
+  },
+  {
+    "findingId": "8c0823c1",
+    "program": "moneybird",
+    "category": "xss",
+    "techStack": [
+      "ruby",
+      "rails"
+    ],
+    "outcome": "not-applicable",
+    "submittedAt": "2026-03-26T03:36:10.918Z",
+    "notes": "postMessage handlers exist but no exploitable action confirmed in manual review"
+  },
+  {
+    "findingId": "source-map-01",
+    "program": "calcom",
+    "category": "info-disclosure",
+    "techStack": [
+      "next.js",
+      "react"
+    ],
+    "outcome": "not-applicable",
+    "submittedAt": "2026-03-26T12:57:56.128Z",
+    "notes": "Source map contains only framework boilerplate, no app secrets"
+  },
+  {
+    "findingId": "method-override-01",
+    "program": "calcom",
+    "category": "broken-access-control",
+    "techStack": [
+      "next.js",
+      "react"
+    ],
+    "outcome": "not-applicable",
+    "submittedAt": "2026-03-26T12:57:56.803Z",
+    "notes": "Method override header accepted but ignored by server — no behavioral change"
+  },
+  {
+    "findingId": "session-fix-01",
+    "program": "openproject",
+    "category": "broken-access-control",
+    "techStack": [
+      "rails",
+      "angular"
+    ],
+    "outcome": "not-applicable",
+    "submittedAt": "2026-03-26T12:57:57.465Z",
+    "notes": "Session fixation — cannot verify, registration disabled on community instance"
+  }
+]

@@ -1,0 +1,10 @@
+# Program: Moneybird
+# Platform: HackerOne
+# Bounty: $100 - $3,000 (estimated)
+# Notes: Dutch accounting SaaS, Ruby on Rails, small company (~50-100 employees)
+
+In Scope
+moneybird.com
+moneybirdstorage.com
+
+Out of Scope

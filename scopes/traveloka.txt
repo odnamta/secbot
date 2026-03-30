@@ -1,0 +1,26 @@
+# Program: Traveloka
+# Platform: Bugcrowd (PRIVATE — invite-only)
+# Bounty: Paid (exact amounts undisclosed; accessible after invite)
+# To get invited: submit a valid finding to bug@traveloka.com directly
+# Notes: Indonesian travel super-app (~4,000+ employees, unicorn). HIGH PRIORITY — SEA home advantage.
+#        Tech stack: Node.js/React web frontend, mobile apps. Complex booking flows with payments.
+#        SecBot strengths: XSS (confirmed in-scope), IDOR on booking refs/PNR, open redirect, CORS on API.
+# Warning: Large company — more competition than ideal. Private program requires manual activation.
+# Warning: No DoS/rate-limit testing. Do not tamper with other users' data.
+# Warning: Automated scanning must be stealthy — no explicit ban found but "don't disrupt" rules apply.
+# Status: PENDING INVITE — set enabled: true only after receiving Bugcrowd invite.
+
+In Scope
+traveloka.com
+www.traveloka.com
+
+Out of Scope
+- Any subdomain not explicitly listed in the private Bugcrowd brief
+- Third-party integrations (Google, payment gateways, SMS providers)
+- Social engineering
+- DoS / resource exhaustion / rate limiting
+- Missing best practices (HTTP headers, password policy, SPF/DMARC)
+- Self-XSS (requires victim to paste payload themselves)
+- Clickjacking without demonstrated impact
+- Old e-tickets / search engine indexed content not controlled by Traveloka
+- Mobile app vulnerabilities requiring jailbreak/root

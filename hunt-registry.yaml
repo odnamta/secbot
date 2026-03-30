@@ -1,0 +1,72 @@
+# SecBot Hunt Registry — v2
+# Created: 2026-03-22
+# Updated: 2026-03-30 (bounty scout cycle 1 — added traveloka, simscale, zivver)
+# Purpose: Real bounty hunt — carefully selected targets
+# Strategy: low competition + web app depth + SecBot strengths
+
+- name: kredivo
+  platform: other
+  scope_file: scopes/kredivo.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: anytask
+  platform: bugcrowd
+  scope_file: scopes/anytask.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: moneybird
+  platform: hackerone
+  scope_file: scopes/moneybird.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: openproject
+  platform: other
+  scope_file: scopes/openproject.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: calcom
+  platform: hackerone
+  scope_file: scopes/calcom.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# --- Bounty Scout additions 2026-03-30 ---
+
+# HIGH PRIORITY: Indonesian travel super-app. Private Bugcrowd program.
+# IMPORTANT: enabled: false — must receive Bugcrowd invite before hunting.
+# To activate: email a valid finding to bug@traveloka.com, then flip enabled: true.
+- name: traveloka
+  platform: bugcrowd
+  scope_file: scopes/traveloka.txt
+  profile: stealth
+  schedule: weekly
+  enabled: false
+
+# Cloud engineering simulation SaaS — 143 employees, Munich. Public Intigriti program.
+# Focus: IDOR, access control, customer data exposure (CAD files, simulation results).
+# Free account available at simscale.com for authenticated testing.
+- name: simscale
+  platform: intigriti
+  scope_file: scopes/simscale.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# Secure email/comms SaaS — 134 employees, Amsterdam (acquired by Kiteworks).
+# Stack: Angular + Scala/Java + GraphQL. Good for GraphQL, JWT, CORS, XSS checks.
+# IMPORTANT: requires YesWeHack alias email for test account + custom User-Agent header.
+- name: zivver
+  platform: yeswehack
+  scope_file: scopes/zivver.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
