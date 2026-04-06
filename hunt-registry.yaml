@@ -1,8 +1,8 @@
 # SecBot Hunt Registry — v2
 # Created: 2026-03-22 | Updated: 2026-04-06
-# Purpose: Real bounty hunt — 9 carefully selected targets
+# Purpose: Real bounty hunt — 12 carefully selected targets
 # Strategy: low competition + web app depth + SecBot strengths
-# v2 additions: OVO Indonesia, Indodax, Mattermost, Exoscale
+# v2 additions: OVO, Indodax, Mattermost, Exoscale, Gojek, Grafana, Monzo
 
 - name: kredivo
   platform: other
@@ -65,6 +65,27 @@
 - name: exoscale
   platform: intigriti
   scope_file: scopes/exoscale.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: gojek
+  platform: hackerone
+  scope_file: scopes/gojek.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: grafana
+  platform: intigriti
+  scope_file: scopes/grafana.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: monzo
+  platform: intigriti
+  scope_file: scopes/monzo.txt
   profile: stealth
   schedule: weekly
   enabled: true
