@@ -1,0 +1,24 @@
+# Program: OVO Indonesia
+# Platform: YesWeHack (public) — https://yeswehack.com/programs/ovo-bug-bounty-program
+# Also: bugbounty.ovo.id (self-hosted)
+# Bounty: $100 - $3,000 (public program max); special campaigns up to $5,000
+# Notes: Indonesia's largest digital payments/rewards/fintech platform (~115M devices), Grab subsidiary
+# Stack: Golang (BE), React JS (FE), Python (BE), PHP
+# SEA PRIORITY — Indonesian unicorn, home advantage, medium competition
+
+In Scope
+my.ovo.id
+ovo.id
+api.ovo.id
+app.ovo.id
+
+Out of Scope
+- *.ovo.id (subdomains not listed above)
+- staging.ovo.id and any staging/sandbox environments
+- Android/iOS mobile app binaries (separate scope, lower ROI for web scanner)
+- Third-party integrations not controlled by OVO
+
+# WARNING: Verify automated scanner policy on the YesWeHack program page before running.
+# Similar Indonesian fintech programs (DANA) explicitly ban automated scanners.
+# Use --profile stealth and check program rules first.
+# SecBot's AI validation + auto-verify satisfies the "no raw scanner output" requirement.
