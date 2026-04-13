@@ -1,0 +1,34 @@
+# Program: Gojek
+# Platform: YesWeHack (https://yeswehack.com/programs/gojek-bug-bounty-program)
+# Bounty: $50 (Low) - $5,000 (Critical)
+# Notes: Indonesian super app (ride-hailing, food delivery, logistics, payments).
+#        Large company (~35,000 employees) but strong Indonesian home advantage.
+#        Fresh YesWeHack program launched July 2025 — low researcher competition so far.
+#        Also has older HackerOne VDP (hackerone.com/gojek) — no bounty there, YesWeHack pays.
+# Automated tools: "Raw scanner outputs without analysis" are explicitly excluded as report type.
+#                  AI-validated findings (as SecBot produces) are fine. Use stealth profile.
+# Testing regions: Indonesia, Singapore, Vietnam, Thailand.
+# WARNING: Add X-HackerOne-Research header only if submitting to H1 VDP, not YesWeHack.
+
+In Scope
+www.gojek.com
+gofood.co.id
+gosend.id
+portal.gosend.id
+go-tix.id
+api.gojek.co.id
+*.gojekapi.com
+*.gopayapi.com
+*.findaya.com
+*.findaya.co.id
+*.mab.co.id
+
+Out of Scope
+- Social engineering and phishing attacks
+- Vulnerabilities requiring 0-day exploits (must be publicly known for 2+ months)
+- Raw/unanalyzed automated scanner output submitted as a report
+- Google Maps API key disclosures
+- Missing HTTP security headers without demonstrated exploit chain
+- Mobile: certificate pinning absence, root detection bypass, obfuscation issues
+- Infrastructure/TLS/DNS misconfigurations
+- Denial of service attacks

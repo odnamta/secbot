@@ -1,0 +1,22 @@
+# Program: Discourse
+# Platform: HackerOne (https://hackerone.com/discourse)
+# Bounty: $256 (Low) / $512 (Medium) / $1,024 (High) / $2,048+ (Critical)
+# Notes: Ruby on Rails open-source forum software. Public test instance explicitly in scope.
+#        Very active program — paid $163K+ in a single year (avg ~$2,862/report).
+#        Company size: ~100 employees. Small, responsive security team (<1hr avg response).
+# Automated tools: No explicit ban. Policy emphasizes "good faith effort" — avoid DoS/flooding.
+#                  SecBot stealth profile is fine. Do NOT submit raw scanner output reports.
+#                  Each report must include step-by-step reproduction + PoC.
+# 90-day disclosure embargo after fix release.
+
+In Scope
+try.discourse.org
+
+Out of Scope
+- Any Discourse installation other than try.discourse.org (e.g., meta.discourse.org, hosted forums)
+- SSRF to external resources (Discourse deliberately permits this by design)
+- Admin-initiated XSS or denial-of-service (requires admin privileges to trigger)
+- HTML injection in posts without account takeover / significant security impact
+- Version disclosure
+- HTTP-only exploits (no HTTPS downgrade)
+- DoS, spamming, social engineering, physical attacks

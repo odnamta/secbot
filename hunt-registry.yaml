@@ -1,7 +1,8 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
-# Strategy: low competition + web app depth + SecBot strengths
+# SecBot Hunt Registry
+# Last updated: 2026-04-13 (Bounty Scout cycle)
+# Strategy: Indonesian/SEA home advantage + small EU SaaS + open-source targets
+
+# ── ACTIVE PROGRAMS ────────────────────────────────────────────────────────────
 
 - name: kredivo
   platform: other
@@ -9,6 +10,7 @@
   profile: stealth
   schedule: weekly
   enabled: true
+  notes: "Indonesian fintech BNPL (RedStorm). Low bounties (~$190 critical) but home advantage."
 
 - name: anytask
   platform: bugcrowd
@@ -16,6 +18,7 @@
   profile: stealth
   schedule: weekly
   enabled: true
+  notes: "Freelancer marketplace. Staging domain in scope. $250-$5,000."
 
 - name: moneybird
   platform: hackerone
@@ -23,6 +26,7 @@
   profile: stealth
   schedule: weekly
   enabled: true
+  notes: "Dutch accounting SaaS. Ruby on Rails. ~50-100 employees. $100-$3,000 est."
 
 - name: openproject
   platform: other
@@ -30,10 +34,61 @@
   profile: stealth
   schedule: weekly
   enabled: true
+  notes: "Open-source project management (Rails + Angular). YesWeHack. EUR 100-5,000."
+
+# ── NEW PROGRAMS (added 2026-04-13) ────────────────────────────────────────────
+
+- name: discourse
+  platform: hackerone
+  scope_file: scopes/discourse.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: >
+    Ruby on Rails forum software. Public test instance (try.discourse.org) explicitly in scope.
+    Excellent payout history — paid $163K+ in one year, avg ~$2,862/report.
+    $256/$512/$1,024/$2,048+ by severity. No automated ban. Small company ~100 employees.
+
+- name: gojek
+  platform: other
+  scope_file: scopes/gojek.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: >
+    Indonesian super app. YesWeHack bounty program (yeswehack.com/programs/gojek-bug-bounty-program).
+    Fresh program July 2025 — low competition. $50-$5,000. Large company but strong home advantage.
+    Raw scanner output disallowed as reports; AI-validated findings fine.
+
+- name: goto-financial
+  platform: other
+  scope_file: scopes/goto-financial.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: >
+    Indonesian fintech — GoPay, GoPayLater. YesWeHack fresh program (July 2025).
+    Higher ceiling than Gojek: $50-$7,000. Rich attack surface: payment APIs, merchant auth, IDOR.
+
+- name: dana
+  platform: other
+  scope_file: scopes/dana.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: >
+    Indonesian digital wallet (YesWeHack). Mature program: 191 reports, <3 days first response.
+    $0-$3,000 + $2,000 face-verification bypass bonus. Rate limiting required — stealth only.
+
+# ── DISABLED PROGRAMS ──────────────────────────────────────────────────────────
 
 - name: calcom
   platform: hackerone
   scope_file: scopes/calcom.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false
+  notes: >
+    DISABLED 2026-04-13: No monetary bounties (VDP only via GitHub). Explicitly bans automated
+    scanners. XSS/CSRF/clickjacking all excluded. Scope file had incorrect *.companyhub.com entry
+    (CompanyHub is a separate company). Not a viable SecBot target.

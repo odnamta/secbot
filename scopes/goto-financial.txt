@@ -1,0 +1,24 @@
+# Program: GoTo Financial
+# Platform: YesWeHack (https://yeswehack.com/programs/goto-financial-public-bounty-program)
+# Bounty: $50 (Low) - $7,000 (Critical)
+# Notes: Indonesian fintech arm of GoTo Group — GoPay digital wallet, GoPayLater BNPL,
+#        merchant payment infrastructure, and financial services for MSMEs.
+#        Higher bounty ceiling than Gojek program. Fresh YesWeHack program (July 2025).
+#        Indonesian home advantage — test from Indonesian IPs for realistic flows.
+#        Full scope asset list requires YesWeHack login to view — verify before testing.
+# Automated tools: YesWeHack standard rules apply. Use stealth profile + rate limiting.
+# Best attack surface: payment APIs, merchant dashboard auth, IDOR on transaction data,
+#                      JWT session handling, CORS on gopay.co.id subdomains.
+
+In Scope
+gopay.co.id
+*.gopay.co.id
+gotofinancial.com
+*.gotofinancial.com
+
+Out of Scope
+- Any domains NOT listed in the YesWeHack program scope (verify on platform before testing)
+- Social engineering and phishing attacks
+- Denial of service / resource exhaustion attacks
+- Data manipulation, leakage, or destruction of production data
+- Exploits requiring physical access to a device
