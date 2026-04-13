@@ -36,4 +36,32 @@
   scope_file: scopes/calcom.txt
   profile: stealth
   schedule: weekly
+  enabled: false
+
+- name: discourse
+  platform: hackerone
+  scope_file: scopes/discourse.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: gojek
+  platform: yeswehack
+  scope_file: scopes/gojek.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: gotofinancial
+  platform: yeswehack
+  scope_file: scopes/gotofinancial.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: danaindonesia
+  platform: yeswehack
+  scope_file: scopes/danaindonesia.txt
+  profile: stealth
+  schedule: weekly
   enabled: true

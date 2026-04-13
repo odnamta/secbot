@@ -1,0 +1,10 @@
+# Program: Discourse
+# Platform: HackerOne
+# Bounty: $256 - $2,048+
+# Notes: Ruby on Rails forum software, open-source, large community
+
+In Scope
+discourse.org
+*.discourse.org
+
+Out of Scope

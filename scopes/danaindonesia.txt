@@ -1,0 +1,11 @@
+# Program: DANA Indonesia
+# Platform: YesWeHack
+# Bounty: $0 - $3,000 + $2,000 bonus
+# Notes: Indonesian digital wallet, OVO/DANA merger rumors, popular e-wallet
+In Scope
+dana.id
+*.dana.id
+dana.id.vip
+*.dana.id.vip
+
+Out of Scope
