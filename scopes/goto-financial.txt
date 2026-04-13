@@ -1,0 +1,12 @@
+# Program: GoTo Financial
+# Platform: YesWeHack
+# Bounty: $50-$7,000
+# Notes: GoPay fintech arm of GoTo, Indonesian digital payments
+# Updated: 2026-04-13
+In Scope
+gotofinance.com
+*.gotofinance.com
+gotopay.id
+*.gotopay.id
+gopay.co.id
+*.gopay.co.id

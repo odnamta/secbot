@@ -1,0 +1,10 @@
+# Program: DANA Indonesia
+# Platform: YesWeHack
+# Bounty: $0-$3,000 + $2,000 bonus
+# Notes: Digital wallet, Indonesian e-wallet platform
+# Updated: 2026-04-13
+In Scope
+dana.id
+*.dana.id
+dana.co.id
+*.dana.co.id

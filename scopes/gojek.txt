@@ -1,0 +1,15 @@
+# Program: Gojek
+# Platform: YesWeHack
+# Bounty: $50-$5,000
+# Notes: Indonesian super app, multi-service platform
+# Updated: 2026-04-13
+In Scope
+gojek.com
+*.gojek.com
+gojek.co.id
+*.gojek.co.id
+
+Out of Scope
+- dev.gojek.com
+- test.gojek.com
+- staging.gojek.com
