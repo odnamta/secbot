@@ -1,0 +1,13 @@
+# Program: CM.com
+# Platform: Intigriti
+# Bounty: €25 - €3,500
+# Notes: Dutch CPaaS / business-messaging platform. Login portal + REST/messaging APIs.
+#        login.cm.com is OAuth/SSO gateway — good CSRF, open-redirect, host-header surface.
+#        api.cm.com is REST API for SMS/voice/payments — broken access control, IDOR potential.
+#        ~700 employees, mid-size; program is less saturated than pure fintech targets.
+
+In Scope
+login.cm.com
+api.cm.com
+
+Out of Scope

@@ -1,0 +1,15 @@
+# Program: Cloudways
+# Platform: Intigriti
+# Bounty: $50 - $4,000
+# Notes: Managed cloud hosting panel (now DigitalOcean). Platform likely PHP/Laravel.
+#        Admin dashboard with server provisioning, team management, SSH keys, API tokens.
+#        Automated scanning explicitly allowed — must independently verify findings first.
+#        Strong SecBot fit: broken access control, IDOR on server/team objects, CORS, XSS.
+
+In Scope
+platform.cloudways.com
+api.cloudways.com
+
+Out of Scope
+- Customer-launched servers and applications running on top of Cloudways
+- Automated scan output submitted without independent verification and demonstrated impact

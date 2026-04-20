@@ -1,6 +1,5 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# SecBot Hunt Registry
+# Created: 2026-03-22 | Last updated: 2026-04-20 (Bounty Scout run)
 # Strategy: low competition + web app depth + SecBot strengths
 
 - name: kredivo
@@ -36,4 +35,41 @@
   scope_file: scopes/calcom.txt
   profile: stealth
   schedule: weekly
+  enabled: true
+
+# --- Added 2026-04-20 by Bounty Scout ---
+
+- name: paddle
+  platform: yeswehack
+  scope_file: scopes/paddle.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: cloudways
+  platform: intigriti
+  scope_file: scopes/cloudways.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: swapcard
+  platform: yeswehack
+  scope_file: scopes/swapcard.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: cm-com
+  platform: intigriti
+  scope_file: scopes/cm-com.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: alasco
+  platform: yeswehack
+  scope_file: scopes/alasco.txt
+  profile: stealth
+  schedule: biweekly
   enabled: true
