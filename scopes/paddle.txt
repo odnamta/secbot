@@ -1,0 +1,30 @@
+# Program: Paddle.com
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/paddle-com-public-bug-bounty-program
+# Bounty: $50 (Low) – $5,000 (Critical)
+# Company: Paddle — B2B SaaS payment infrastructure (~300-500 employees, UK-based)
+# Notes: Multiple sandbox domains explicitly in scope — great for automated scanning.
+#        vendors.paddle.com is the merchant dashboard (login, forms, billing settings).
+#        customer-portal.paddle.com handles end-user subscription management.
+#        sandbox-* domains are safe for active testing without production impact.
+#        Node.js/React stack likely. Good for XSS, CORS, CSRF, JWT, IDOR, rate-limit.
+#        checkout-service.paddle.com and buy.paddle.com (non-sandbox) are OUT of scope.
+
+In Scope
+https://vendors.paddle.com
+https://sandbox-vendors.paddle.com
+https://api.paddle.com
+https://sandbox-api.paddle.com
+https://sandbox-checkout-service.paddle.com
+https://sandbox-buy.paddle.com
+https://paddle.net
+https://customer-portal.paddle.com
+https://login.paddle.com
+https://sandbox-login.paddle.com
+https://www.paddle.com
+https://developer.paddle.com
+
+Out of Scope
+- https://checkout-service.paddle.com (production checkout — no active testing)
+- https://buy.paddle.com (production buy flow — no active testing)
+- All domains/subdomains not listed above
