@@ -1,0 +1,18 @@
+# Program: KOMOJU
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/komoju-public-bug-bounty-program
+# Bounty: $50 (Low) – $7,000 (Critical)
+# Company: KOMOJU — Japanese payment gateway (Degica Co., Ltd.)
+# Notes: ONLY the YesWeHack-hosted staging environment is in scope — ideal for automated tools.
+#        Narrow scope (1 web target) but staging = no risk of impacting production customers.
+#        Japanese payment gateway; likely PHP or Rails backend; good for XSS, CSRF, SQLi.
+#        Account squatting (registering accounts to block others) is out of scope.
+#        Single page scope makes this perfect for a focused deep scan (deep profile).
+
+In Scope
+https://yeswehack.staging.komoju.com
+
+Out of Scope
+- All domains or subdomains not listed above
+- Account squatting / registering accounts to prevent others from signing up
+- Production environment (komoju.com, pay.komoju.com, etc.)
