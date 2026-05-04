@@ -1,0 +1,27 @@
+# Program: GoTo Financial
+# Platform: YesWeHack (goto-financial-public-bounty-program)
+# Bounty: $50 - $7,000
+# Notes: Indonesian fintech arm of GoTo Group. Operates GoPay (largest digital
+#   wallet in Indonesia) and Midtrans (largest payment gateway in Indonesia).
+#   Also includes Moka (POS SaaS), Findaya (lending), and GTF Labs.
+#   Program added to YesWeHack July 2025. No automated tool restrictions found.
+#   Large company (GoTo Group ~4k employees) but SEA home-advantage + fresh scope.
+
+In Scope
+*.gopayapi.com
+gopaymerchant.midtrans.com
+mokapos.com
+*.go-pay.co.id
+api.midtrans.com
+app.midtrans.com
+www.midtrans.com
+*.gaming.gopayapi.com
+*.gofin.io
+*.findaya.com
+*.findaya.co.id
+*.gtflabs.io
+
+Out of Scope
+- Staging environments (subdomains containing test/integration/staging)
+- Mobile apps (iOS/Android GoPay app — SecBot is web-only)
+- Any GoTo/Gojek asset not explicitly listed above

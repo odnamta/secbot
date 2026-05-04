@@ -1,7 +1,16 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
-# Strategy: low competition + web app depth + SecBot strengths
+# SecBot Hunt Registry
+# Created: 2026-03-22  Last updated: 2026-05-04 (Bounty Scout run)
+# Purpose: Bounty hunting targets — web app depth + SecBot strengths
+# Strategy: low competition + SEA home-advantage + fresh/recent programs
+#
+# Change log (2026-05-04):
+#   + Added goto-financial (YesWeHack) — Indonesian fintech, GoPay+Midtrans, $50-$7k
+#   + Added gojek (YesWeHack)          — Indonesian super-app, $50-$5k
+#   + Added maya (YesWeHack)            — Philippine digital bank, $50-$5k
+#   ~ Disabled calcom: security page explicitly bans automated scanners;
+#     re-enable only after sandbox authorization from security@cal.com
+
+# ── Existing targets ────────────────────────────────────────────────────────
 
 - name: kredivo
   platform: other
@@ -25,7 +34,7 @@
   enabled: true
 
 - name: openproject
-  platform: other
+  platform: yeswehack
   scope_file: scopes/openproject.txt
   profile: stealth
   schedule: weekly
@@ -34,6 +43,29 @@
 - name: calcom
   platform: hackerone
   scope_file: scopes/calcom.txt
+  profile: stealth
+  schedule: weekly
+  enabled: false  # Cal.com bans automated scanners — needs sandbox auth first
+
+# ── New targets (2026-05-04) ─────────────────────────────────────────────────
+
+- name: goto-financial
+  platform: yeswehack
+  scope_file: scopes/goto-financial.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: gojek
+  platform: yeswehack
+  scope_file: scopes/gojek.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: maya
+  platform: yeswehack
+  scope_file: scopes/maya.txt
   profile: stealth
   schedule: weekly
   enabled: true

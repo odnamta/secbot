@@ -1,0 +1,23 @@
+# Program: Maya
+# Platform: YesWeHack (maya-public-bug-bounty-program)
+# Bounty: $50 - $5,000
+# Notes: Philippine digital bank and e-wallet (formerly PayMaya / Voyager
+#   Innovations). ~500 employees. SEA priority — low competition, home advantage.
+#   Scope is API-heavy (payment APIs) — good target for CORS, SSRF, IDOR, JWT,
+#   broken access control, and rate-limit checks. Allow up to 5 collaborator
+#   reward splits on YesWeHack. Sandbox accounts: register via tinbo.ph for a
+#   free +63 virtual number (valid 30–90 days).
+
+In Scope
+api.paymaya.com
+pg.paymaya.com
+payoutapi.maya.ph
+op.paymaya.com
+connect.paymaya.com
+paymayabiller-prod.paymaya.com
+
+Out of Scope
+- Non-production environments (test/dev/staging/sandbox subdomains)
+- Other paymaya.com or maya.ph subdomains not explicitly listed above
+- Mobile apps (iOS/Android — SecBot is web-only)
+- Exposed secrets/credentials that don't directly affect an in-scope target
