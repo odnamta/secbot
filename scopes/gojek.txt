@@ -1,0 +1,21 @@
+# Program: Gojek
+# Platform: YesWeHack (gojek-bug-bounty-program)
+# Bounty: $50 - $5,000
+# Notes: Indonesian super-app — ride-hailing, food delivery (GoFood), logistics
+#   (GoSend), merchant tools (GoBiz). Also on HackerOne ($100–$5k) but H1 policy
+#   requires a unique X-identifier header in every request — not yet supported by
+#   SecBot. Use this YesWeHack program instead (same scope, no header requirement).
+#   Wildcard scope across major service domains = very wide attack surface.
+
+In Scope
+*.gojekapi.com
+*.gofood.co.id
+*.gobiz.co.id
+*.gojek.com
+*.golabs.io
+*.gofoodmerchant.co.id
+
+Out of Scope
+- Staging environments (subdomains containing test/integration/staging)
+- Mobile apps (iOS/Android — SecBot is web-only)
+- GoPay / Midtrans assets (covered by the separate GoTo Financial program)
