@@ -1,0 +1,23 @@
+# Program: Neon
+# Platform: HackerOne (handle: neon_bbp)
+# URL: https://hackerone.com/neon_bbp
+# Bounty: $150 (low) - $3,000 (critical)
+# Launched: ~June 2025 (public) — program went public after private phase
+# Company size: ~100-200 employees (Series B serverless Postgres startup)
+# Tech stack: TypeScript, Next.js, Go (storage layer), PostgreSQL
+# Notes: Serverless Postgres SaaS — web console + API in scope, staging also in scope.
+#        Fresh public program = low researcher saturation. Strong match for auth bypass,
+#        project/branch isolation (IDOR angle), CORS, JWT checks.
+# Warning: Avoid heavy DB workloads or persistent resource creation. Use test accounts.
+#          Program may rate-limit API scanning — use stealth profile.
+
+In Scope
+console.neon.tech
+api.neon.tech
+neon.com/api
+staging.neon.tech
+
+Out of Scope
+- github.com/neondatabase (source code only — report app vulns, not code review)
+- Denial of service / resource exhaustion attacks
+- Third-party services integrated into Neon (e.g., Vercel marketplace widget)
