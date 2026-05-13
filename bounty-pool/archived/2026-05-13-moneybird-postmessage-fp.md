@@ -1,4 +1,6 @@
-# postMessage Handlers Missing Origin Validation
+# [FALSE POSITIVE — ARCHIVED 2026-05-13] postMessage Handlers Missing Origin Validation
+
+**FP Reason:** Handler snippet reveals mouse/touch event polyfill code (`i.pageX, i.clientY, i.preventDefault, i.stopPropagation`). These are browser compatibility shims, not security-sensitive message handlers. No actual cross-origin message processing occurs that could be exploited. Do not submit.
 
 **Severity:** medium | **CVSS:** 6.1 | CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N
 **Platform:** HackerOne | **Program:** Moneybird
