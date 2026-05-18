@@ -1,0 +1,33 @@
+# Program: Mattermost
+# Platform: Bugcrowd (bugcrowd.com/engagements/mattermost-mbb-public)
+# Bounty: Bugcrowd standard table (specific amounts not publicly disclosed;
+#          typical range $150—$5,000 based on severity)
+# Company: Mattermost Inc. — open-source team messaging; ~300 employees
+# Notes: Transitioned from HackerOne → Bugcrowd November 2024 with expanded scope
+#        (+4 new plugin targets). Stack: Go backend, React frontend, Postgres DB.
+#        Open-source repo (github.com/mattermost/mattermost) — read code before
+#        testing for much higher signal. Focus: auth bypass, IDOR, CORS, JWT,
+#        websocket security, plugin sandbox escapes.
+# Warnings: Automated scanner raw dumps not accepted on Bugcrowd. Require PoC.
+#            Program is public so some competition, but plugin scope is fresh.
+
+In Scope
+mattermost.com
+*.mattermost.com
+mattermost.cloud
+Mattermost Boards plugin
+Mattermost Copilot plugin
+Mattermost Microsoft Calendar Plugin
+Mattermost Plugin for Microsoft Teams Meetings
+
+Out of Scope
+- Self-hosted Mattermost deployments (test against mattermost.com only)
+- Third-party integrations not controlled by Mattermost
+- Denial of service
+- Social engineering
+
+Notes
+- Program moved to Bugcrowd Nov 6, 2024 — previously on HackerOne (closed)
+- Code is open source: github.com/mattermost/mattermost — audit before scanning
+- Plugin targets added Nov 2024 are lowest-competition scope
+- Check bugcrowd.com/engagements/mattermost-mbb-public for authoritative scope
