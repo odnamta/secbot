@@ -1,0 +1,33 @@
+# Program: Gojek
+# Platform: HackerOne (hackerone.com/gojek)
+# Bounty: $100 (minor/P5) — $5,000 (critical/P1)
+# Company: GoTo Group, Indonesian super-app (ride-hailing, food, payments)
+# Notes: Oldest Indonesian BB program on H1; home-advantage play; requires custom
+#        X-Bug-Bounty-Testing: <your-h1-username> header on every request so
+#        Gojek can separate test traffic. Raw scanner output not accepted —
+#        manual PoC required. Program active since ~2019; publicly expanded 2022.
+# Warnings: Competitive (850+ researchers over program lifetime). Focus on
+#            less-common checks (GraphQL, JWT, CORS, IDOR) to avoid saturated
+#            XSS/SQLi reports. Scope added OVO Indonesia in 2023-2024.
+
+In Scope
+gojek.com
+*.gofood.co.id
+*.gojek.com/food
+driver.gojek.com
+pay.gojek.com
+merchant.gojek.com
+id.gojek.com
+
+Out of Scope
+- Mobile APK reverse engineering (separate mobile program)
+- Third-party services not controlled by Gojek
+- *.gojek.com subdomains not explicitly listed (check H1 policy for current list)
+- Denial of service / rate limit exhaustion
+- Social engineering / phishing
+- Issues requiring physical access
+
+Notes
+- Always include X-Bug-Bounty-Testing header with H1 username in all requests
+- Gojek may award up to $2,000 bonus for exceptional quality reports
+- Check hackerone.com/gojek for the authoritative, up-to-date scope list
