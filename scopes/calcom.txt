@@ -1,7 +1,10 @@
 # Program: Cal.com
-# Platform: HackerOne
+# Platform: HackerOne (hackerone.com/cal_)
 # Bounty: $100 - $3,000 (estimated)
-# Notes: Open-source scheduling (Next.js/TypeScript), code on GitHub, small startup
+# Notes: Scheduling SaaS (Next.js/TypeScript). Previously open-source; announced going
+#   closed-source in 2025 (cited AI-assisted exploit discovery as security risk).
+#   Program status: still active on HackerOne as of 2026-05.
+#   WARNING: *.companyhub.com scope entry needs manual verification — unclear if still valid.
 
 In Scope
 app.cal.com

@@ -1,0 +1,26 @@
+# Program: Gojek
+# Platform: YesWeHack (yeswehack.com/programs/gojek-bug-bounty-program)
+# Note: Gojek also maintains a legacy HackerOne program — use YesWeHack for reporting.
+# Bounty: $5 (low) – $5,000 (critical)
+# Notes: Indonesian super-app — ride-hailing, food delivery, merchant platform.
+#   Largest web attack surface among Indonesian programs: merchant portals, APIs, dashboards.
+#   Home advantage: Indonesian-language flows, local auth patterns, OTP/PIN login.
+#   No explicit automated-scanning ban found; stealth profile mandatory.
+#   SecBot strengths: merchant portal (IDOR/BFLA), food-ordering API (CORS/SSRF), auth.
+
+In Scope
+*.gojek.com
+api.gojek.co.id
+gofood.co.id
+*.gofood.co.id
+*.gofoodmerchant.co.id
+portal.gofoodmerchant.co.id
+api.gobiz.co.id
+*.gobiz.co.id
+*.gojekapi.com
+*.golabs.io
+
+Out of Scope
+- Staging/test environments
+- Mobile apps (iOS/Android) — SecBot is web-only
+- Any Gojek assets not listed above (driver app infrastructure, etc.)

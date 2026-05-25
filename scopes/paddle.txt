@@ -1,0 +1,32 @@
+# Program: Paddle.com
+# Platform: YesWeHack (yeswehack.com/programs/paddle-com-public-bug-bounty-program)
+# Bounty: $50 (low) – $5,000 (critical)
+# Notes: SaaS payments/billing platform serving 5,000+ software companies.
+#   Both production AND sandbox in scope — prefer sandbox for active testing.
+#   Sandbox provides full payment flows with Stripe test cards.
+#   CAUTION: "Automated scanners generating heavy traffic prohibited."
+#   → Always use stealth profile; rate-limit aggressively.
+#   SecBot strengths: vendor dashboard IDOR, billing API BFLA, auth bypass, CORS.
+#   Grey-box testing: researcher account available at sandbox-vendors.paddle.com.
+#   599 resolved reports — moderately picked over; focus on logic/access-control bugs.
+
+In Scope
+vendors.paddle.com
+sandbox-vendors.paddle.com
+api.paddle.com
+sandbox-api.paddle.com
+sandbox-checkout-service.paddle.com
+sandbox-buy.paddle.com
+paddle.net
+customer-portal.paddle.com
+login.paddle.com
+www.paddle.com
+developer.paddle.com
+
+Out of Scope
+- checkout-service.paddle.com (production checkout — sandbox only)
+- buy.paddle.com (production — sandbox only)
+- All other paddle.com subdomains not listed above
+- DoS/rate-limit bypass (explicitly out-of-scope per program rules)
+- Hidden UI features accessible via direct URL (by design)
+- MFA/email verification flows (by design)
