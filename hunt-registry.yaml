@@ -1,7 +1,7 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
-# Strategy: low competition + web app depth + SecBot strengths
+# SecBot Hunt Registry
+# Created: 2026-03-22 | Last updated: 2026-05-25 (Bounty Scout)
+# Purpose: Curated bounty targets matched to SecBot's check suite
+# Strategy: low competition + web app depth + SecBot strengths + SEA home advantage
 
 - name: kredivo
   platform: other
@@ -34,6 +34,36 @@
 - name: calcom
   platform: hackerone
   scope_file: scopes/calcom.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# --- New targets added 2026-05-25 (Bounty Scout) ---
+
+- name: goto-financial
+  platform: yeswehack
+  scope_file: scopes/goto-financial.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: gojek
+  platform: yeswehack
+  scope_file: scopes/gojek.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: paddle
+  platform: yeswehack
+  scope_file: scopes/paddle.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: neon
+  platform: hackerone
+  scope_file: scopes/neon.txt
   profile: stealth
   schedule: weekly
   enabled: true
