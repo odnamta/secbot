@@ -1,0 +1,32 @@
+# Program: Monzo
+# Platform: Intigriti
+# URL: https://app.intigriti.com/programs/monzobank/monzopublicbugbountyprogram/detail
+# Bounty: Low £50-£200 / Medium £125-£1,500 / High £325-£4,500 / Critical £500-£8,250
+#         Exceptional £850-£12,500 (Tier 1 rates)
+# Notes: UK neobank with wildcard *.monzo.com scope — login, dashboard, APIs.
+#        Automated scanning explicitly allowed at max 2 req/sec. High bounties
+#        (60% above industry average per Monzo). Rails-based backend likely.
+#        Researchers from 18 sanctioned countries cannot receive monetary bounties.
+# STATUS: Verify program is active before scanning — check Intigriti page first.
+#         (Note: VDP was closed in 2025; public bug bounty program should still be active.)
+
+# REQUIRED SCANNER CONFIG:
+# --profile stealth
+# Max rate: 2 req/sec
+
+In Scope (Tier 1 — highest payouts)
+*.monzo.com
+*.prod-ffs.io
+
+In Scope (Tier 3 — lower payouts)
+www.monzo.com
+monzo.com
+
+Out of Scope
+- P2P and contact discovery endpoints
+- *.monzo.me
+- community.monzo.com
+- Internal login/SSO systems (Okta, etc.)
+- Third-party integrations (Discourse, Mailgun, etc.)
+- Mobile apps (Android/iOS) — focus scanner on web+API
+- Public OAuth client secrets (intentionally public)
