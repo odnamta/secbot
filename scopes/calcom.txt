@@ -1,7 +1,13 @@
 # Program: Cal.com
 # Platform: HackerOne
 # Bounty: $100 - $3,000 (estimated)
-# Notes: Open-source scheduling (Next.js/TypeScript), code on GitHub, small startup
+# Notes: Scheduling SaaS (Next.js/TypeScript). IMPORTANT: Cal.com went closed-source
+#        in April 2026, citing AI-powered scanners as a security threat. The HackerOne
+#        program may have been updated or paused as a result.
+# ACTION REQUIRED: Verify program is still active at hackerone.com/calcom before
+#        scanning. If paused, disable this entry (enabled: false in registry).
+# WARNING: Cal.com explicitly cited automated AI scanners as a threat vector — extra
+#          care with stealth profile; respect any updated program rules.
 
 In Scope
 app.cal.com

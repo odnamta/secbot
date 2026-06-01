@@ -1,0 +1,20 @@
+# Program: KOMOJU
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/komoju-public-bug-bounty-program
+# Bounty: $50 - $7,000
+# Notes: Japanese payment gateway (operated by Degica), supports JP/KR/EU payment
+#        methods. Provides a dedicated staging environment — test here, not prod.
+#        Merchant registration + KYC onboarding, admin dashboard (payments, refunds,
+#        user management), REST API + Hosted Page. Rich IDOR, auth, and API surfaces.
+# WARNING: Policy says "no automated scanners generating large amount of network
+#          traffic" — use stealth profile only. Low rate is fine per industry norms.
+
+In Scope
+https://yeswehack.staging.komoju.com
+https://doc.komoju.com/docs/fields-overview
+https://multipay.staging.test.komoju.com
+
+Out of Scope
+- All production komoju.com domains (test only on staging)
+- All domains/subdomains not listed above
+- Account squatting / registration abuse
