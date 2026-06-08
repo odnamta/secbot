@@ -1,7 +1,10 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# SecBot Hunt Registry
+# Created: 2026-03-22 | Last updated: 2026-06-08 (Bounty Scout run #2)
+# Purpose: Active bounty programs matched to SecBot's strengths
 # Strategy: low competition + web app depth + SecBot strengths
+# Priority: Indonesian/SEA programs (home advantage, lower competition)
+
+# ── Existing targets ────────────────────────────────────────────────────────
 
 - name: kredivo
   platform: other
@@ -34,6 +37,45 @@
 - name: calcom
   platform: hackerone
   scope_file: scopes/calcom.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# ── New targets (added 2026-06-08) ──────────────────────────────────────────
+
+# Indonesian super-app — ride-hailing, food delivery, payments.
+# HackerOne public program, $100–$5,000. Go/Node.js microservices + React portals.
+# IMPORTANT: Add unique identifier header to all requests (see scopes/gojek-h1.txt).
+- name: gojek
+  platform: hackerone
+  scope_file: scopes/gojek-h1.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# Indonesian fintech (GoPay, GoPayLater, GoBiz) — part of GoTo Group.
+# YesWeHack public program, up to $7,000. High IDOR + auth-bypass value in payment flows.
+- name: goto-financial
+  platform: other
+  scope_file: scopes/goto-financial.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# Swiss cloud/hosting/SaaS — hosting control panel + kSuite collaboration suite.
+# YesWeHack, up to €3,500. PHP backend = SQLi/XSS potential. Custom UA header required.
+- name: infomaniak
+  platform: other
+  scope_file: scopes/infomaniak.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# Indonesian travel/OTA — flight, hotel, activity booking + partner portals.
+# Bugcrowd program, monetary rewards for Medium+. PNR leakage + IDOR high-value.
+- name: traveloka
+  platform: bugcrowd
+  scope_file: scopes/traveloka.txt
   profile: stealth
   schedule: weekly
   enabled: true

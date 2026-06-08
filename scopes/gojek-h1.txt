@@ -1,0 +1,22 @@
+# Program: Gojek
+# Platform: HackerOne (handle: gojek)
+# Program URL: https://hackerone.com/gojek
+# Bounty: P4 $100 / P3 $500 / P2 $2,000 / P1 $5,000
+# Notes: Indonesian super-app (ride-hailing, food delivery, payments). Go/Node.js microservices,
+#        React frontends. Web portals: consumer, merchant, driver. Public program since May 2022.
+#        REQUIRED: add a unique request header to all test traffic (check program policy for exact
+#        header name — typically X-HackerOne-Research or similar per Gojek's policy).
+#        Automated scanners permitted at low rate; use stealth profile.
+
+In Scope
+*.gojek.com
+gojek.com
+merchant.gojek.com
+driver.gojek.com
+
+Out of Scope
+- Mobile apps (Android/iOS) — not SecBot's domain
+- Third-party integrations/SDKs embedded in Gojek
+- Social engineering attacks
+- Physical security
+- Assets not listed above (verify full scope at hackerone.com/gojek/policy_scopes)

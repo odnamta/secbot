@@ -1,0 +1,27 @@
+# Program: Infomaniak
+# Platform: YesWeHack
+# Program URL: https://yeswehack.com/programs/infomaniak-bug-bounty-program
+# Bounty: up to €3,500 (critical); +50% bonus for first valid report on new perimeter
+# Notes: Swiss cloud/hosting/SaaS provider. PHP-based hosting control panel + kSuite collaboration
+#        suite (email, calendar, drive, meet). Web hosting, streaming, video-on-demand in scope.
+#        REQUIRED custom User-Agent header: "Infomaniak-YWH-Bugbounty" on all test requests.
+#        Use @yeswehack.ninja alias email for test accounts on kSuite.
+#        "One Fix One Reward": only one endpoint rewarded per shared codebase flaw.
+#        Business Logic errors excluded unless PII/customer data is leaked.
+#        DoS/brute-force strictly forbidden.
+
+In Scope
+infomaniak.com
+manager.infomaniak.com
+ksuite.com
+mail.infomaniak.com
+drive.infomaniak.com
+meet.infomaniak.com
+*.infomaniak.com
+*.ksuite.com
+
+Out of Scope
+- Denial of service / brute-force attacks
+- Business logic errors without PII/data leakage impact
+- Third-party software not owned by Infomaniak
+- Self-hosted customer infrastructure (only Infomaniak-owned services)
