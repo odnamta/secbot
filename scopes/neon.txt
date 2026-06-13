@@ -1,0 +1,29 @@
+# Program: Neon
+# Platform: HackerOne (hackerone.com/neon_bbp)
+# Bounty: $150 (low) — $3,000 (critical); expanding throughout 2025
+# Company: Neon Inc. — serverless PostgreSQL (formerly Neondatabase); ~80 employees
+# Notes: Program went PUBLIC Feb 2025 after ~3 months private. Low competition
+#        window — newly public means low-hanging fruit still available.
+#        Stack: Node.js / Rust / Go backend, Next.js console. Auth via GitHub/Google
+#        OAuth + email magic links. Staging env in scope (use Stripe test cards).
+#        Response SLA: ack 2 days, triage 10 days, payment 30 days.
+# Warnings: Scope is deliberately narrow — web app + API only (no infra/cloud).
+#            Do not test customer database content; focus on the control plane.
+
+In Scope
+console.neon.tech
+api.neon.tech
+neon.tech (auth/API paths, not marketing)
+
+Out of Scope
+- Customer Postgres databases (tenant data)
+- Physical infrastructure / cloud provider layer
+- Third-party OAuth providers (GitHub, Google)
+- Stripe payment processing backend
+
+Notes
+- Both staging (neon-staging.tech) and production are in scope — prefer staging
+  for destructive or high-noise tests
+- Researchers can sign up as regular users; Stripe test cards available on staging
+- Report to: security@neon.tech or via HackerOne
+- Rewards expected to increase as program matures

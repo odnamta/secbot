@@ -1,7 +1,7 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
-# Strategy: low competition + web app depth + SecBot strengths
+# SecBot Hunt Registry
+# Created: 2026-03-22  |  Last updated: 2026-05-18 (Bounty Scout run #2)
+# Purpose: Ongoing bounty hunt — curated targets matched to SecBot strengths
+# Strategy: low competition + web app depth + Indonesian/SEA priority
 
 - name: kredivo
   platform: other
@@ -37,3 +37,38 @@
   profile: stealth
   schedule: weekly
   enabled: true
+
+# --- Added 2026-05-18 by Bounty Scout ---
+
+- name: gojek
+  platform: hackerone
+  scope_file: scopes/gojek.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: >
+    Indonesian super-app (GoTo Group). $100–$5,000. Home-advantage play.
+    MUST include X-Bug-Bounty-Testing header in every request.
+    Focus on CORS, GraphQL, JWT, IDOR — XSS/SQLi are saturated here.
+
+- name: neon
+  platform: hackerone
+  scope_file: scopes/neon.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: >
+    Serverless PostgreSQL startup. $150–$3,000. Went public Feb 2025 —
+    low-competition window. Node.js/Next.js console. Staging in scope.
+    Best SecBot checks: API auth, CORS, SSRF, JWT, IDOR.
+
+- name: mattermost
+  platform: bugcrowd
+  scope_file: scopes/mattermost.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: >
+    Open-source messaging (Go+React). Public on Bugcrowd since Nov 2024.
+    Read github.com/mattermost/mattermost before scanning for high signal.
+    Fresh plugin targets (Boards, Copilot, MS Calendar) are lowest competition.
