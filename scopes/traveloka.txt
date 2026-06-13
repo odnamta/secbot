@@ -1,0 +1,26 @@
+# Program: Traveloka
+# Platform: Bugcrowd (self-hosted via traveloka.com/en-en/bugs)
+# Program URL: https://www.traveloka.com/en-en/bugs
+# Bounty: Monetary rewards via Bugcrowd for Medium (OWASP score ≥ 3) and above
+# Notes: Indonesian travel/OTA platform. Java backend, React/Next.js frontend.
+#        Rich web app: flight/hotel/activity booking, partner portals, payment flows.
+#        High-value findings: PNR/booking reference leakage (exposes flight details + PII),
+#        IDOR on booking IDs, XSS in itinerary pages, CORS on booking APIs.
+#        Self-XSS, clickjacking, MITM, and rate-limit-only findings are explicitly OOS.
+#        Automated testing not explicitly prohibited; use stealth profile and low RPS.
+#        Rewards vary by severity + impact + report quality; up to 90 days for payment.
+
+In Scope
+traveloka.com
+*.traveloka.com
+api.traveloka.com
+
+Out of Scope
+- Self-XSS (requires victim to run code themselves)
+- Clickjacking / UI redressing without clear impact
+- MITM attacks
+- Rate limiting (without demonstrated meaningful attack)
+- Vulnerabilities requiring access to victim's device/account
+- Exposed API keys without demonstrated security impact (e.g. Google Maps key)
+- Social engineering
+- Physical security
