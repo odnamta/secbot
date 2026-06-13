@@ -1,0 +1,21 @@
+# Program: Neon
+# Platform: HackerOne (hackerone.com/neon_bbp)
+# Bounty: $150 (low) – $3,000 (critical)
+# Notes: Serverless Postgres startup — storage/compute separated, autoscaling, DB branching.
+#   Went public March 2025 after 3-month private program + annual pentest (58 issues fixed).
+#   Both production and staging environments in scope.
+#   Researcher can register as a regular user to explore all platform flows.
+#   Tech stack: Rust (storage engine), TypeScript/Next.js (console), Go (control plane).
+#   SecBot strengths: console auth, project/branch isolation (IDOR), API key leakage,
+#     JWT security, SQL-injection in query endpoints, CORS on API.
+#   Focus: auth flows, multi-tenant isolation, API key management, data protection.
+
+In Scope
+console.neon.tech
+api.neon.tech
+neon.tech
+
+Out of Scope
+- GitHub repositories (source code bugs not in scope for web bounty)
+- DoS/availability attacks
+- Non-security-impactful configuration issues
