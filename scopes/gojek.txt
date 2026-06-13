@@ -1,0 +1,28 @@
+# Program: GOJEK
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/gojek-bug-bounty-program
+# Bounty: $50 (Low) – $5,000 (Critical)
+# Launched: 2025-07-07 (fresh — ~9 months old)
+# Company: GoJek / GoTo Group — Indonesian super-app (food, ride-hailing, merchant services)
+# Notes: GoTo Group overall is large (10,000+ employees) — outside ideal 50-500 range.
+#        However, Indonesian home-advantage and fresh program make this worthwhile.
+#        Focus on merchant-facing web portals (gobiz, gofoodmerchant) for IDOR / access control.
+#        Staging environments explicitly OUT of scope.
+#        API targets (*.gojekapi.com) great for JWT, rate-limit, auth bypass testing.
+
+In Scope
+*.gojekapi.com
+api.gojek.co.id
+gofood.co.id
+*.gofood.co.id
+api.gobiz.co.id
+*.gobiz.co.id
+portal.gofoodmerchant.co.id
+*.gofoodmerchant.co.id
+*.gojek.com
+*.golabs.io
+
+Out of Scope
+- Any staging environment (test/integration/staging/dev subdomains)
+- All other GoTo assets not listed above
+- Mobile apps (Gojek iOS/Android) — focus SecBot on web targets above

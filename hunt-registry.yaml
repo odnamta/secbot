@@ -1,14 +1,16 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# SecBot Hunt Registry
+# Created: 2026-03-22 | Last updated: 2026-04-27 (Bounty Scout run #2)
 # Strategy: low competition + web app depth + SecBot strengths
 
+# ── EXISTING TARGETS ────────────────────────────────────────────────────────
+
 - name: kredivo
-  platform: other
+  platform: other  # RedStorm (redstorm.io/program/kredivokomodo)
   scope_file: scopes/kredivo.txt
   profile: stealth
   schedule: weekly
   enabled: true
+  notes: "Indonesian fintech BNPL — RedStorm still active as of 2026-04 (verified). Low bounty (Rp) but home-advantage. Komodo + Vietnam sub-programs."
 
 - name: anytask
   platform: bugcrowd
@@ -16,6 +18,7 @@
   profile: stealth
   schedule: weekly
   enabled: true
+  notes: "WARNING: bounty status unclear in bounty-targets-data (offers_bounties=null). Verify program is still paying before submitting. Staging domain (anytask.thesecurityteam.rocks) is best target."
 
 - name: moneybird
   platform: hackerone
@@ -23,17 +26,54 @@
   profile: stealth
   schedule: weekly
   enabled: true
+  notes: "Confirmed active on HackerOne (2026-04 check). Dutch Rails SaaS, scope stable: moneybird.com + moneybirdstorage.com."
 
 - name: openproject
-  platform: other
+  platform: other  # YesWeHack
   scope_file: scopes/openproject.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false  # Paused pending verification
+  notes: "WARNING: not found in YesWeHack public data dump (2026-04). Program may have gone private or changed. Re-enable after manual verification at yeswehack.com/programs."
 
 - name: calcom
   platform: hackerone
   scope_file: scopes/calcom.txt
   profile: stealth
   schedule: weekly
+  enabled: false  # Paused pending verification
+  notes: "WARNING: not found in HackerOne public data dump (2026-04). Program may be private-only now. Re-enable after manual verification at hackerone.com/calcom."
+
+# ── NEW TARGETS (added 2026-04-27) ──────────────────────────────────────────
+
+- name: goto-financial
+  platform: other  # YesWeHack — yeswehack.com/programs/goto-financial-public-bounty-program
+  scope_file: scopes/goto-financial.txt
+  profile: stealth
+  schedule: weekly
   enabled: true
+  notes: "Indonesian fintech (Midtrans + GoPay). Launched 2025-07-07 — fresh program, less competition. $50-$7k. Web dashboard (app.midtrans.com) + merchant API. Staging OOS."
+
+- name: gojek
+  platform: other  # YesWeHack — yeswehack.com/programs/gojek-bug-bounty-program
+  scope_file: scopes/gojek.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: "Indonesian super-app. Launched 2025-07-07. $50-$5k. Large company (GoTo Group) but fresh program + Indonesian advantage. Focus on *.gobiz.co.id merchant portal for IDOR/access-control. Staging OOS."
+
+- name: komoju
+  platform: other  # YesWeHack — yeswehack.com/programs/komoju-public-bug-bounty-program
+  scope_file: scopes/komoju.txt
+  profile: deep  # Narrow scope (1 target) — run deep profile to maximize coverage
+  schedule: weekly
+  enabled: true
+  notes: "Japanese payment gateway. $50-$7k. ONLY target is yeswehack.staging.komoju.com — staging is explicitly in scope, ideal for automated tools. Deep profile justified by narrow scope."
+
+- name: paddle
+  platform: other  # YesWeHack — yeswehack.com/programs/paddle-com-public-bug-bounty-program
+  scope_file: scopes/paddle.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: "UK payment SaaS. $50-$5k. Multiple sandbox domains in scope — safe for automated testing. vendors.paddle.com (merchant dashboard) is the prime target. Node.js likely. Good for XSS, CORS, JWT, IDOR."

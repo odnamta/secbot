@@ -1,0 +1,29 @@
+# Program: GoTo Financial (Midtrans / GoPay)
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/goto-financial-public-bounty-program
+# Bounty: $50 (Low) – $7,000 (Critical)
+# Launched: 2025-07-07 (fresh — ~9 months old, less competition)
+# Company: GoTo Financial — Indonesian fintech arm of GoTo Group
+# Notes: Midtrans is the merchant-facing payment gateway; GoPay is the consumer wallet.
+#        Staging environments are explicitly OUT of scope.
+#        Company is part of GoTo Group (large), but financial/payment sub-entity is scoped independently.
+#        Indonesian home-advantage applies — language, context, and local payment flows familiar.
+
+In Scope
+app.midtrans.com
+api.midtrans.com
+www.midtrans.com
+gopaymerchant.midtrans.com
+mokapos.com
+*.gopayapi.com
+*.gaming.gopayapi.com
+*.go-pay.co.id
+*.gofin.io
+*.findaya.com
+*.findaya.co.id
+*.gtflabs.io
+
+Out of Scope
+- Any staging environment (domains with test/integration/staging/dev in name)
+- All other GoTo Financial assets not listed above
+- Mobile apps (GoPay iOS/Android) — focus SecBot on web targets above
