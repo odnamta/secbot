@@ -1,0 +1,43 @@
+# Program: WP Engine
+# Platform: Intigriti
+# URL: https://app.intigriti.com/programs/wpengine/wpenginebugbounty/detail
+# Bounty: Low €250 / Medium €500 / High €1,000 / Critical €2,500
+# Notes: WordPress hosting SaaS — login dashboard, payments portal, and a suite of
+#        acquired products (ACF, Local by Flywheel, NitroPack). Explicitly allows
+#        automated scanning at max 3 req/sec. MUST set User-Agent header:
+#        "Intigriti-<your_handle>" — scanner will be blocked/banned otherwise.
+#        Tier 1 (my.wpengine.com, payments) pays highest; Tier 2 (product wildcards)
+#        pays medium.
+
+# REQUIRED SCANNER CONFIG:
+# --profile stealth
+# Custom User-Agent: Intigriti-<handle>
+# Max rate: 3 req/sec
+
+In Scope (Tier 1 — highest payouts)
+my.wpengine.com
+payments.wpengine.com
+wpengine.com
+app.getflywheel.com
+getflywheel.com
+
+In Scope (Tier 2 — medium payouts)
+*.advancedcustomfields.com
+*.localwp.com
+*.nitropack.io
+*.studiopress.com
+*.wpengine.io
+*.wpesvc.net
+*.deliciousbrains.com
+*.bettersearchreplace.com
+
+Out of Scope
+- Self-XSS without demonstrated multi-user impact
+- CORS misconfigurations on non-sensitive endpoints
+- Missing security headers and cookie flags (passive checks excluded)
+- CSRF with minimal/no demonstrable impact
+- Subdomain takeover reports without confirmed active takeover
+- Clickjacking without realistic user interaction chain
+- DoS / DDoS attacks
+- Email spoofing / SPF / DMARC issues
+- Username enumeration

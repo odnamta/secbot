@@ -1,7 +1,9 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# SecBot Hunt Registry — Bounty Scout update 2026-06-01
+# Originally created: 2026-03-22 (Diagnostic Run #1)
+# Updated: 2026-06-01 — added 4 new targets, flagged calcom for re-verification
 # Strategy: low competition + web app depth + SecBot strengths
+
+# ── ORIGINAL 5 TARGETS ────────────────────────────────────────────────────────
 
 - name: kredivo
   platform: other
@@ -31,9 +33,53 @@
   schedule: weekly
   enabled: true
 
+# Cal.com went closed-source April 2026 citing AI scanners; verify H1 program
+# is still active before re-enabling. Paused until manually confirmed.
 - name: calcom
   platform: hackerone
   scope_file: scopes/calcom.txt
+  profile: stealth
+  schedule: weekly
+  enabled: false
+
+# ── NEW TARGETS (added 2026-06-01) ────────────────────────────────────────────
+
+# GoTo Financial — Indonesian fintech (GoPay / Midtrans / Moka POS)
+# YesWeHack · $5–$7,000 · payment APIs + merchant dashboards
+# SEA home-advantage, rich IDOR/CORS/JWT/SSRF surfaces
+- name: goto-financial
+  platform: yeswehack
+  scope_file: scopes/goto-financial.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# WP Engine — WordPress hosting SaaS
+# Intigriti · €250–€2,500 · EXPLICIT automated scanning allowed (≤3 req/sec)
+# REQUIRED: set User-Agent to "Intigriti-<handle>" during scan
+- name: wpengine
+  platform: intigriti
+  scope_file: scopes/wpengine.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# Monzo — UK neobank
+# Intigriti · £50–£12,500 · *.monzo.com wildcard · automated OK (≤2 req/sec)
+# NOTE: verify program is still active before first scan (VDP closed 2025)
+- name: monzo
+  platform: intigriti
+  scope_file: scopes/monzo.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# KOMOJU — Japanese payment gateway (Degica)
+# YesWeHack · $50–$7,000 · dedicated staging env provided
+# WARNING: use stealth only — policy bars high-traffic automated scans
+- name: komoju
+  platform: yeswehack
+  scope_file: scopes/komoju.txt
   profile: stealth
   schedule: weekly
   enabled: true
