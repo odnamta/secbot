@@ -1,0 +1,22 @@
+# Program: Exoscale
+# Platform: Intigriti — https://app.intigriti.com/programs/exoscale/excoscalebugbounty/detail
+# Also listed on Bugcrowd: https://bugcrowd.com/exoscale (submit via Intigriti)
+# Bounty: EUR-based (Intigriti standard tiers); €25 bonus for submissions validated outside SLA
+# Notes: Leading Swiss/European cloud provider, ~150 employees, SaaS control plane
+# Stack: Go, REST API, web portal (Vue.js likely)
+# Good for: CORS, SSRF, broken access control, IDOR, API security, info disclosure
+
+In Scope
+portal.exoscale.com
+*.exoscale.com
+
+Out of Scope
+- Rate limiting issues (out of scope unless high security impact demonstrated)
+- Vulnerabilities with under USD 500 business impact (coupon/resource limit bypass)
+- Attacks disrupting service availability for other customers
+
+# WARNING: Automated tools permitted with care.
+# MUST blacklist the ticket creation endpoint to avoid creating support spam:
+#   https://portal.exoscale.com/api/tickets
+# Use --exclude-checks or custom scope config to avoid hitting this endpoint.
+# Keep request rate low (stealth profile recommended).

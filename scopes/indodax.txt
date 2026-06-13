@@ -1,0 +1,18 @@
+# Program: Indodax
+# Platform: RedStorm (redstorm.io) — https://www.redstorm.io/program/indodax
+# Bounty: Undisclosed / impact-based (no public tiers; comparable to Kredivo range)
+# Notes: Indonesia's largest cryptocurrency exchange (~500 employees), 6M+ users
+# Stack: PHP (likely Laravel), JavaScript/React
+# SEA PRIORITY — same platform as Kredivo, Indonesian crypto exchange, login/dashboard/API
+
+In Scope
+indodax.com
+*.indodax.com
+
+Out of Scope
+- Android/iOS mobile apps (can submit but lower bounty weight)
+
+# WARNING: Reports from unvalidated automated scanner output are explicitly out of scope.
+# SecBot satisfies this: AI validation + auto-verify ensures all findings are validated
+# before submission. Do NOT submit raw scan results — only AI-confirmed findings.
+# Submit via RedStorm platform (not email).

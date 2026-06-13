@@ -1,0 +1,24 @@
+# Program: Monzo
+# Platform: Intigriti — https://app.intigriti.com/programs/monzobank/monzopublicbugbountyprogram
+# Bounty: Up to €12,500 (critical); stated to be 60% above industry average
+# Notes: UK digital bank, public program launched mid-2024 — relatively fresh
+# Stack: Go microservices, React frontend, OAuth2 Bearer token auth on all API calls
+# Good for: JWT/OAuth2 misconfig, BFLA, IDOR, broken access control, CORS on API endpoints
+
+In Scope
+monzo.com
+app.monzo.com
+api.monzo.com
+*.monzo.com
+
+Out of Scope
+- Third-party OAuth2 clients connecting to Monzo's API
+- Monzo accounts belonging to real users (use test accounts only)
+- Physical card abuse / contactless payment testing
+- Social engineering or phishing attacks
+
+# Public program since mid-2024 — less saturated than long-running programs.
+# All API calls require OAuth2 bearer tokens — auth required before scanning API scope.
+# PoC required for all submissions: AI-validated findings + Playwright screenshots satisfy this.
+# Automated scanning permitted; raw unvalidated output will not be accepted.
+# NOTE: Use --auth-cookie or --auth-supabase to authenticate before running API checks.

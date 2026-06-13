@@ -1,0 +1,29 @@
+# Program: Gojek (GoTo Group)
+# Platform: HackerOne — https://hackerone.com/gojek
+# Bounty: $100 (low) – $5,000 (critical). Tier-1 assets max $5,000; tier-2 max $2,000
+# Notes: Indonesian super-app (ride-hailing, food delivery, payments, logistics)
+# Stack: Go microservices, React/Next.js, GraphQL + REST APIs, Kubernetes
+# SEA PRIORITY — Indonesian unicorn, complex cross-service attack surface
+
+In Scope
+gojek.com
+*.gojek.com
+*.gojekapi.com
+*.gopayapi.com
+api.gojek.co.id
+gofood.co.id
+gosend.id
+go-tix.id
+gocorp.gojek.com
+portal.gosend.id
+
+Out of Scope
+- Any Gojek-affiliated company not listed above
+- Fake bookings/orders (transactional testing without permission)
+- Rate limiting on public unauthenticated endpoints unless exploitable
+
+# IMPORTANT: All requests must include the identification header:
+#   X-HackerOne-Research: <your-h1-username>
+# Add this to SecBot via custom request headers config for this target.
+# Raw scanner output without explanation is rejected — AI-validated findings required.
+# Focus on: GoFood/GoPay/GoSend cross-account IDOR, inter-service CORS, JWT misconfig.

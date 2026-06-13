@@ -1,0 +1,17 @@
+# Program: Mattermost
+# Platform: Bugcrowd (public) — https://bugcrowd.com/engagements/mattermost-mbb-public
+# Bounty: Bugcrowd P1-P4 structure (paid program, specific amounts on Bugcrowd page)
+# Notes: Open-source collaboration platform (Slack alternative), ~300 employees
+# Stack: Go (backend), React/TypeScript (frontend), PostgreSQL
+# Moved from HackerOne to Bugcrowd Nov 2024 — relatively fresh = less competition
+# Good for: XSS, CORS, IDOR, broken access control, CSRF, API security, JWT
+
+In Scope
+mattermost.com
+api.mattermost.com
+mattermost.cloud
+
+Out of Scope
+- community.mattermost.com (do NOT test against the community/production server)
+- Self-hosted instances belonging to other users
+- github.com/mattermost (source code only, not bounty scope)

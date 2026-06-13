@@ -1,0 +1,24 @@
+# Program: Grafana Labs
+# Platform: Intigriti — https://app.intigriti.com/programs/grafanalabs/grafanalabs/detail
+# Also: OSS program at https://app.intigriti.com/programs/grafanalabs/grafanaossbbp/detail
+# Bounty: Up to €15,000 (critical); CVSS 3.1-mapped payouts; bonuses for exceptional reports
+# Notes: Open-source observability platform (grafana.com, grafana.net cloud)
+# Stack: Go backend, React/Angular frontend, REST + HTTP APIs, Prometheus-compatible
+# Good for: SSRF (data source connections), broken access control (org/team isolation),
+#   API auth bypass, info disclosure, host-header injection, CORS
+
+In Scope
+grafana.com
+grafana.net
+*.grafana.com
+*.grafana.net
+
+Out of Scope
+- Self-hosted Grafana OSS instances not operated by Grafana Labs
+- Third-party data source plugins from the marketplace
+- grafana.com marketing pages (static only, no dynamic input)
+
+# Cloud platform (grafana.com/grafana.net) is the web-app target — best ROI for SecBot.
+# Open-source code available on GitHub for white-box pre-analysis.
+# Intigriti triage team validates before forwarding to Grafana — AI evidence helps here.
+# Automated scanning permitted; no explicit scanner ban.
