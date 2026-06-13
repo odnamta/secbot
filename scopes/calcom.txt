@@ -1,11 +1,22 @@
 # Program: Cal.com
-# Platform: HackerOne
-# Bounty: $100 - $3,000 (estimated)
-# Notes: Open-source scheduling (Next.js/TypeScript), code on GitHub, small startup
+# Platform: GitHub Security Advisories (NOT HackerOne — previous entry was incorrect)
+# Bounty: NONE — this is a VDP (Vulnerability Disclosure Program) only
+# Status: DISABLED — removed from active hunt registry 2026-04-13
+# Reason: (1) No monetary rewards paid.
+#         (2) Explicitly bans automated scanners: "Do not run automated scanners on our
+#             infrastructure or dashboard." (cal.com/security)
+#         (3) XSS, CSRF, and clickjacking are all out of scope.
+#         (4) *.companyhub.com entry below was an error — CompanyHub is a separate CRM company.
+# Report via: https://github.com/calcom/cal.com/security/advisories
 
 In Scope
 app.cal.com
-*.companyhub.com
 
 Out of Scope
-- cal.com (marketing site only, not the app)
+- Automated scanning of any kind (explicitly prohibited)
+- XSS (out of scope per program policy)
+- CSRF (out of scope per program policy)
+- Clickjacking (out of scope per program policy)
+- Physical access attacks
+- DoS attacks
+- DNS / email security issues

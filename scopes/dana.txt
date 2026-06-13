@@ -1,0 +1,26 @@
+# Program: DANA Indonesia
+# Platform: YesWeHack (https://yeswehack.com/programs/dana-bug-bounty-program)
+# Bounty: $0 (Low) - $3,000 (Critical) + $2,000 bonus for face-verification login bypass
+# Notes: Indonesian digital wallet / e-money platform. ~1,000 employees.
+#        Mature program — 191 reports, first response <3 days, last updated Feb 2025.
+#        Holds 4 Bank Indonesia licenses (e-money, digital wallet, money transfer, liquidity).
+#        Indonesian home advantage — local knowledge of payment flows and QRIS ecosystem.
+# Automated tools: Rate limiting is required — "limit yourself about requests per second."
+#                  Use stealth profile (Gaussian delay, max 10 concurrent). Do not hammer APIs.
+# Best attack surface: login/auth flows (face verification!), merchant dashboard IDOR,
+#                      payment API auth bypass, CORS on api subdomains, SSRF in payment flows.
+# WARNING: Do NOT modify, leak, or destroy any user data — immediate program ban.
+
+In Scope
+dana.id
+www.dana.id
+dashboard.dana.id
+*.dana.id
+
+Out of Scope
+- Social engineering and phishing attacks
+- Denial of service / DDoS attacks
+- Tests that cause service degradation or interruption
+- Data manipulation, leakage, or destruction of any user data
+- Vulnerability disclosure without prior written authorization
+- Account squatting activities
