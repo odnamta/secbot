@@ -1,0 +1,29 @@
+# Program: Freshworks
+# Platform: HackerOne (handle: freshworks)
+# URL: https://hackerone.com/freshworks
+# Bounty: ~$300 (low) - $5,000 (critical) — estimated from comparable H1 SaaS programs
+# Company size: ~5,000 employees (multi-product CRM/helpdesk SaaS, NASDAQ: FRSH)
+# Tech stack: Ruby on Rails (backend), React + TypeScript (frontend), Node.js microservices
+# Notes: Multi-product suite (Freshdesk, Freshservice, Freshchat, Freshsales, Freshmarketer).
+#        Each sub-product is its own full web app = large attack surface rarely fully covered.
+#        Rails + React stack matches SecBot strengths perfectly. Target individual products
+#        rather than the whole suite per scan to keep findings focused.
+# Warning: Larger company = more established researchers. Focus on newer products
+#          (Freshmarketer, Freshthemes) or API endpoints that may be less tested.
+#          Automated scanning explicitly allowed but respect rate limits.
+
+In Scope
+app.freshdesk.com
+*.freshdesk.com
+app.freshservice.com
+*.freshservice.com
+app.freshworks.com
+freshchat.com
+freshsales.io
+freshmarketer.com
+
+Out of Scope
+- freshworks.com (marketing site only)
+- Third-party integrations (Salesforce connector, Zapier, etc.)
+- Freshworks mobile applications (iOS/Android)
+- Issues in sub-processors or third-party SaaS tools

@@ -1,0 +1,27 @@
+# Program: Jenkins
+# Platform: YesWeHack (handle: jenkins-bug-bounty-program)
+# URL: https://yeswehack.com/programs/jenkins-bug-bounty-program
+# Bounty: EUR 100 (low) - EUR 5,000 (critical) — EU Commission funded
+# Launched: November 24, 2025 — brand new, minimal researcher saturation
+# Duration: 12-month programme (runs until ~Nov 2026)
+# Company size: Open-source project (Jenkins / Eclipse Foundation)
+# Tech stack: Java (core), Jelly templates (UI), Groovy (pipelines), JavaScript (UI)
+# Notes: CI/CD automation server. EU-funded OSS program = well-resourced triage.
+#        Excellent attack surface for SSRF (build agents reach internal infra),
+#        CSRF (admin panel), XSS (Jelly template injection), info disclosure
+#        (build logs leaking secrets). New program = very low competition.
+# Warning: Do NOT trigger actual build jobs or delete pipelines on test instances.
+#          Use the YesWeHack test environment if provided; otherwise use a local instance
+#          for reproduction and only confirm on jenkins.io web properties.
+
+In Scope
+jenkins.io
+issues.jenkins.io
+plugins.jenkins.io
+ci.jenkins.io
+stats.jenkins.io
+
+Out of Scope
+- github.com/jenkinsci (source code review only — test deployed web properties)
+- Community-hosted Jenkins instances not operated by the Jenkins project
+- Third-party Jenkins plugins not maintained by the Jenkins core team

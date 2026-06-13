@@ -1,0 +1,25 @@
+# Program: Mattermost
+# Platform: Bugcrowd (handle: mattermost-mbb-public)
+# URL: https://bugcrowd.com/engagements/mattermost-mbb-public
+# Bounty: ~$300 (P3) - $3,000 (P1) — Bugcrowd priority-based grid
+# Migrated: November 2024 (moved from HackerOne to Bugcrowd, expanded scope)
+# Company size: ~300 employees (open-core team messaging)
+# Tech stack: Go (backend API), React + TypeScript (web app), Node.js (plugins)
+# Notes: Open-source team messaging platform. Migration to Bugcrowd in Nov 2024 means
+#        reset competition and 4 new targets added. Rich API = good IDOR/access-control
+#        surface. Self-hosted + cloud editions both in scope.
+# Warning: Create dedicated test accounts; do not test on community.mattermost.com
+#          with real user data in channels. Avoid channel/message deletion.
+
+In Scope
+mattermost.com
+api.mattermost.com
+community.mattermost.com
+integrations.mattermost.com
+plus.mattermost.com
+
+Out of Scope
+- Self-hosted Mattermost instances operated by third parties
+- Mattermost mobile apps (iOS/Android) — focus on web
+- github.com/mattermost (source code analysis)
+- Plugins not published by Mattermost Inc.

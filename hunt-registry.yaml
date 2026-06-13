@@ -1,6 +1,7 @@
-# SecBot Hunt Registry — Diagnostic Run #1
+# SecBot Hunt Registry
 # Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# Updated: 2026-05-11 (Bounty Scout — added 5 new targets)
+# Purpose: Autonomous bounty hunting — carefully selected targets
 # Strategy: low competition + web app depth + SecBot strengths
 
 - name: kredivo
@@ -37,3 +38,58 @@
   profile: stealth
   schedule: weekly
   enabled: true
+
+# --- New targets added 2026-05-11 (Bounty Scout) ---
+
+- name: neon
+  platform: hackerone
+  scope_file: scopes/neon.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: >
+    Serverless Postgres SaaS (TypeScript/Next.js). Public since mid-2025 = low
+    saturation. Strong auth/IDOR/CORS surface. $150-$3k bounty range.
+
+- name: mattermost
+  platform: bugcrowd
+  scope_file: scopes/mattermost.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: >
+    Team messaging (Go + React). Migrated HackerOne→Bugcrowd Nov 2024 with expanded
+    scope — effectively a fresh program. Rich API = good IDOR/access-control surface.
+
+- name: jenkins
+  platform: other
+  scope_file: scopes/jenkins.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: >
+    CI/CD automation, YesWeHack. Brand-new program (Nov 2025, EU Commission funded).
+    Java + Jelly templates — excellent for SSRF/CSRF/XSS/info-disclosure.
+    EUR 100-5k range. Very low researcher saturation.
+
+- name: freshworks
+  platform: hackerone
+  scope_file: scopes/freshworks.txt
+  profile: stealth
+  schedule: biweekly
+  enabled: true
+  notes: >
+    Multi-product CRM/helpdesk SaaS (Rails + React). Scope covers Freshdesk,
+    Freshservice, Freshchat, Freshsales, Freshmarketer — each is a full web app.
+    Large attack surface; rotate across sub-products each scan.
+
+- name: wealthsimple
+  platform: hackerone
+  scope_file: scopes/wealthsimple.txt
+  profile: stealth
+  schedule: biweekly
+  enabled: true
+  notes: >
+    Canadian fintech robo-advisor (Rails + React). Financial data = high bounty impact.
+    $500-$10k estimated range. Strong fit for auth/IDOR/CORS checks.
+    Requires HackerOne alias account + dedicated test account (no real trades).

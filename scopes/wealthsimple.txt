@@ -1,0 +1,29 @@
+# Program: Wealthsimple
+# Platform: HackerOne (handle: wealthsimple)
+# URL: https://hackerone.com/wealthsimple
+# Bounty: ~$500 (low) - $10,000 (critical) — fintech premium, financial data = high impact
+# Company size: ~1,000 employees (Canadian fintech, robo-advisor + trading platform)
+# Tech stack: Ruby on Rails (backend), React + TypeScript (frontend), Node.js
+# Notes: Canadian fintech with login dashboard, investment accounts, trade execution.
+#        Financial context means auth bypass / IDOR / CORS findings carry high impact.
+#        Program requires HackerOne email alias account for eligibility.
+#        Rails + React stack is a strong SecBot match.
+# Warning: Create a dedicated test account — do NOT place real trades or move funds.
+#          Findings in recently acquired products are out of scope for 3 months post-acquisition.
+#          Do not test on accounts belonging to real users; only test your own test account.
+#          Recent acquisitions reported to security@wealthsimple.com, not HackerOne.
+
+In Scope
+my.wealthsimple.com
+app.wealthsimple.com
+api.wealthsimple.com
+invest.wealthsimple.com
+trade.wealthsimple.com
+
+Out of Scope
+- wealthsimple.com (marketing site)
+- Wealthsimple mobile apps (iOS/Android) — focus on web
+- Third-party integrations (Open Banking, CRA My Account, etc.)
+- Vulnerabilities requiring physical device access or MITM
+- Clickjacking on pages with no sensitive actions
+- Recently acquired products (check H1 page for current exclusion list)
