@@ -1,7 +1,13 @@
 # Program: Cal.com
-# Platform: HackerOne
+# Platform: HackerOne (cal_)
 # Bounty: $100 - $3,000 (estimated)
 # Notes: Open-source scheduling (Next.js/TypeScript), code on GitHub, small startup
+# !! WARNING: Cal.com security page (cal.com/security) explicitly states
+# !! "do not run automated scanners on our infrastructure or dashboard."
+# !! To run automated tests, contact security@cal.com to get a sandbox environment.
+# !! SecBot should NOT scan this target until sandbox authorization is confirmed.
+# !! Target is DISABLED in hunt-registry.yaml until sandbox is arranged.
+# Note: *.companyhub.com in scope is unverified — may need confirmation with program.
 
 In Scope
 app.cal.com
@@ -9,3 +15,4 @@ app.cal.com
 
 Out of Scope
 - cal.com (marketing site only, not the app)
+- Automated scanning without explicit sandbox authorization from security@cal.com
