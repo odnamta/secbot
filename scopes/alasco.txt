@@ -1,0 +1,16 @@
+# Program: Alasco GmbH
+# Platform: YesWeHack
+# Bounty: €50 - €1,000 (case-by-case, reviewed monthly by Security Board)
+# Notes: German construction project management / cost-control SaaS. Very niche target —
+#        low researcher competition. ~50-100 employees. Likely Python/Django or Node.js backend.
+#        Wildcard in-scope (*.alasco.de) gives broad surface: app, API, and subdomains.
+#        Program states "any tech property that belongs to our business is in scope."
+#        Lower max bounty but high hit-rate expected due to low competition.
+
+In Scope
+app.alasco.de
+api.alasco.de
+*.alasco.de
+
+Out of Scope
+- Vulnerabilities without tangible risk to security posture or customer data

@@ -1,0 +1,16 @@
+# Program: Swapcard
+# Platform: YesWeHack
+# Bounty: $50 - $2,000
+# Notes: Event networking / matchmaking SaaS. React + Node.js with GraphQL APIs.
+#        GraphQL deep check is SecBot's specific strength (introspection, depth limits, mutations).
+#        studio.swapcard.com is the organiser back-end — rich admin attack surface.
+#        ~100 employees, lower competition than mainstream targets.
+# Rules: No DoS/DDoS/scraping-like automated tools. SecBot stealth profile is compliant.
+
+In Scope
+app.swapcard.com
+studio.swapcard.com
+
+Out of Scope
+- DoS / DDoS / scraping-like automated attacks
+- Testing other users' accounts (use dedicated test accounts only)

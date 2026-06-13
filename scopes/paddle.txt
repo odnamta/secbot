@@ -1,0 +1,19 @@
+# Program: Paddle.com
+# Platform: YesWeHack
+# Bounty: $50 - $5,000
+# Notes: Payment/subscription SaaS merchant dashboard, Node.js/React frontend. Vendor portal
+#        has rich auth flows, IDOR surface across subscription/billing objects, CORS potential.
+#        599 reports resolved → mature program but consistently rewards new logic bugs.
+# Rules: No high-intensity or invasive scanning. No DoS. TLS findings not accepted.
+#        SecBot stealth profile is compliant — no flood-rate requests.
+
+In Scope
+vendors.paddle.com
+api.paddle.com
+customer-portal.paddle.com
+
+Out of Scope
+- High-intensity / invasive automated scanning tools
+- DoS / DDoS testing
+- TLS configuration weaknesses
+- Reports detailing non-exploitable vulnerabilities
