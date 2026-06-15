@@ -1,0 +1,18 @@
+# Program: Mattermost
+# Platform: Bugcrowd
+# URL: https://bugcrowd.com/engagements/mattermost-mbb-public
+# Bounty: avg $327 recent (P1/P2 up to 2x bonus); 157 vulns rewarded since Nov 2024
+# Notes: Open-source team collaboration platform (Node.js + React + Go backend).
+#        Migrated from HackerOne to Bugcrowd Nov 2024; active with 75% of reports
+#        triaged within 11 days. Scope includes cloud webapp, REST API, and plugins.
+#        Good target for: auth bypass, IDOR in channel/team access, XSS in messages,
+#        CORS on API, info disclosure, rate limiting on login.
+#        Uses Bugcrowd Vulnerability Rating Taxonomy (P1–P4).
+
+In Scope
+mattermost.com
+
+Out of Scope
+- Self-hosted Mattermost instances (customer-deployed)
+- Third-party plugins not explicitly listed in the Bugcrowd scope
+- Mattermost's open-source GitHub repo (code-only, no running target)

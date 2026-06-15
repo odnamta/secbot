@@ -2,10 +2,11 @@
 # Platform: HackerOne
 # Bounty: $100 - $3,000 (estimated)
 # Notes: Open-source scheduling (Next.js/TypeScript), code on GitHub, small startup
+# Note: companyhub.com is a separate, unrelated company (CRM SaaS with its own H1 VDP) — removed.
 
 In Scope
 app.cal.com
-*.companyhub.com
 
 Out of Scope
 - cal.com (marketing site only, not the app)
+- companyhub.com (different company entirely)
