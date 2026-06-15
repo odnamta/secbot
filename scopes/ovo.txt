@@ -1,0 +1,17 @@
+# Program: OVO Indonesia
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/ovo-bug-bounty-program
+# Bounty: Estimated €100 - €5,000+ (YesWeHack CVSS-based)
+# Notes: Indonesian fintech payment + rewards platform, backed by Grab. Launched public
+#        program Nov 2022. Primary product is mobile app but scope explicitly includes
+#        "most external-facing web assets." GCP-hosted infrastructure.
+#        Ineligible if you are current/former employee of OVO, Grab, GxS, GxB, or Superbank.
+# Strengths: CORS, open redirect, IDOR, info disclosure, XSS in web dashboard
+
+In Scope
+*.ovo.id
+
+Out of Scope
+- ovo.id marketing landing pages (focus on authenticated web app endpoints)
+- Mobile apps (iOS/Android)
+- Third-party services embedded in OVO app

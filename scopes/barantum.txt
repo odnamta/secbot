@@ -1,0 +1,19 @@
+# Program: Barantum
+# Platform: direct (no bug bounty platform)
+# Submission: bughunter@barantum.com
+# Bounty: Monetary — CVSS 3.1 severity-based, amounts not publicly listed
+# Notes: Largest CRM + Omnichannel Chat + Call Center SaaS in Indonesia (founded 2017,
+#        Bandung-based). Direct program means less competition and faster triage.
+#        Web-heavy application: CRM dashboard, omnichannel interface, call center panel, API.
+#        First reporter only. Employees and contractors ineligible.
+#        Warning: Small company — apply extra rate limiting (stealth profile required).
+# Strengths: XSS in CRM fields, IDOR in customer records, SQLi, CORS, broken access control
+
+In Scope
+barantum.com
+app.barantum.com
+
+Out of Scope
+- Social engineering, phishing
+- DoS/DDoS attacks
+- Physical access attacks

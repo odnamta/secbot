@@ -1,0 +1,17 @@
+# Program: Superbank
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/superbank-public-bug-bounty-program
+# Bounty: Estimated €100 - €5,000+ (YesWeHack standard, verify on platform)
+# Notes: Indonesian OJK-licensed digital bank (rebranded from Bank Fama International, Feb 2023).
+#        Part of Grab/OVO/GxS/GxB ecosystem. Scope includes web banking view + API.
+#        Newer, less saturated program than OVO. Strong API + webview testing surface.
+#        Ineligible if current/former employee of Superbank, Grab, OVO, GxS, or GxB.
+# Strengths: IDOR in banking APIs, JWT, CORS, broken access control, CSRF
+
+In Scope
+superbank.id
+app.superbank.id
+
+Out of Scope
+- Mobile apps (iOS/Android)
+- Third-party payment integrations
