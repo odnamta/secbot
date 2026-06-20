@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-06-20 (Session 9)
 
 ## Submission Priority
 
@@ -80,14 +80,27 @@ Also reviewed: moneybird (2026-03-22).
 
 ---
 
-## Honest Assessment (Jun 2026, Session 8)
+## Session 9 Analysis — Moneybird Pending Drafts (Triaged 2026-06-20)
 
-**Bounty readiness: Still LOW.** Three more scans, same pattern:
-- 0 injection vulnerabilities found (XSS, SQLi, SSTI, SSRF, etc.)
-- All "high/medium" findings are passive (headers, cookies) — none submittable
-- Rate limiting findings are all GET-probe FPs
-- Open redirect findings are same-org redirect FPs
-- No authenticated scanning performed on any target
+No new scan files exist since Session 8. Three auto-drafted reports in `bounty-pool/pending/moneybird/` were not previously assessed and are triaged here.
+
+### Moneybird Pending Drafts
+
+| Finding | File | Verdict | Reason |
+|---------|------|---------|--------|
+| Missing CSP (09dd5267) | `pending/moneybird/09dd5267-missing-content-security-policy-header.md` | **FP** | Already noted in Session 8: marketing homepage, auto-rejected by triagers. Draft can be deleted. |
+| DOM XSS via URL Fragment (6d09cce8) | `pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` | **HOLD — Manual Verification Required** | Raw scan confidence is `medium` (interpreted report inflated this to `high`). HTTP exchange shows `status: 0` meaning Playwright found the `innerHTML` sink but alert confirmation is ambiguous — it detected marker text in DOM, not a confirmed alert dialog. Detection method: `dom-sink` (heuristic, not auto-verified). **Action:** Open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in a real browser. If alert fires → submittable to HackerOne as medium-high. If not → FP (modern browsers may block fragment-based injection). |
+| postMessage Missing Origin (8c0823c1) | `pending/moneybird/8c0823c1-postmessage-handlers-missing-origin-validation.md` | **FP** | Handler snippet in raw evidence is mouse-event normalization code (`pageX/pageY/clientX/clientY`) — scanner misidentified event listener type. Not postMessage processing. Matches CLAUDE.md FP pattern for chat widget listeners. No exploitable data flow detected. |
+
+---
+
+## Honest Assessment (Jun 2026, Session 9)
+
+**Bounty readiness: Still LOW.** Session 9 processed only the moneybird backlog (no new scans):
+- 3 moneybird pending drafts assessed: 2 FP, 1 HOLD
+- The one HOLD (DOM XSS via fragment) is the only active candidate — needs 5 minutes of browser time to confirm or kill
+- Still 0 confirmed injection vulnerabilities across all scans
+- Indeed CSRF cookie finding remains the only Tier 1 submission candidate
 
 **Root cause unchanged:** Unauthenticated scan + hardened targets = passive findings only.
 
@@ -105,5 +118,6 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+4. **Verify Moneybird DOM XSS** — Open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in Chrome. If alert fires, the draft at `pending/moneybird/6d09cce8-...xss...md` is ready to submit to HackerOne. If not, close it as FP. 5 minutes of work.
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).

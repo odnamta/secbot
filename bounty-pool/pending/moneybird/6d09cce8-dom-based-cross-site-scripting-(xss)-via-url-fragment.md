@@ -2,7 +2,9 @@
 
 **Severity:** high | **CVSS:** 7 | CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N
 **Platform:** HackerOne | **Program:** Moneybird
-**Confidence:** high
+**Confidence:** medium (scanner: dom-sink heuristic — NOT auto-verified)
+
+> **BEFORE SUBMITTING:** Open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in Chrome with DevTools open. Confirm the alert fires. The curl command below does NOT prove execution (curl doesn't run JS). Only submit if you see the alert in a real browser. The HTTP exchange in the scan returned status 0 (client-side only). If alert does NOT fire, close this as FP — modern SPAs may sanitize via DOMPurify before innerHTML assignment.
 
 ## Description
 The homepage directly writes URL fragment content into the DOM via innerHTML without sanitization. An attacker can craft a malicious URL containing an HTML/JS payload in the fragment (e.g., #<img src=x onerror=alert(1)>) and trick a user into clicking it, causing arbitrary JavaScript execution in the victim's browser.
