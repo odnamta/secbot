@@ -1,0 +1,20 @@
+# Program: Mattermost
+# Platform: Bugcrowd (migrated from HackerOne, Nov 2024)
+# URL: https://bugcrowd.com/engagements/mattermost-mbb-public
+# Bounty: P1 $2,000 / P2 $750 / P3 $300 / P4 $150 (avg payout $328, Jan 2026)
+# Notes: Open-source team messaging & collaboration (Go backend + React web app)
+#   160 vulns rewarded to date; last updated Jan 2026. Small-ish program, low noise.
+#   Known non-issues (do NOT report): unauthenticated email enumeration,
+#   cross-team isolation info-disclosure, OAuth app scope gaps.
+# Strengths match: XSS, CSRF, IDOR, broken access control, rate limiting, JWT, WebSocket
+
+In Scope
+mattermost.com
+api.mattermost.com
+
+Out of Scope
+- mattermost.com/download (static marketing)
+- Mobile apps (iOS / Android)
+- Desktop app (Electron)
+- Staging / test servers not publicly listed
+- Known issues listed in program policy (email enumeration, cross-team isolation)

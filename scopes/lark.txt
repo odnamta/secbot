@@ -1,0 +1,22 @@
+# Program: Lark Technologies
+# Platform: HackerOne
+# URL: https://hackerone.com/lark_technologies
+# Bounty: Low ~$100 / Medium ~$500 / High ~$2,000 / Critical ~$5,000 (estimated from hacktivity)
+# Notes: Enterprise collaboration suite (docs, chat, video, calendar) by Bytedance.
+#   Test accounts: register up to 2 FREE accounts at larksuite.com (requires custom domain name).
+#   IDOR with access to unimportant data is explicitly out of scope.
+#   Report bugs to bugbounty@larksuite.com or via HackerOne program.
+#   Also available as Feishu (feishu.cn) for China market — same codebase.
+# Strengths match: XSS, CORS, IDOR (impactful), SSRF, info disclosure, broken access control, OAuth
+
+In Scope
+*.larksuite.com
+larksuite.com
+
+Out of Scope
+- feishu.cn (separate China-market instance, different legal jurisdiction)
+- Denial of service
+- Spam
+- Social engineering
+- IDOR with access to unimportant / non-sensitive data
+- Missing rate limits on non-critical endpoints
