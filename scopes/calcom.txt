@@ -1,7 +1,13 @@
 # Program: Cal.com
 # Platform: HackerOne
 # Bounty: $100 - $3,000 (estimated)
-# Notes: Open-source scheduling (Next.js/TypeScript), code on GitHub, small startup
+# Notes: Open-source scheduling (Next.js/TypeScript)
+# !! REVIEW REQUIRED !!
+#   Cal.com went CLOSED SOURCE on April 15, 2026, citing AI-assisted vulnerability
+#   scanning as the threat driver. Program scope and terms may have changed.
+#   Verify current program status at https://hackerone.com/cal before running.
+#   Also: *.companyhub.com in scope below — verify this is still valid (CompanyHub
+#   is an unrelated CRM; this may be an old enterprise subdomain Cal.com no longer owns).
 
 In Scope
 app.cal.com

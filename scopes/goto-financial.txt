@@ -1,0 +1,27 @@
+# Program: GoTo Financial
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/goto-financial-public-bounty-program
+# Bounty: $5 - $7,000 (14 scopes, last updated May 4, 2026 — very recent)
+# Notes: Indonesian fintech arm of GoTo Group (GoPay, GoTo merchant platform)
+#   Operates in Indonesia, Singapore, Vietnam, Thailand.
+#   Append X-YesWeHack-Research: <YWH username> to User-Agent when testing.
+#   No test accounts provided — self-register with own phone number via GoPay app.
+# WARNING: GoTo Group is a large enterprise (80k+ employees across Gojek + Tokopedia
+#   + GoTo Financial). Exceeds ideal 50-500 employee target range, but included due to
+#   Indonesian home advantage and high bounty ceiling ($7k critical).
+# WARNING: Primary consumer surfaces are mobile-first. Web scope may be limited;
+#   focus on merchant dashboard, partner APIs, and web payment flows.
+# Strengths match: XSS, SQLi, IDOR, CORS, SSRF, broken access control, JWT, API security
+
+In Scope
+gopay.co.id
+www.gopay.co.id
+gotofinancial.com
+merchant.gotofinancial.com
+partners.gotofinancial.com
+
+Out of Scope
+- Staging / test environments (all findings in staging = ineligible)
+- Social engineering
+- Denial of service / rate flooding
+- Physical security

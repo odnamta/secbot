@@ -1,7 +1,8 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# SecBot Hunt Registry
+# Last updated: 2026-06-22 by Bounty Scout agent
 # Strategy: low competition + web app depth + SecBot strengths
+
+# ── Existing targets ────────────────────────────────────────────────────────
 
 - name: kredivo
   platform: other
@@ -31,9 +32,42 @@
   schedule: weekly
   enabled: true
 
+# !! REVIEW REQUIRED before re-enabling !!
+# Cal.com went closed-source April 2026; program may have changed.
+# Verify scope (especially *.companyhub.com) at https://hackerone.com/cal
 - name: calcom
   platform: hackerone
   scope_file: scopes/calcom.txt
+  profile: stealth
+  schedule: weekly
+  enabled: false
+
+# ── New targets added 2026-06-22 ────────────────────────────────────────────
+
+- name: mattermost
+  platform: bugcrowd
+  scope_file: scopes/mattermost.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: dana
+  platform: other
+  scope_file: scopes/dana.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: goto-financial
+  platform: other
+  scope_file: scopes/goto-financial.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: lark
+  platform: hackerone
+  scope_file: scopes/lark.txt
   profile: stealth
   schedule: weekly
   enabled: true

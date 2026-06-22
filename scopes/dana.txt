@@ -1,0 +1,23 @@
+# Program: DANA
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/dana-bug-bounty-program
+# Bounty: $0 - $3,000 (191 reports, last updated Feb 2025)
+# Notes: Indonesian digital wallet / e-wallet (PT Espay Debit Indonesia Koe)
+#   ~500 employees, founded 2018, 140M+ registered users across Indonesia.
+#   Tech stack: Java/Spring likely, hosted on GCP. Web assets + mobile in scope.
+#   First response < 3 days. Indonesian company = home advantage.
+# Strengths match: XSS, IDOR, CORS, info disclosure, broken access control, open redirect
+
+In Scope
+dana.id
+www.dana.id
+app.dana.id
+api.dana.id
+dashboard.dana.id
+business.dana.id
+
+Out of Scope
+- Third-party services integrated into DANA
+- Physical security
+- Social engineering
+- Denial of service
