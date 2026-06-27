@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-06-27 (Session 9)
 
 ## Submission Priority
 
@@ -15,6 +15,7 @@
 | 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
+| 5 | moneybird.com | DOM-Based XSS via URL Fragment | High | Scanner found innerHTML sinks reading from `location.hash`, injected `#<img src=x onerror=alert("secbot-xss-37")>`. **No auto-verification confirmed.** Needs manual browser test in incognito: navigate to `https://www.moneybird.com/#<img src=x onerror=alert(1)>` and confirm alert fires. Draft ready: `bounty-pool/pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` — curl steps are wrong for DOM XSS, needs update if verified. |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -22,6 +23,8 @@ Moved to `bounty-pool/archived/`:
 - shopify.com CORS /__dux — Non-exploitable (SameSite+empty body)
 - konghq.com missing headers — Informational, auto-rejected by triagers
 - gitlab.com GraphQL introspection — By design, publicly documented
+- moneybird.com Missing CSP on marketing homepage — Auto-rejected pattern (Session 9)
+- moneybird.com postMessage handlers missing origin validation — Known FP (chat widget pattern, Session 9)
 
 ### OWN APPS — Fix These
 
@@ -80,16 +83,31 @@ Also reviewed: moneybird (2026-03-22).
 
 ---
 
-## Honest Assessment (Jun 2026, Session 8)
+## Session 9 Analysis — Pending Drafts Audit (Triaged 2026-06-27)
 
-**Bounty readiness: Still LOW.** Three more scans, same pattern:
-- 0 injection vulnerabilities found (XSS, SQLi, SSTI, SSRF, etc.)
-- All "high/medium" findings are passive (headers, cookies) — none submittable
-- Rate limiting findings are all GET-probe FPs
-- Open redirect findings are same-org redirect FPs
-- No authenticated scanning performed on any target
+**No new scans since Session 8.** Three pending Moneybird draft reports were created by a previous Report Drafter session but not reviewed in Session 8 human triage. Closing the gap now.
 
-**Root cause unchanged:** Unauthenticated scan + hardened targets = passive findings only.
+### Moneybird Pending Drafts — `bounty-pool/pending/moneybird/`
+
+| Draft File | Finding | Verdict | Reason |
+|------------|---------|---------|--------|
+| `09dd5267-missing-content-security-policy-header.md` | Missing CSP on www.moneybird.com | **FP → Archived** | Marketing homepage. Same verdict as Session 8 analysis. Triagers auto-reject header findings on marketing pages. Moved to `archived/2026-03-22-moneybird-missing-csp-marketing-page.md`. |
+| `8c0823c1-postmessage-handlers-missing-origin-validation.md` | 3 postMessage handlers missing origin check | **FP → Archived** | Known FP pattern: Moneybird marketing page loads Intercom/similar chat widget which uses postMessage by design. No exploitable channel without a separate XSS vector. Moved to `archived/2026-03-22-moneybird-postmessage-widget-fp.md`. |
+| `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` | DOM XSS via `#` URL fragment | **HOLD → Tier 2** | Scanner flagged innerHTML sinks reading from `location.hash`. Draft claims alert() fired but auto-verification status is unconfirmed in scan JSON. The curl reproduction command in the draft is incorrect for DOM XSS (fragments are not sent to server). If the alert actually fires in a real browser, this is worth submitting to Moneybird's HackerOne. **Action: Dio must verify manually in incognito browser.** |
+
+---
+
+## Honest Assessment (Jun 2026, Session 9)
+
+**Bounty readiness: Still LOW.** No new scans this cycle. Pending draft audit cleared 2 FPs, promoted 1 to Tier 2.
+
+**Running totals:**
+- Tier 1 (ready to submit): 1 finding (Indeed CSRF cookie)
+- Tier 2 (hold/verify): 4 findings
+- Archived: 5 findings (all FPs)
+- Active injection findings: 0
+
+**Pattern unchanged:** All submittable findings are passive (cookies/headers). No injection findings from unauthenticated scans. Path to real bounties requires authenticated scanning.
 
 **Bright spot:** OpenProject CVE analysis (`OPENPROJECT-CVE-ANALYSIS.md`) documents 22 real CVEs
 with exact endpoints and payloads. The path forward is a local Docker test → authenticated scan.
@@ -98,12 +116,13 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ## Next Steps (Priority Order)
 
-1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+1. **[MANUAL] Verify Moneybird DOM XSS** — Open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in an incognito Chrome window. If the alert fires, update the draft in `bounty-pool/pending/moneybird/6d09cce8-*.md` with correct browser reproduction steps and submit to Moneybird's HackerOne. If it doesn't fire, archive.
+2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
