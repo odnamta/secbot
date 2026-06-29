@@ -1,0 +1,32 @@
+# Program: Paddle.com
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/paddle-com-public-bug-bounty-program
+# Bounty: $50 (low) / $100 (medium) / $500 (high) / $1,500–$5,000 (critical)
+# Company: Paddle (UK fintech, merchant of record for SaaS)
+# Employees: ~400 (UK + global, Series D)
+# Tech: Node.js/React (vendor dashboard), REST + billing APIs
+# Added: 2026-06-29
+# Notes: Program launched April 2025 — relatively fresh, less picked over.
+#   12 assets in scope (10 web apps + 2 APIs). Excellent surface for XSS,
+#   CSRF, IDOR, CORS, open redirect, broken access control, host-header injection.
+#   Sandbox environment available (prefix sandbox- to domains) — test safely there.
+#   Average reward ~$528, 800+ reports submitted, active program.
+# WARNING: "Automated scanners or tools that generate large amounts of network
+#   traffic" are NOT allowed. Use SecBot stealth profile with extra caution.
+#   Do not run --profile standard or deep against this target.
+#   Sandbox domains preferred for active checks.
+
+In Scope
+vendors.paddle.com
+sandbox-vendors.paddle.com
+app.paddle.com
+sandbox-app.paddle.com
+checkout.paddle.com
+sandbox-checkout.paddle.com
+
+Out of Scope
+- DoS / DDoS
+- Third-party hosted services
+- Automated scanners generating large amounts of network traffic
+- XSS Hunter / third-party OOB callback sites (self-hosted only)
+- Issues in Paddle's own marketing site (paddle.com homepage)

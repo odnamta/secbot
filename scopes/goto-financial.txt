@@ -1,0 +1,34 @@
+# Program: GoTo Financial
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/goto-financial-public-bounty-program
+# Bounty: $5 (low) – $7,000 (critical)
+# Company: GoTo Financial (GoPay, GoPayLater, Midtrans, Moka POS, GoBiz)
+# Employees: ~500-2,000 (GoTo Financial division of GoTo Group)
+# Tech: Java/Spring likely (Midtrans), Node.js/React (dashboards), mobile apps
+# Added: 2026-06-29
+# Notes: Indonesian fintech — HIGH PRIORITY (home advantage, local competition low).
+#   Program launched July 2025. Products cover digital wallet, BNPL, payment gateway,
+#   POS, and merchant tools. Excellent surface for IDOR, broken access control,
+#   CSRF, XSS, CORS misconfig, open redirect.
+# WARNING: YesWeHack standard rules apply — no automated tools generating large
+#   amounts of traffic. Use stealth profile strictly. Verify full scope and rules
+#   at the program URL above before scanning.
+
+In Scope
+gopay.co.id
+*.gopay.co.id
+gotofinancial.com
+*.gotofinancial.com
+midtrans.com
+*.midtrans.com
+moka.id
+*.moka.id
+gobiz.co.id
+*.gobiz.co.id
+
+Out of Scope
+- Mobile app binaries (focus on web app / API surfaces)
+- Social engineering
+- Physical security
+- DoS / DDoS
+- Automated scanners generating large amounts of traffic

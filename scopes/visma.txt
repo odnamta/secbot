@@ -1,0 +1,34 @@
+# Program: Visma
+# Platform: Intigriti
+# URL: https://app.intigriti.com/programs/visma/visma/detail
+# Bounty: €100 (low) – €7,500 (critical), swag for first medium+ report
+# Company: Visma (Norwegian B2B SaaS — accounting, HR, payroll, compliance)
+# Employees: ~15,000 across 60+ products (individual product teams are small)
+# Tech: Various — PHP, .NET, Java, Node.js depending on product
+# Added: 2026-06-29
+# Notes: Large Nordic SaaS umbrella with many independent web products.
+#   Scope continuously updated — check program URL for current asset list.
+#   Each asset has its own out-of-scope rules; read asset description carefully.
+#   3,000+ reports, €410k+ paid out — established program with fair triage.
+#   Best surface: IDOR across tenants, XSS in document/rich-text editors,
+#   CSRF on state-changing endpoints, broken access control between orgs.
+# WARNING: Automated scanner output alone is NOT accepted; PoC required.
+#   SecBot's auto-verify (Playwright re-confirmation) satisfies this requirement.
+#   Use stealth profile. Do not submit scanner noise — AI validation required first.
+
+In Scope
+# Scope is continuously updated — always check the Intigriti program page.
+# Representative domains at time of registry entry:
+*.visma.com
+*.vismaonline.com
+*.visma.net
+*.e-conomic.com
+*.tripletex.no
+*.sevdesk.de
+
+Out of Scope
+- Visma products not listed in the program's current asset list
+- Self-XSS without escalation path
+- DoS / DDoS
+- Automated scanner output without PoC
+- Issues in Visma's marketing / corporate website (visma.com homepage content)

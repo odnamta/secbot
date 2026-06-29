@@ -1,7 +1,9 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# SecBot Hunt Registry
+# Created: 2026-03-22 — Updated: 2026-06-29
+# Purpose: Bounty hunt targets — curated for SecBot strengths + low competition
 # Strategy: low competition + web app depth + SecBot strengths
+
+# ── Original 5 targets (Diagnostic Run #1, 2026-03-22) ────────────────────────
 
 - name: kredivo
   platform: other
@@ -37,3 +39,36 @@
   profile: stealth
   schedule: weekly
   enabled: true
+
+# ── Bounty Scout additions (2026-06-29) ───────────────────────────────────────
+
+- name: goto-financial
+  platform: yeswehack
+  scope_file: scopes/goto-financial.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  # Indonesian fintech (GoPay, GoPayLater, Midtrans, Moka, GoBiz)
+  # $5–$7,000 bounty | HIGH PRIORITY — home advantage, low competition
+  # WARNING: no high-traffic automated scanning; stealth profile mandatory
+
+- name: paddle
+  platform: yeswehack
+  scope_file: scopes/paddle.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  # UK merchant-of-record SaaS (payment infrastructure for software companies)
+  # $100 medium / $500 high / $1,500–$5,000 critical
+  # Program launched April 2025 — fresh target, less competition
+  # WARNING: no high-traffic automated scanning; sandbox domains preferred
+
+- name: visma
+  platform: intigriti
+  scope_file: scopes/visma.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  # Norwegian B2B SaaS umbrella (accounting, HR, payroll) — 60+ products
+  # Up to €7,500 per finding | PoC required (SecBot auto-verify covers this)
+  # Scope continuously updated — check Intigriti program page before each scan
