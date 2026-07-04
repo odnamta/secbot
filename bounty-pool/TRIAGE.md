@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-07-04 (Session 9)
 
 ## Submission Priority
 
@@ -15,6 +15,7 @@
 | 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
+| 5 | kredivo | Unprotected WordPress Login on blog.kredivo.com | Medium | Draft ready: `2026-07-04-kredivo-wordpress-login.md`. blog.kredivo.com is explicitly in scope. No rate limiting → credential stuffing risk. **CAVEAT:** Needs manual verification of lockout behavior + WordPress version check + XML-RPC probe. Realistic payout: Rp 500k–1.5M ($32–$95). |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -80,6 +81,56 @@ Also reviewed: moneybird (2026-03-22).
 
 ---
 
+---
+
+## Session 9 Analysis — March 2026 Scans (Triaged 2026-07-04)
+
+Three previously untriaged scan files processed: **kredivo** (2026-03-22), **cal.com v1** (2026-03-22), **openproject v1** (2026-03-22).
+
+### Kredivo — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Exposed WordPress Login /wp-login.php | **TIER 2** | blog.kredivo.com is explicitly in scope. No rate limiting = credential stuffing risk. Meaningful impact (admin → JS injection on blog). Draft: `2026-07-04-kredivo-wordpress-login.md`. Needs manual lockout + XML-RPC verification before submit. |
+| Missing CSP on blog.kredivo.com | **FP** | Header absence on a marketing/company blog. Auto-rejected as informational by triagers. |
+| `_hcc` cookie missing HttpOnly/Secure | **FP** | `_hcc` is HubSpot's contact-tracking cookie. Third-party analytics cookie = classic FP pattern. Not bounty-worthy. |
+
+### Cal.com v1 — `scan-results/cal-com/secbot-2026-03-22T11-36-33-679Z.json`
+
+Note: This is the older March 22 scan; the March 26 v2 scan was already triaged in Session 8. Both v1 critical findings have empty evidence fields and the scanner's own descriptions flag them as potential FPs.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Directory Traversal on /api/geolocation [critical][medium] | **FP** | Empty evidence. Next.js API routes don't resolve URL paths via the filesystem. The v2 scan (4 days later) found zero critical/high findings on the same target. URL path traversal (`/api/../../../etc/passwd`) is normalized by Cloudflare before reaching the app. |
+| XXE on /api/geolocation [critical][medium] | **FP** | Empty evidence. A geolocation API endpoint wouldn't process XML input. The scanner probed with XML POST and interpreted a generic error/404 as entity expansion. Scanner description itself flags this as likely FP. |
+| Exposed Admin Routes [high][low] | **FP** | Confidence: LOW. `/admin` in Next.js app redirects unauthenticated users server-side. Standard NextAuth.js middleware behavior. |
+| Sensitive Token in URL (/api/web_experiments/?token=) [high][medium] | **Informational** | The `token` in web_experiments is a public feature-flag/experiment read key (PostHog or similar), not an auth secret. Not exploitable. |
+| Missing Rate Limiting on /api/auth/session | **FP** | Same pattern as v2 triage — GET probe on a session-getter endpoint, not an auth submission endpoint. |
+| OAuth State Not Enforced | **FP** | Same pattern as v2 triage — wrong endpoint probed (`/api/auth/session` is not an OAuth authorization endpoint). Confidence: LOW. |
+| Missing SRI (7 external scripts) | **FP** | Same pattern as v2 triage — third-party analytics scripts (PostHog, Twitter Ads). SRI not applicable for CDN scripts that auto-update. |
+
+### OpenProject v1 — `scan-results/openproject/secbot-2026-03-22T12-38-03-985Z.json`
+
+Same target as v2 (community.openproject.org), same pattern of GET-probe FPs.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Missing Rate Limiting on /login | **FP** | GET page-load probe. Same false-positive as all other rate-limit findings. |
+| Missing SRI on external scripts | **FP** | Same pattern as v2 triage. |
+
+---
+
+## Honest Assessment (Jul 2026, Session 9)
+
+**Bounty readiness: Still LOW, one Tier 2 draft added.**
+- 1 new Tier 2 draft (Kredivo WordPress login) — needs manual verification
+- All other new findings are FPs (empty evidence, GET-probe rate limit FPs, tracking cookies)
+- The critical-severity cal.com findings (directory traversal + XXE) are scanner artifacts — zero evidence, scanner itself flags them as potential FPs
+
+**Root cause unchanged:** Unauthenticated scans on hardened targets yield passive findings only. The Kredivo WordPress login is the first structurally-real finding since Indeed (March 14 session).
+
+---
+
 ## Honest Assessment (Jun 2026, Session 8)
 
 **Bounty readiness: Still LOW.** Three more scans, same pattern:
@@ -98,12 +149,13 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ## Next Steps (Priority Order)
 
-1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+1. **Verify + Submit Kredivo WordPress login** — Manual steps: (a) check XML-RPC at `/xmlrpc.php`, (b) check WordPress version from meta generator tag, (c) run 25 rapid POST attempts and confirm no lockout. If confirmed: submit to RedStorm. Realistic payout: Rp 500k–1.5M.
+2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
