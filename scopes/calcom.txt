@@ -2,6 +2,11 @@
 # Platform: HackerOne
 # Bounty: $100 - $3,000 (estimated)
 # Notes: Open-source scheduling (Next.js/TypeScript), code on GitHub, small startup
+# ⚠ SCANNER WARNING: Cal.com explicitly prohibits automated scanners on production.
+#   Contact security team to arrange a sandbox environment before scanning.
+#   Ref: https://cal.com/security — "Automated scanners should not be run on our infrastructure"
+# NOTE: *.companyhub.com has its own separate HackerOne program (hackerone.com/companyhub)
+#   and is listed here because Cal.com acquired CompanyHub CRM; verify current scope on H1.
 
 In Scope
 app.cal.com
@@ -9,3 +14,4 @@ app.cal.com
 
 Out of Scope
 - cal.com (marketing site only, not the app)
+- Automated scanning without prior sandbox arrangement

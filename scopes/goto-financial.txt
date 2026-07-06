@@ -1,0 +1,27 @@
+# Program: GoTo Financial
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/goto-financial-public-bounty-program
+# Bounty: $5 (low) - $500 (medium) - $2,000 (high) - $7,000 (critical)
+# Notes: Indonesian fintech arm of GoTo Group (Gojek + Tokopedia parent).
+#        Products: GoPay (digital wallet), GoTo Finance, PayLater, paylater lending.
+#        14 scopes. Last updated June 2026. High priority — Indonesian target.
+#        Verify exact scope list on YesWeHack before first scan.
+
+In Scope
+gotofinancial.com
+gopay.co.id
+www.gopay.co.id
+app.gopay.co.id
+merchant.gopay.co.id
+api.gopay.co.id
+business.gopay.co.id
+gtf.id
+paylater.gopay.co.id
+dashboard.gotofinancial.com
+
+Out of Scope
+- Mobile applications (Android/iOS)
+- Third-party services and integrations
+- Social engineering / phishing
+- Physical security
+- Denial of Service (DoS/DDoS)
