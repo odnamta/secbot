@@ -1,0 +1,23 @@
+# Program: Lark Technologies
+# Platform: HackerOne
+# URL: https://hackerone.com/lark_technologies
+# Bounty: $100 (low) - $500 (medium) - $2,000 (high) - $5,000 (critical)
+# Notes: Collaboration SaaS (chat, docs, video, project mgmt) by ByteDance.
+#        Competing with Slack/Notion/Zoom. Web app is feature-rich with APIs, webhooks, bots.
+#        Create free test accounts at larksuite.com (requires custom domain for testing tenant).
+#        Last updated January 2026. Lower competition than enterprise programs.
+#        Bug reports of SSRF + AWS metadata exfiltration confirmed paid in past.
+
+In Scope
+www.larksuite.com
+larksuite.com
+*.larksuite.com
+
+Out of Scope
+- feishu.cn (Chinese domestic version — separate program, out of scope for this entry)
+- lark.health (separate product, different scope)
+- Mobile apps unless tied to web backend vulnerability
+- Denial of Service (DoS/DDoS)
+- Social engineering / phishing
+- Issues requiring physical access to victim device
+- Rate limiting on non-sensitive endpoints
