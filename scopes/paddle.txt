@@ -1,0 +1,34 @@
+# Program: Paddle.com
+# Platform: YesWeHack
+# Program URL: https://yeswehack.com/programs/paddle-com-public-bug-bounty-program
+# Bounty: $50 - $5,000 (estimated per severity)
+# Notes: UK payment infrastructure SaaS (merchant-of-record, subscriptions, billing).
+#        Sandbox environment is in scope and preferred for payment flow testing.
+#        Automated scanners that generate large traffic volumes are PROHIBITED — use
+#        stealth profile only. Financial transaction tests must be on sandbox, not prod.
+#        Sandbox and production share the same codebase, so sandbox findings apply.
+#        Good SecBot targets: vendor portal auth, customer portal, API auth, CORS, JWT.
+#        Last verified: 2026-07-13
+
+In Scope
+vendors.paddle.com
+sandbox-vendors.paddle.com
+api.paddle.com
+sandbox-api.paddle.com
+sandbox-checkout-service.paddle.com
+sandbox-buy.paddle.com
+customer-portal.paddle.com
+login.paddle.com
+sandbox-login.paddle.com
+developer.paddle.com
+paddle.net
+
+Out of Scope
+- paddle.com (marketing site)
+- Automated scanners generating high request volumes (stealth mode required)
+- Payment card data or live financial transactions on production
+- Third-party payment processors
+- Social engineering
+- DDoS / availability attacks
+- Issues requiring physical access
+- XSS Hunter or third-party OOB tools (self-hosted allowed)
