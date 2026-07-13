@@ -1,7 +1,14 @@
-# SecBot Hunt Registry — Diagnostic Run #1
+# SecBot Hunt Registry
 # Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# Updated: 2026-07-13 (Bounty Scout — added 3 new targets)
 # Strategy: low competition + web app depth + SecBot strengths
+#
+# NOTE (2026-07-13): HackerOne's Internet Bug Bounty (IBB) program was paused and
+# payouts were slashed 75-89% in May 2026 due to AI-flooding of submissions. This
+# affects OPEN-SOURCE programs on IBB (Node.js, etc.) but NOT individual company
+# programs like moneybird and calcom — those set their own bounty tables.
+
+# ─── Original 5 targets ───────────────────────────────────────────────────────
 
 - name: kredivo
   platform: other
@@ -37,3 +44,32 @@
   profile: stealth
   schedule: weekly
   enabled: true
+
+# ─── Added 2026-07-13 (Bounty Scout) ─────────────────────────────────────────
+
+- name: gojek
+  platform: yeswehack
+  scope_file: scopes/gojek.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  # Indonesian super-app. High priority: home advantage + massive API surface.
+  # Must add unique header to all requests (e.g. X-SecBot-ID: <uuid>).
+
+- name: paddle
+  platform: yeswehack
+  scope_file: scopes/paddle.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  # Payment SaaS. Test on sandbox-* domains for payment flows.
+  # Keep request volume low — high-traffic automated scanning explicitly prohibited.
+
+- name: aiven
+  platform: bugcrowd
+  scope_file: scopes/aiven.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  # Cloud data SaaS. Highest bounty ceiling in registry (up to $25k).
+  # Focus: tenant isolation, IDOR between service instances, SSRF into cloud metadata.

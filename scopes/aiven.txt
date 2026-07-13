@@ -1,0 +1,23 @@
+# Program: Aiven Managed Bug Bounty
+# Platform: Bugcrowd
+# Program URL: https://bugcrowd.com/engagements/aiven-mbb-og
+# Bounty: up to $25,000 (estimated: Critical $10,000-$25,000, High $3,000-$10,000)
+# Notes: Cloud data infrastructure SaaS (managed Kafka, PostgreSQL, Redis, OpenSearch, etc.)
+#        Finnish company ~500 employees. Console app + REST API in scope. Tech-savvy user base
+#        so IDOR between service instances, broken tenant isolation, JWT/auth bypass, and
+#        SSRF into internal cloud metadata are highest value. Moderately competitive.
+#        Last verified: 2026-07-13
+
+In Scope
+console.aiven.io
+api.aiven.io
+aiven.io
+regatta.aiven.io
+
+Out of Scope
+- Managed service infrastructure (cloud provider VMs, Kafka brokers, etc.)
+- Social engineering or phishing
+- DDoS / availability attacks
+- Third-party dependencies not maintained by Aiven
+- Issues requiring physical access
+- Scanner-generated reports without manual validation
