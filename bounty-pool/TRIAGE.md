@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-07-15 (Session 9)
 
 ## Submission Priority
 
@@ -29,6 +29,53 @@ Moved to `bounty-pool/archived/`:
 |---|--------|---------|----------|-------|
 | A1 | finance.atmando.app | No rate limiting on /login and /graphql | HIGH | Brute-force risk on finance app. Add Cloudflare rate limiting + app-level throttle. |
 | A2 | finance.atmando.app | Missing HSTS header | MEDIUM | Middleware has HSTS configured but it's not appearing in response. Docker rebuild or middleware bug. |
+
+---
+
+---
+
+## Session 9 Analysis — July 15, 2026 (Triaged 2026-07-15)
+
+Two scans and one set of pending drafts missed by Session 8 are resolved here. No new scans exist beyond March 2026.
+
+### Kredivo (blog.kredivo.com) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+**Note:** `blog.kredivo.com` is in scope per `scopes/kredivo.txt` but is a WordPress marketing blog, not the core financial app.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Exposed WordPress Login Page (/wp-login.php) [High, High] | **FP** | Publicly accessible /wp-login.php is standard WordPress default behavior — it is not a configuration vulnerability, it's the default install state. The program focus is on financial/app endpoints (app.kredivo.com, mysandbox.kredivo.com). Rate limiting finding (no 429 on GET page-load) is same GET-probe FP as documented in session 8. Not worth submitting. |
+| Missing CSP [High, High] | **FP** | WordPress marketing blog homepage. Triagers auto-reject header findings on marketing/blog sites. |
+| Cookie `_hcc` missing HttpOnly + Secure [Medium, High] | **FP** | `_hcc` is the HubSpot analytics/tracking cookie (third-party, set by HubSpot JS SDK). Third-party analytics cookies are a documented FP pattern. Not bounty-worthy. |
+
+**Kredivo verdict: 0 submittable findings.** All 3 are FPs.
+
+### Cal.com v1 (cal.com) — `scan-results/cal-com/secbot-2026-03-22T11-36-33-679Z.json`
+
+**Note:** This is the v1 scan of cal.com (the marketing site root). cal-com v2 (`app.cal.com`) was triaged in Session 8. These are session 8 leftovers.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Directory Traversal on /api/geolocation [Critical, Medium] | **FP** | Geolocation lookup endpoints don't read filesystem. Scanner misread a generic error/redirect as traversal confirmation — the finding description itself flagged this. |
+| XXE on /api/geolocation [Critical, Medium] | **FP** | Same endpoint. Geolocation APIs don't consume XML. Scanner sent XML payloads to a non-XML endpoint and misread the response. |
+| Exposed Admin-Like Routes /admin, /administrator, etc. [High, Low] | **FP** | Low confidence. Description notes these return the standard Next.js app shell — they are SPA routes, not unprotected admin panels. |
+| Sensitive Token in URL (/api/web_experiments/?token=) [High, Medium] | **FP** | `token=` has an empty value — this is a scanner artifact from probing the URL with an empty param, not a real token exposed in a URL. Cal.com is MIT open source; this pattern is likely an intentional feature flag endpoint. |
+| Rate Limiting on /api/auth/session [Medium, Medium] | **FP** | Same GET-probe false positive documented in Session 8 cal-com v2 analysis. /api/auth/session is a session-check GET endpoint, not a credential submission endpoint. |
+| OAuth State on /api/auth/session [Medium, Low] | **FP** | Low confidence. The finding itself notes this is the wrong endpoint (NextAuth session getter, not an OAuth authorization endpoint). |
+| Missing SRI for external scripts [Medium, High] | **FP** | Third-party CDN scripts (analytics, ads). SRI not applicable to third-party scripts that auto-update. Documented FP pattern. |
+| Auth cookie `__Secure-next-auth.callback-url` missing HttpOnly [Low, High] | **FP** | Low severity, same as cal-com v2. Stores post-login redirect URL, not an auth token. |
+
+**Cal.com v1 verdict: 0 submittable findings.** All 8 are FPs.
+
+### Moneybird Pending Drafts (bounty-pool/pending/moneybird/) — Drafted pre-Session 8, not triaged
+
+Session 8's Moneybird analysis only noted Missing CSP and Mixed Content. Three draft files exist in `pending/moneybird/` that weren't resolved. Triaged here:
+
+| Draft File | Finding | Verdict | Reason |
+|------------|---------|---------|--------|
+| `6d09cce8-dom-based-xss-via-url-fragment.md` | DOM XSS via URL fragment [High, High] | **HOLD — manual verification needed** | Scanner claims Playwright triggered `alert("secbot-xss-37")` at two innerHTML sinks on `www.moneybird.com/#<img src=x onerror=...>`. Confidence is "high" (auto-verified). BUT: the curl command in the draft won't reproduce this — URL fragments are never sent to the server by browsers. The finding is DOM-side only and requires a live browser. Needs Dio to manually open the URL in a browser and confirm JS fires. If real: scope is `www.moneybird.com` (marketing homepage), not `app.moneybird.com` (the app). XSS on the marketing site likely doesn't expose session cookies — but could enable phishing. Still worth submitting if confirmed. **Action: verify in browser before deciding.** |
+| `09dd5267-missing-content-security-policy-header.md` | Missing CSP [High, High] | **FP** | Already triaged as FP in Session 8. Marketing homepage. Archive this draft. |
+| `8c0823c1-postmessage-handlers-missing-origin-validation.md` | postMessage Missing Origin Validation [Medium, Medium] | **FP** | Marketing homepage postMessage handlers are analytics/chat widgets (Intercom/HubSpot pattern). Documented FP. Archive this draft. |
 
 ---
 
