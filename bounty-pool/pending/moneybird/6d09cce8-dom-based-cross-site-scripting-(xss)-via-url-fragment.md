@@ -1,5 +1,12 @@
 # DOM-Based Cross-Site Scripting (XSS) via URL Fragment
 
+> **STATUS: NEEDS BROWSER VERIFICATION before submission.**
+> SecBot detected the XSS payload in two innerHTML sinks via Playwright (dom-sink detection method).
+> The alert() has NOT been confirmed to fire. Manual test required:
+> Open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in Chrome/Firefox.
+> If alert fires → submit. If not → archive. Scope note: verify www.moneybird.com is in-scope on HackerOne (likely yes as it's the primary domain).
+
+
 **Severity:** high | **CVSS:** 7 | CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N
 **Platform:** HackerOne | **Program:** Moneybird
 **Confidence:** high
