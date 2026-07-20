@@ -1,0 +1,30 @@
+# Program: DANA Indonesia Bug Bounty
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/dana-bug-bounty-program
+# Bounty: ~$0 (low) – $3,000 (critical); low-severity findings may go unpaid
+# Company: DANA — Indonesian digital wallet backed by Ant Financial, ~500 employees
+# Tech: Mobile-first fintech, API-heavy backend (Node.js/Java likely)
+# Reports received: 191 (active, moderate competition)
+# Notes: High SEA priority. Automated scanning policy not explicitly stated in public docs;
+#   use stealth profile. Focus on web/API endpoints only — skip mobile scope.
+#   Test accounts must be self-registered on the app (need +62 Indonesian number or eSIM).
+
+In Scope
+m.dana.id
+mgs-gw.m.dana.id
+api-saas.dana.id
+sec.m.dana.id
+
+Out of Scope
+webdev.dana.id
+wp.dana.id
+fiat.dana.id
+cmsdev.dana.id
+techops.dana.id
+dm.dana.id
+encrypt.dana.id
+- Any *.dana.id subdomains not listed above
+- Mobile applications (Android/iOS/Huawei) — skip, SecBot is web-only
+- Denial of Service
+- Social engineering
+- Physical attacks

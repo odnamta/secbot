@@ -1,0 +1,29 @@
+# Program: GoTo Financial — Public Bounty Program
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/goto-financial-public-bounty-program
+# Bounty: $5 (low) – $7,000 (critical)
+# Company: GoTo Financial / Midtrans — Indonesian payment gateway + GoPay e-money
+#   Part of GoTo Group (Gojek + Tokopedia merger), but scope is specifically the
+#   payment products division (~500-1,000 employees in payments vertical)
+# Tech: Mixed (Java/Spring, Go, possibly Rails); app.midtrans.com is merchant SaaS
+# Notes: High SEA priority. Midtrans merchant dashboard (app.midtrans.com) is excellent
+#   for IDOR, broken access control, CORS, and XSS testing — requires free merchant account.
+#   Automated scanning policy not explicitly stated; use stealth profile.
+#   Create a sandbox merchant account at app.midtrans.com before scanning.
+
+In Scope
+app.midtrans.com
+api.midtrans.com
+www.midtrans.com
+gopaymerchant.midtrans.com
+mokapos.com
+*.gopayapi.com
+*.go-pay.co.id
+
+Out of Scope
+- Mobile applications (Android/iOS)
+- Third-party merchant integrations
+- Gojek/Tokopedia apps and platforms (different division)
+- Denial of Service
+- Physical security
+- Social engineering

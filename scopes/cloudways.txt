@@ -1,0 +1,29 @@
+# Program: Cloudways by DigitalOcean — Bug Bounty
+# Platform: Intigriti (listed under DigitalOcean umbrella)
+# URL: https://app.intigriti.com/programs/digitalocean/cloudways/detail
+# Also on Bugcrowd: https://bugcrowd.com/cloudways
+# Bounty: $50 (low) – $4,000 (critical)
+# Company: Cloudways — managed cloud hosting SaaS, acquired by DigitalOcean 2022
+#   ~200-300 employees in product/engineering; platform serves 100k+ customers
+# Tech: PHP-based platform UI, REST API, multi-cloud provisioning backend
+# Notes: IMPORTANT — only test against your own provisioned servers.
+#   Free trial account allows 1x 2GB server or 2x 1GB servers — provision these first.
+#   Platform dashboard (platform.cloudways.com) is the primary target for XSS, IDOR,
+#   broken access control, and SSRF via server management features.
+#   Do NOT target other customers' servers or data.
+
+In Scope
+platform.cloudways.com
+api.cloudways.com
+unified.cloudways.com
+*.cloudways.com
+
+Out of Scope
+www.cloudways.com
+- Applications hosted BY customers on Cloudways (third-party)
+- Customer servers not provisioned by the test account
+- DigitalOcean infrastructure itself (separate program)
+- Denial of Service
+- Social engineering
+- Rate limiting findings (hosting platform rate limits by design)
+- Missing headers on marketing pages (www.cloudways.com)
