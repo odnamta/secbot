@@ -15,7 +15,7 @@
 | 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
-| 5 | blog.kredivo.com | WordPress Admin Login (/wp-login.php) Publicly Accessible | High | HOLD — real finding, wp-login.php returns HTTP 200 while homepage returns 403 (bot protection bypass). However, `blog.kredivo.com` is a WordPress blog subdomain, not the main Kredivo fintech app. Scope uncertain for RedStorm program. Before submitting: verify blog.kredivo.com is in RedStorm scope, and confirm no IP allowlist or reCAPTCHA blocks exploitation. reCAPTCHA v3 is present on the login form. |
+| 5 | blog.kredivo.com | WordPress Admin Login (/wp-login.php) Publicly Accessible | Medium | HOLD — **scope confirmed** (`scopes/kredivo.txt` explicitly lists `blog.kredivo.com`). Scan observed wp-login.php returning HTTP 200; homepage returned 403 (bot detection flagged the scanner). **Evidence gap:** only one GET request was made to wp-login.php — repeated POST auth attempts were never tested. Before submitting: manually send several POST requests to `/wp-login.php` and observe whether reCAPTCHA v3, account lockout, or HTTP 429 kicks in. If no throttling on auth POSTs → submit as medium. reCAPTCHA v3 is behavioral (not a hard challenge) and is not a reliable brute-force defense on its own. |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -126,7 +126,7 @@ Note: homepage returns **HTTP 403** (bot protection with `_hcc` challenge cookie
 | Missing CSP/X-Frame-Options/X-Content-Type-Options (HTTP 403 pages) | **FP** | Detected on bot-protection 403 responses, not real app responses. Standard for Akamai/Cloudflare challenge pages. |
 | `_hcc` cookie missing HttpOnly/Secure | **FP** | `_hcc` = HubSpot Click Cookie or bot-protection challenge token. `Max-Age=30` (30 seconds) confirms transient challenge use, not an auth token. Not exploitable. |
 | Missing rate limiting on `/login` (GET) | **FP** | GET page-load probe only. Same false-positive pattern as cal.com, openproject. Real rate limiting applies to POST auth submissions. |
-| **WordPress Login `/wp-login.php` Accessible (HTTP 200)** | **HOLD → Tier 2** | Homepage returns 403 (bot protection), but wp-login.php returns 200 — effectively a bot-protection bypass. Real finding: reCAPTCHA v3 present, but no apparent brute-force throttle. **CAVEAT:** `blog.kredivo.com` is a WordPress blog, not the main Kredivo financial app. Verify blog subdomain is in RedStorm scope before submitting. If in scope, this is a legitimate medium-high finding given the reCAPTCHA can be bypassed with a valid token. |
+| **WordPress Login `/wp-login.php` Accessible (HTTP 200)** | **HOLD → Tier 2** | `blog.kredivo.com` is **explicitly in scope** in `scopes/kredivo.txt`. wp-login.php returned HTTP 200; homepage returned 403 (scanner flagged as bot). **Evidence gap:** scan only made one GET to wp-login.php — POST auth throttling was never tested. reCAPTCHA v3 is present (behavioral, not a hard challenge). Blocker is verification, not scope: test repeated POST auth attempts to confirm no lockout or 429 before submitting. See Tier 2 #5. |
 
 ---
 
@@ -142,7 +142,7 @@ The kredivo blog WordPress exposure is real but likely out of scope for the main
 
 ## Next Steps (Priority Order)
 
-1. **Verify Kredivo blog scope** — Check RedStorm's scope list for `blog.kredivo.com` or `*.kredivo.com`. If in scope, submit the WordPress login exposure (Tier 2, item #5).
+1. **Test Kredivo blog POST throttling** — `blog.kredivo.com` is confirmed in scope (`scopes/kredivo.txt`). Send several POST login attempts to `https://blog.kredivo.com/wp-login.php` and check for reCAPTCHA hard-block, 429, or account lockout. If none → submit the WordPress login exposure as medium (Tier 2 #5).
 2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
 3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
 4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
