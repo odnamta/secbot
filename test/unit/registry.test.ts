@@ -79,6 +79,17 @@ describe('parseRegistry', () => {
     const programs = parseRegistry(content);
     expect(programs[0].lastScan).toBe('2026-01-01T00:00:00.000Z');
   });
+
+  it('parses extra_args with a quoted value into a string array', () => {
+    const content = `programs:\n  - name: "With Header"\n    platform: yeswehack\n    scope_file: ./scope\n    profile: stealth\n    schedule: weekly\n    extra_args: --auth-header "X-Bug-Bounty: secbot-hunt"\n`;
+    const programs = parseRegistry(content);
+    expect(programs[0].extraArgs).toEqual(['--auth-header', 'X-Bug-Bounty: secbot-hunt']);
+  });
+
+  it('leaves extraArgs undefined when extra_args is absent', () => {
+    const programs = parseRegistry(VALID_REGISTRY);
+    expect(programs[0].extraArgs).toBeUndefined();
+  });
 });
 
 describe('isDue', () => {

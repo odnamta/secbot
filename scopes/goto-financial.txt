@@ -1,0 +1,23 @@
+# Program: GoTo Financial
+# Platform: YesWeHack
+# Bounty: $5 - $7,000
+# URL: https://yeswehack.com/programs/goto-financial-public-bounty-program
+# Notes: Indonesian fintech super-app (GoPay, Midtrans payment gateway). Wide wildcard scope
+#        covering payment APIs, merchant dashboards, and financial services. 14 scopes,
+#        <1 day first response. Use stealth profile; include a unique X-Bug-Bounty header
+#        to tag SecBot traffic per YesWeHack/GoTo testing policy.
+
+In Scope
+app.midtrans.com
+midtrans.com
+gopaymerchant.midtrans.com
+api.midtrans.com
+mokapos.com
+*.gofin.io
+*.go-pay.co.id
+*.gopayapi.com
+*.gaming.gopayapi.com
+
+Out of Scope
+- Mobile-only apps (target web/API surfaces)
+- Any domain not explicitly listed above
