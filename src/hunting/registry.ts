@@ -6,7 +6,14 @@ function snakeToCamel(key: string): string {
 }
 
 function stripQuotes(value: string): string {
-  return value.replace(/^["']|["']$/g, '').trim();
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return trimmed;
 }
 
 export function parseRegistry(content: string): Program[] {
@@ -63,8 +70,19 @@ function buildProgram(raw: Record<string, string>): Program {
   if (raw['auth']) program.auth = raw['auth'];
   if (raw['lastScan']) program.lastScan = raw['lastScan'];
   if (raw['enabled'] !== undefined) program.enabled = raw['enabled'] !== 'false';
+  if (raw['extraArgs']) program.extraArgs = parseShellArgs(raw['extraArgs']);
 
   return program;
+}
+
+function parseShellArgs(raw: string): string[] {
+  const tokens: string[] = [];
+  const re = /(?:"([^"]*)")|(?:'([^']*)')|(\S+)/g;
+  let match;
+  while ((match = re.exec(raw)) !== null) {
+    tokens.push(match[1] ?? match[2] ?? match[3] ?? '');
+  }
+  return tokens.filter(Boolean);
 }
 
 const SCHEDULE_DAYS: Record<Schedule, number> = {

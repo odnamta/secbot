@@ -47,6 +47,7 @@
   scope_file: scopes/goto-financial.txt
   profile: stealth
   schedule: weekly
+  extra_args: '--auth-header "X-Bug-Bounty: secbot-hunt"'
   enabled: true
 
 - name: gojek
@@ -54,6 +55,7 @@
   scope_file: scopes/gojek.txt
   profile: stealth
   schedule: weekly
+  extra_args: '--auth-header "X-Bug-Bounty: secbot-hunt"'
   enabled: true
 
 - name: mattermost
