@@ -1,6 +1,7 @@
 # Program: OpenProject
 # Platform: YesWeHack
-# Bounty: EUR 100 - EUR 5,000
+# STATUS: ENDED — Program concluded June 2026 (EU Commission sponsorship finished)
+# Bounty: EUR 100 - EUR 5,000 (was)
 # Notes: Open-source project management (Rails + Angular), code on GitHub, EU Commission funded
 
 In Scope

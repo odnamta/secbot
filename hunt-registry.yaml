@@ -1,6 +1,6 @@
-# SecBot Hunt Registry — Diagnostic Run #1
+# SecBot Hunt Registry
 # Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# Updated: 2026-07-27 (Bounty Scout run)
 # Strategy: low competition + web app depth + SecBot strengths
 
 - name: kredivo
@@ -24,16 +24,41 @@
   schedule: weekly
   enabled: true
 
+# DISABLED 2026-07-27: Program ended June 2026 (EU Commission sponsorship concluded)
 - name: openproject
   platform: other
   scope_file: scopes/openproject.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false
 
+# DISABLED 2026-07-27: Policy explicitly prohibits automated scanners on infrastructure
 - name: calcom
   platform: hackerone
   scope_file: scopes/calcom.txt
+  profile: stealth
+  schedule: weekly
+  enabled: false
+
+# --- NEW 2026-07-27 ---
+
+- name: goto-financial
+  platform: yeswehack
+  scope_file: scopes/goto-financial.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: gojek
+  platform: yeswehack
+  scope_file: scopes/gojek.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: mattermost
+  platform: bugcrowd
+  scope_file: scopes/mattermost.txt
   profile: stealth
   schedule: weekly
   enabled: true

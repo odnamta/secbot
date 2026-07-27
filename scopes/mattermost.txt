@@ -1,0 +1,16 @@
+# Program: Mattermost
+# Platform: Bugcrowd
+# Bounty: ~$150 - $3,000 (estimated; Bugcrowd managed program)
+# URL: https://bugcrowd.com/engagements/mattermost-mbb-public
+# Notes: Open-source team messaging platform (Node.js/React). Moved from HackerOne to
+#        Bugcrowd in November 2024 with expanded scope. Good fit for: XSS (message rendering,
+#        OAuth endpoints), CORS, CSRF, broken access control. Focus on the cloud-hosted
+#        service (mattermost.com) and newly added plugin scopes rather than self-hosted.
+
+In Scope
+mattermost.com
+*.mattermost.com
+
+Out of Scope
+- Self-hosted Mattermost instances (customer-operated)
+- github.com/mattermost (code review, not runtime testing)

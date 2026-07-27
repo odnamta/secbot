@@ -1,5 +1,8 @@
 # Program: Cal.com
 # Platform: HackerOne
+# STATUS: DISABLED — Policy explicitly prohibits automated scanners on infrastructure/dashboard
+#         ("asks that automated scanners not be run on their infrastructure or dashboard")
+#         Researchers must contact Cal.com to set up a sandbox before any automated testing.
 # Bounty: $100 - $3,000 (estimated)
 # Notes: Open-source scheduling (Next.js/TypeScript), code on GitHub, small startup
 
