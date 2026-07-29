@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-07-29 (Session 9)
 
 ## Submission Priority
 
@@ -29,6 +29,76 @@ Moved to `bounty-pool/archived/`:
 |---|--------|---------|----------|-------|
 | A1 | finance.atmando.app | No rate limiting on /login and /graphql | HIGH | Brute-force risk on finance app. Add Cloudflare rate limiting + app-level throttle. |
 | A2 | finance.atmando.app | Missing HSTS header | MEDIUM | Middleware has HSTS configured but it's not appearing in response. Docker rebuild or middleware bug. |
+
+---
+
+## Session 9 Analysis — Previously Unreviewed Scans (Triaged 2026-07-29)
+
+Two scan result files present in `scan-results/` were not covered in Session 8:
+`scan-results/cal-com/secbot-2026-03-22T11-36-33-679Z.json` (cal.com marketing site)
+`scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json` (blog.kredivo.com)
+
+Also reviewed: three draft reports sitting in `bounty-pool/pending/moneybird/`.
+
+### Kredivo (RedStorm) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+**Target:** `https://blog.kredivo.com/` — WordPress blog subdomain (NOT the financial app)
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Exposed WordPress Login Page `/wp-login.php` (HIGH, CVSS 8.1) | **FP** | Accessible wp-login.php is standard WordPress behavior, not a vulnerability. The scanner upgraded severity but triagers will immediately reject this. Blog subdomain is almost certainly out of scope for a financial app bounty program. |
+| Missing CSP Header (HIGH, CVSS 7.0) | **FP** | Marketing/blog subdomain. Auto-rejected as informational by triagers. |
+| Cookie `_hcc` missing HttpOnly/Secure (MEDIUM) | **FP** | `_hcc` = HubSpot Click Count cookie (marketing analytics tracker). Classic analytics cookie FP pattern. |
+| Rate Limiting on `/login` GET (MEDIUM/high) | **FP** | GET page-load probe only, no POST credential test performed. Same FP pattern as all other rate-limit findings. |
+
+**Session 9 outcome: 0 new reports drafted. All 4 findings are FPs.**
+Note: `blog.kredivo.com` IS listed as in-scope in `scopes/kredivo.txt`, but produces only marketing-site FPs. Future scans should prioritize `app.kredivo.com` (also in scope, higher-value target). The `kredivo.com` apex domain is NOT listed in `scopes/kredivo.txt` — do not scan it.
+
+---
+
+### Cal.com v1 Marketing Site — `scan-results/cal-com/secbot-2026-03-22T11-36-33-679Z.json`
+
+**Target:** `https://cal.com/` — Marketing homepage (NOT `app.cal.com`)
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Directory Traversal on `/api/geolocation`, `/api/auth/session`, sitemap URLs (CRITICAL/high) | **FP** | Test URLs are `https://cal.com/api/../../../etc/passwd`. Vercel/Next.js normalizes URL paths before routing — the server returns its 404/200 HTML shell, not `/etc/passwd`. Scanner detected "system file content" heuristically from the large HTML response. No actual file content visible in evidence. |
+| Exposed Admin Panel `/admin`, `/administrator`, `/manage`, `/manager`, `/management` (CRITICAL/high) | **FP** | Cal.com uses Next.js dynamic routes (`[username]/`). Any slug including "admin" resolves to a user booking page (body ~367KB = full Next.js HTML shell). These are user booking pages for hypothetical users named "admin", not admin panels. |
+| Sensitive Data in URL — PostHog token (HIGH/high) | **FP** | URLs like `/api/web_experiments/?token=…` are PostHog analytics feature flag API calls. The `token=` is a PostHog project API key, not a user auth token. Intentional PostHog SDK usage. |
+| XXE Injection on `/api/geolocation` (HIGH/medium) | **FP** | `/api/geolocation` is a JSON endpoint. Scanner sent XML payload and detected HTML error page as "DTD processing." Evidence shows standard HTML `<!DOCTYPE html>` response, not XML parser output. The `classic-file-read` technique reported "DTD processing detected" from the HTML doctype declaration — not a real XXE. |
+| Missing CSP (HIGH/medium) | **FP** | Marketing homepage. Auto-rejected as informational. |
+| `__Secure-next-auth.callback-url` missing HttpOnly (MEDIUM/medium, ×5 pages) | **FP** | Already documented in Session 8 for app.cal.com: this cookie stores the post-login redirect URL, not an auth token. Not sensitive. |
+| Missing SRI for PostHog/CloudFront scripts (MEDIUM/medium) | **FP** | Third-party CDN analytics scripts. SRI not applicable for auto-updating CDN resources. Known FP pattern. |
+| Rate Limiting on `/api/auth/session` (MEDIUM/high) | **FP** | `/api/auth/session` is a session getter (GET, returns current session state). Not an authentication endpoint. Known FP pattern. |
+| Rate Limiting on `/api/geolocation` (LOW/high, finding `287735c1`) | **FP** | Public geolocation lookup endpoint. No authentication required, no sensitive data returned. Rate-limiting a geolocation API is a product decision, not a vulnerability. Low severity correctly reflects this. |
+| OAuth missing state on `/api/auth/session` (MEDIUM/medium) | **FP** | Wrong endpoint — `/api/auth/session` is NextAuth's session reader, not an OAuth authorization endpoint. Already documented in Session 8. |
+| OAuth PKCE not enforced on `/api/auth/session` (LOW/medium) | **FP** | Same wrong endpoint. Same Session 8 note. |
+
+**Session 9 outcome: 0 new reports drafted. All 14 validated findings (50 raw across pages, 11 deduplicated categories) are FPs.**
+
+---
+
+### Moneybird Pending Report Review (bounty-pool/pending/moneybird/)
+
+Three draft reports auto-generated by scanner, reviewing for submission readiness:
+
+| Report | Verdict | Reason |
+|--------|---------|--------|
+| `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` | **FP — Already Validated** | `learning-data/outcomes.json` records this finding ID twice as `not-applicable` (2026-03-22 and 2026-03-26) with note: "browser URL-encodes fragment payload and it is not read unsafely into the DOM." Prior manual validation confirmed this is not a real XSS. Draft should be deleted or archived, not submitted. |
+| `8c0823c1-postmessage-handlers-missing-origin-validation.md` | **FP** | Steps to reproduce say "observe whether handlers process the data" — incomplete, no confirmed impact. Marketing sites routinely include postMessage handlers from Intercom, Drift, or other chat widgets that intentionally accept messages from any origin. Without identifying the specific handler and proving exploitation, this is a non-finding. Known FP pattern from CLAUDE.md. |
+| `09dd5267-missing-content-security-policy-header.md` | **FP** | Marketing homepage missing CSP. Auto-rejected as informational by bug bounty triagers. Noted in Session 8 already. |
+
+**Session 9 outcome: All 3 moneybird drafts marked FP.** The DOM XSS draft (`6d09cce8`) was previously validated twice in `learning-data/outcomes.json` as `not-applicable` — browser URL-encodes the fragment payload before it reaches innerHTML. Draft should be archived.
+
+---
+
+## Session 9 Summary (2026-07-29)
+
+**Session result: 0 new bounty reports submitted, 0 new reports drafted.**
+
+Pattern is unchanged: unauthenticated scans of hardened targets (or wrong subdomains) produce passive/header findings only. The two unreviewed scans (Kredivo blog, cal.com marketing) were both against low-value subdomains that yield only marketing-site FPs.
+
+**No manual actions outstanding from this session.** The moneybird DOM XSS was already validated as FP in prior sessions (see `learning-data/outcomes.json`). Highest-priority next step remains the Indeed CSRF submission or OpenProject Docker test.
 
 ---
 
@@ -98,12 +168,14 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ## Next Steps (Priority Order)
 
-1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction). Draft ready: `2026-03-14-indeed-csrf-cookie-SUBMISSION.md`.
 2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
 3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+4. **Prioritize `app.kredivo.com` in hunt registry** — Change `hunt-registry.yaml` Kredivo primary target to `app.kredivo.com` (in scope per `scopes/kredivo.txt`). Note: `kredivo.com` apex is NOT in the scope file — do not add it as a target.
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+7. **Archive moneybird DOM XSS draft** — Delete or move `bounty-pool/pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` to archived. Already validated twice as FP in `learning-data/outcomes.json`.
