@@ -7,7 +7,7 @@
 | # | Target | Finding | Severity | Notes |
 |---|--------|---------|----------|-------|
 | 1 | indeed.com | CSRF cookie missing Secure on login page | Medium | Inconsistency between CSRF and INDEED_CSRF_TOKEN strengthens report. **CAVEAT:** Cookie set via JS, not HTTP header — curl won't reproduce. Needs Playwright/browser to verify. Submission draft ready: `2026-03-14-indeed-csrf-cookie-SUBMISSION.md` |
-| 5 | moneybird.com | DOM XSS via URL Fragment (innerHTML sink) | High | **Playwright-confirmed** alert fired in Chromium. Draft updated: `pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md`. **ACTION NEEDED:** Verify manually in browser by visiting `https://www.moneybird.com/#<img src=x onerror=alert(document.domain)>` before submitting. |
+| 5 | moneybird.com | DOM XSS via URL Fragment (innerHTML sink) | High | **Sink reachability confirmed** (payload written to innerHTML × 2 via DOM instrumentation). Alert execution NOT confirmed — scanner has no dialog listener. **ACTION NEEDED:** Visit `https://www.moneybird.com/#<img src=x onerror=alert(document.domain)>` in browser. If alert fires, submit. Draft: `pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` |
 
 ### TIER 2 — Hold (needs more work)
 
@@ -16,7 +16,7 @@
 | 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
-| 6 | blog.kredivo.com | No rate limiting on WordPress admin login | Medium | Draft ready: `pending/2026-08-01-kredivo-rate-limit-wp-login.md`. blog.kredivo.com is in scope (RedStorm). Run the 50-request brute-force test to capture evidence before submitting. **Expectation:** Low-Medium bounty (~Rp 500,000 / ~$32). Worth trying. |
+| 6 | blog.kredivo.com | WordPress admin login — potential rate-limit gap | Medium | **NEEDS VERIFICATION.** Scan confirmed `/wp-login.php` accessible (HTTP 200) and reCAPTCHA v3 present. Rate-limit probe was GET `/login` only — POST to `/wp-login.php` not tested. Draft: `pending/2026-08-01-kredivo-rate-limit-wp-login.md`. Run POST verification; if reCAPTCHA blocks automated attempts this is a FP. |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -45,7 +45,7 @@ Scope: blog.kredivo.com is explicitly in scope per `scopes/kredivo.txt`.
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| Exposed WordPress Login + No Rate Limiting (`/wp-login.php`, HIGH/HIGH) | **DRAFT** | Legit Medium. No rate limiting confirmed (15 POST attempts, all HTTP 200, no lockout). blog.kredivo.com is a fintech company blog — WP admin compromise = malicious script injection on all blog pages. Draft: `pending/2026-08-01-kredivo-rate-limit-wp-login.md` |
+| WordPress login page accessible (`/wp-login.php`, HTTP 200) | **DRAFT (incomplete)** | `/wp-login.php` returns 200 (confirmed). reCAPTCHA v3 present in page HTML. Rate-limit probe was on GET `/login` (different URL) — POST auth flow NOT tested. Draft needs POST verification before submission. If reCAPTCHA enforced server-side → FP. Draft: `pending/2026-08-01-kredivo-rate-limit-wp-login.md` |
 | Missing CSP header on blog.kredivo.com | **FP** | Blog/marketing page. Triagers auto-reject header findings on marketing pages. Informational at best. |
 | Cookie `_hcc` missing HttpOnly/Secure | **FP** | `_hcc` = HubSpot contact tracking cookie (third-party analytics). By design, intentionally JS-accessible. Classic FP pattern. |
 
@@ -71,7 +71,7 @@ Re-reviewed: Session 8 only triaged 2 of 5 interpreted findings. The DOM XSS and
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| DOM XSS via URL Fragment (HIGH/HIGH) | **DRAFT — TIER 1** | Playwright confirmed alert fired in Chromium. `dom-sink` detection = browser-side auto-verify. moneybird.com is in scope. Draft improved with proper HTML PoC and impact analysis. **Needs manual browser confirm by Dio before submit.** |
+| DOM XSS via URL Fragment (HIGH/MEDIUM raw) | **DRAFT — verify before Tier 1** | `dom-sink` detection = payload reached innerHTML × 2 (confirmed). Alert execution NOT confirmed (scanner has no dialog listener; raw confidence was medium, not high). moneybird.com is in scope. Draft corrected to accurately describe sink evidence. Manual browser verification required before submitting. |
 | postMessage handlers missing origin validation (MEDIUM/MEDIUM) | **FP** | www.moneybird.com has Intercom/HubSpot chat widgets — these register postMessage listeners without origin checks by design. Matches known FP pattern. Not submittable without evidence of actual state manipulation. |
 
 ---

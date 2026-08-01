@@ -2,7 +2,7 @@
 
 **Severity:** High | **CVSS:** 7.1 | CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N
 **Platform:** HackerOne | **Program:** Moneybird
-**Confidence:** High (Playwright-confirmed: alert fired in Chromium)
+**Confidence:** Medium (sink assignment confirmed; event handler execution requires manual verification)
 **CWE:** CWE-79 (Improper Neutralization of Input During Web Page Generation)
 **OWASP:** A03:2021 - Injection
 **Affected Asset:** https://www.moneybird.com/
@@ -11,9 +11,11 @@
 
 ## Description
 
-The Moneybird homepage reads `window.location.hash` and writes it directly into the DOM via `innerHTML` without sanitization. An attacker can craft a URL with an XSS payload in the URL fragment and trick a logged-in Moneybird user into clicking it, causing arbitrary JavaScript execution in their browser session.
+The Moneybird homepage reads `window.location.hash` and writes it directly into the DOM via `innerHTML` without sanitization. An attacker can craft a URL with an XSS payload in the URL fragment and trick a logged-in Moneybird user into clicking it, potentially causing arbitrary JavaScript execution in their browser session.
 
-This was confirmed by automated Playwright execution: navigating to the PoC URL triggered an alert dialog, confirming active JavaScript execution. The payload reaches at least two separate `innerHTML` sinks on the page.
+SecBot's Playwright instrumentation detected the payload `<img src=x onerror=alert("secbot-xss-37")>` being assigned to an `innerHTML` sink on the page (two separate `innerHTML-set` events). This confirms the user-supplied fragment reaches a dangerous DOM sink without encoding. Whether the `onerror` event handler subsequently fires (i.e., whether the browser actually executes JavaScript) requires manual browser verification — the automated scan confirms sink reachability, not handler execution.
+
+> **Verification status:** Payload→sink path confirmed by DOM instrumentation. Manual execution confirmation needed before submission.
 
 ---
 
@@ -117,6 +119,8 @@ Audit all code paths that read from `window.location.hash`, `document.URL`, `doc
 ## Detection Notes
 
 - **Scan date:** 2026-03-22T12:37:45Z (stealth profile)
-- **Detection method:** `dom-sink` — SecBot's Playwright (Chromium) executed the PoC payload and confirmed the alert dialog fired
-- **Verification status:** Playwright-confirmed; recommend manual browser verification before submission
-- **Related finding:** Missing Content-Security-Policy on www.moneybird.com amplifies exploitability — no browser-level mitigation blocks the payload
+- **Detection method:** `dom-sink` — SecBot's Playwright instrumentation monkey-patched `Element.prototype.innerHTML`; detected two `innerHTML-set` events containing the unencoded payload marker `secbot-xss-37`
+- **What this confirms:** The URL fragment is written to `innerHTML` without encoding. The payload string was present in the sink value.
+- **What this does NOT confirm:** Whether the `onerror` event handler fired (alert dialog execution). The scanner has no dialog listener; it detects sink assignment only.
+- **Raw confidence:** Medium (raw finding) — the AI report validator promoted to High based on innerHTML sink evidence; treat as Medium until manual execution confirmed
+- **Related finding:** Missing Content-Security-Policy on www.moneybird.com means no browser-level mitigation blocks the payload if execution is confirmed
