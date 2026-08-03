@@ -1,0 +1,43 @@
+# Program: WP Engine
+# Platform: Intigriti (https://app.intigriti.com/programs/wpengine/wpenginebugbounty/detail)
+# Bounty: Tier 1 €250–€2,500 | Tier 2 €125–€1,500 | Tier 3 €50–€1,250
+# Notes: WordPress managed hosting SaaS (~1,100 employees). Rich Tier 1 scope includes
+#        customer portal (my.wpengine.com), billing (payments.wpengine.com), and main site.
+#        Automated testing allowed at max 3 req/sec. Add header User-Agent: Intigriti-<username>.
+#        Broad Tier 2 wildcard scope covers Flywheel, NitroPack, LocalWP, ACF plugins.
+#        SecBot fit: XSS, CSRF, IDOR (multi-tenant portal), SQLi, auth bypass, broken access
+#        control, JWT, host-header, info-disclosure, SSRF, CORS.
+
+In Scope
+# Tier 1 (highest bounty)
+my.wpengine.com
+payments.wpengine.com
+wpengine.com
+app.getflywheel.com
+getflywheel.com
+
+# Tier 2 (wildcards and plugins)
+*.advancedcustomfields.com
+*.localwp.com
+*.nitropack.io
+*.studiopress.com
+*.wpengine.io
+*.wpesvc.net
+
+# Tier 3 (lower bounty)
+makeshift.film
+studiopress.blog
+torquemag.io
+
+Out of Scope
+- Missing security headers (CSP, HSTS, X-Frame-Options)
+- CORS misconfigurations on non-sensitive endpoints
+- Self-XSS
+- Clickjacking without impact
+- Username enumeration without business impact
+- DoS/DDoS attacks
+- Theoretical vulnerabilities without working PoC
+- Brute force attacks
+- WP Engine customer server instances and their hosted applications
+- Staging and non-production environments
+- Social engineering and phishing

@@ -1,7 +1,9 @@
-# SecBot Hunt Registry — Diagnostic Run #1
+# SecBot Hunt Registry
 # Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# Updated: 2026-08-03 — Bounty Scout (quarterly refresh)
 # Strategy: low competition + web app depth + SecBot strengths
+
+# ── Active targets ────────────────────────────────────────────────────────────
 
 - name: kredivo
   platform: other
@@ -24,16 +26,39 @@
   schedule: weekly
   enabled: true
 
+# Added 2026-08-03: food-delivery super-app, rich Tier-1 auth + merchant scope
+# Intigriti + HackerOne dual program; automated testing allowed at 3 req/sec
+- name: wolt
+  platform: intigriti
+  scope_file: scopes/wolt.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# Added 2026-08-03: managed WordPress hosting SaaS, broad wildcard Tier-2 scope
+# Intigriti; automated testing allowed at 3 req/sec; €250–€2,500 Tier-1
+- name: wpengine
+  platform: intigriti
+  scope_file: scopes/wpengine.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# ── Disabled targets ──────────────────────────────────────────────────────────
+
+# Disabled 2026-08-03: EC-sponsored program ended June 2026; YesWeHack page returns 404
 - name: openproject
   platform: other
   scope_file: scopes/openproject.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false
 
+# Disabled 2026-08-03: No formal paid bounty found — uses GitHub Security Advisories only.
+# XSS and CSRF explicitly out of scope. Not a good SecBot target.
 - name: calcom
   platform: hackerone
   scope_file: scopes/calcom.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false
