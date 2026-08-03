@@ -22,13 +22,13 @@ wolt.com
 *.wolt.com
 
 Out of Scope
-- Missing security headers or cookie flags (low impact)
-- Low-impact CORS misconfigurations (non-sensitive endpoints)
-- Unauthenticated rate-limit bypass
-- Self-XSS
-- Clickjacking without proven impact
-- Social engineering
-- Payment processor infrastructure (3rd party)
-- Automated scanner results without manual verification proof
-- Mass disclosure of customer/courier/merchant data during testing
-- Using accounts or data you don't own
+# (no out-of-scope domain/URL patterns — Wolt excludes vulnerability *classes*, not hosts)
+# Excluded by program policy (document only — not hostname patterns):
+# - Missing security headers or cookie flags (low impact)
+# - Low-impact CORS misconfigurations (non-sensitive endpoints)
+# - Unauthenticated rate-limit bypass
+# - Self-XSS
+# - Clickjacking without proven impact
+# - Social engineering, DoS
+# - Payment processor infrastructure (3rd party)
+# - Automated scanner results without manual verification proof

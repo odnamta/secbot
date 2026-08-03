@@ -30,14 +30,16 @@ studiopress.blog
 torquemag.io
 
 Out of Scope
-- Missing security headers (CSP, HSTS, X-Frame-Options)
-- CORS misconfigurations on non-sensitive endpoints
-- Self-XSS
-- Clickjacking without impact
-- Username enumeration without business impact
-- DoS/DDoS attacks
-- Theoretical vulnerabilities without working PoC
-- Brute force attacks
-- WP Engine customer server instances and their hosted applications
-- Staging and non-production environments
-- Social engineering and phishing
+# (no out-of-scope domain/URL patterns — WP Engine excludes vulnerability *classes*, not hosts)
+# Customer-hosted apps are out of scope by definition (different operators, not WP Engine infra).
+# Excluded by program policy (document only — not hostname patterns):
+# - Missing security headers (CSP, HSTS, X-Frame-Options)
+# - CORS misconfigurations on non-sensitive endpoints
+# - Self-XSS
+# - Clickjacking without impact
+# - Username enumeration without business impact
+# - DoS/DDoS attacks
+# - Theoretical vulnerabilities without working PoC
+# - Brute force attacks
+# - Staging and non-production environments
+# - Social engineering and phishing
