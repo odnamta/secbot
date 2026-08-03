@@ -1,0 +1,34 @@
+# Program: Wolt
+# Platform: Intigriti (https://app.intigriti.com/programs/wolt/wolt/detail)
+# Also on: HackerOne (https://hackerone.com/wolt)
+# Bounty: Tier 1 €150–€3,500 | Tier 2 €100–€2,500
+# Notes: Food delivery platform (now part of DoorDash). Rich scope includes auth portal,
+#        merchant dashboard, corporate portal, ops tools, restaurant API. Automated
+#        testing explicitly allowed at max 3 req/sec. Add header X-Intigriti:<username>.
+#        Test account required for consumer/merchant testing — request from program.
+#        SecBot fit: XSS, CORS, CSRF, IDOR, SQLi, JWT, auth bypass, host-header, SSRF.
+
+In Scope
+# Tier 1 (highest bounty)
+authentication.wolt.com
+corporate.wolt.com
+drive.wolt.com
+merchant.wolt.com
+ops.wolt.com
+restaurant-api.wolt.com
+wolt.com
+
+# Tier 2
+*.wolt.com
+
+Out of Scope
+# (no out-of-scope domain/URL patterns — Wolt excludes vulnerability *classes*, not hosts)
+# Excluded by program policy (document only — not hostname patterns):
+# - Missing security headers or cookie flags (low impact)
+# - Low-impact CORS misconfigurations (non-sensitive endpoints)
+# - Unauthenticated rate-limit bypass
+# - Self-XSS
+# - Clickjacking without proven impact
+# - Social engineering, DoS
+# - Payment processor infrastructure (3rd party)
+# - Automated scanner results without manual verification proof
