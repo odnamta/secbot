@@ -59,7 +59,7 @@ Target: `https://blog.kredivo.com/` (WordPress blog — marketing/blog site, NOT
 | wp-login.php exposed (HTTP 200) | **Informational** | Standard WordPress behavior — every WordPress site has `/wp-login.php` publicly accessible. Not a vulnerability unless credentials are unprotected (no MFA, no IP restriction). Not submittable as-is. |
 | Missing X-Frame-Options, CORS, HSTS preload | **FP** | Standard noise on a marketing blog. All low/info severity. |
 
-**Net result:** 0 Kredivo findings are bounty-submittable. The scan target (`blog.kredivo.com`) is a WordPress blog, outside the interesting attack surface. Future scans should target `app.kredivo.com` or `api.kredivo.com` with authentication.
+**Net result:** 0 Kredivo findings are bounty-submittable. The scan target (`blog.kredivo.com`) is a WordPress blog, outside the interesting attack surface. Future scans should target `app.kredivo.com` or `mysandbox.kredivo.com` with authentication (`api.kredivo.com` is out of scope per `scopes/kredivo.txt`).
 
 ---
 
@@ -139,6 +139,6 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-5. **Scan app.kredivo.com / api.kredivo.com** — The blog scan was wasted on wrong target. Re-run on authenticated app surface with `--auth-cookie`.
+5. **Scan app.kredivo.com or mysandbox.kredivo.com** — The blog scan was wasted on wrong target. Re-run on in-scope authenticated app surface with `--auth-cookie`. (`api.kredivo.com` is out of scope per `scopes/kredivo.txt`.)
 6. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
 7. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
