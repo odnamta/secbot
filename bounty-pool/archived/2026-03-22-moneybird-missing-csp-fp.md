@@ -1,8 +1,10 @@
-# Missing Content-Security-Policy Header
+# Missing Content-Security-Policy Header — ARCHIVED (False Positive)
+
+> **Archived 2026-08-08:** Marketing homepage. Response has `content-security-policy-report-only` set — Moneybird is already testing enforcement. Triagers auto-reject missing-header findings on marketing pages. Not submittable.
 
 **Severity:** high | **CVSS:** 7 | CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N
 **Platform:** HackerOne | **Program:** Moneybird
-**Confidence:** high
+**Confidence:** high (scanner) / FP (triage)
 
 ## Description
 The application does not set a Content-Security-Policy (CSP) header on any response. Without CSP, the browser has no instruction to block inline scripts, unauthorized external script sources, or data exfiltration — making the confirmed DOM XSS finding significantly more dangerous and easier to exploit.

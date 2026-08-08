@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-08-08 (Session 9)
 
 ## Submission Priority
 
@@ -15,6 +15,7 @@
 | 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
+| 5 | moneybird.com | DOM XSS via URL fragment on www.moneybird.com homepage | Medium | Playwright detected payload `#<img src=x onerror=alert("secbot-xss-37")>` reaching two innerHTML sinks. Confidence: medium. **ACTION REQUIRED:** Open `https://www.moneybird.com/#<img src=x onerror=alert("secbot-xss-37")>` in a browser and confirm alert fires. If confirmed, draft is ready in `pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md`. Marketing page (lower severity), but HackerOne programs often accept marketing-site XSS. |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -98,12 +99,34 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ## Next Steps (Priority Order)
 
-1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+1. **Verify moneybird DOM XSS** — Open `https://www.moneybird.com/#<img src=x onerror=alert("secbot-xss-37")>` in a browser. If alert fires, submit via HackerOne (draft ready). This is the most actionable item right now and requires only a browser click to verify.
+2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+
+---
+
+## Session 9 Analysis — 2026-08-08 (Report Drafter Routine)
+
+No new scans since March 2026. This session resolved 3 moneybird pending files that Session 8 left unaddressed.
+
+### Moneybird Pending Files — Triaged 2026-08-08
+
+| Finding | File | Verdict | Reason |
+|---------|------|---------|--------|
+| Missing CSP (`09dd5267`) | `pending/moneybird/09dd5267-...` | **FP → Archived** | Marketing homepage, auto-rejected. Importantly, response has `content-security-policy-report-only` — Moneybird is already testing enforcement. Moved to `archived/`. |
+| postMessage handler (`8c0823c1`) | `pending/moneybird/8c0823c1-...` | **FP → Archived** | Handler snippet is generic mouse event coordinate code (`pageX`/`clientX`) — not a postMessage security issue. Third-party library code (Intercom/jQuery). Moved to `archived/`. |
+| DOM XSS via URL fragment (`6d09cce8`) | `pending/moneybird/6d09cce8-...` | **HOLD — VERIFY** | Playwright detected payload in two innerHTML sinks. Medium confidence. Draft file corrected (curl won't reproduce URL fragment XSS; must use browser). See Tier 2 item #5 for action. |
+
+### Additional Moneybird Findings from Scan (previously unaddressed)
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Open redirect `?url=` on /login | **FP** | `www.moneybird.com/login?url=evil` → 301 → `moneybird.com/login?url=evil`. Same-org redirect (www → apex). Evil URL is a *parameter*, not the redirect destination. Identical FP pattern to neon.tech open redirect. |
+| Open redirect `?redirect=` on /login | **FP** | Same pattern as above. |
