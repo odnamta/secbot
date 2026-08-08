@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-08-08 (Session 9)
 
 ## Submission Priority
 
@@ -22,6 +22,9 @@ Moved to `bounty-pool/archived/`:
 - shopify.com CORS /__dux — Non-exploitable (SameSite+empty body)
 - konghq.com missing headers — Informational, auto-rejected by triagers
 - gitlab.com GraphQL introspection — By design, publicly documented
+- moneybird.com DOM XSS via URL fragment (6d09cce8) — FP: browser URL-encodes fragment before innerHTML; confirmed not-applicable in outcomes.json (×2)
+- moneybird.com Missing CSP (09dd5267) — FP: CSP report-only already set; marketing page
+- moneybird.com postMessage handlers (8c0823c1) — FP: handler is mouse-event coordinate code, not a security sink
 
 ### OWN APPS — Fix These
 
@@ -105,5 +108,26 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+
+---
+
+## Session 9 Analysis — 2026-08-08 (Report Drafter Routine)
+
+No new scans since March 2026. This session resolved 3 moneybird pending files that Session 8 left unaddressed.
+
+### Moneybird Pending Files — Triaged 2026-08-08
+
+| Finding | File | Verdict | Reason |
+|---------|------|---------|--------|
+| Missing CSP (`09dd5267`) | `pending/moneybird/09dd5267-...` | **FP → Archived** | Marketing homepage, auto-rejected. Importantly, response has `content-security-policy-report-only` — Moneybird is already testing enforcement. Moved to `archived/`. |
+| postMessage handler (`8c0823c1`) | `pending/moneybird/8c0823c1-...` | **FP → Archived** | Handler snippet is generic mouse event coordinate code (`pageX`/`clientX`) — not a postMessage security issue. Third-party library code (Intercom/jQuery). Moved to `archived/`. |
+| DOM XSS via URL fragment (`6d09cce8`) | `archived/2026-03-22-moneybird-dom-xss-url-fragment-fp.md` | **FP → Archived** | Initially held for browser verification, then corrected: `learning-data/outcomes.json` has two prior `not-applicable` records for this exact finding ID (2026-03-22 and 2026-03-26), both noting "browser URL-encodes fragment payload." Root cause: SecBot's dom-sink detector saw its marker string in the DOM as inert URL-encoded text, not as executed HTML. |
+
+### Additional Moneybird Findings from Scan (previously unaddressed)
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Open redirect `?url=` on /login | **FP** | `www.moneybird.com/login?url=evil` → 301 → `moneybird.com/login?url=evil`. Same-org redirect (www → apex). Evil URL is a *parameter*, not the redirect destination. Identical FP pattern to neon.tech open redirect. |
+| Open redirect `?redirect=` on /login | **FP** | Same pattern as above. |

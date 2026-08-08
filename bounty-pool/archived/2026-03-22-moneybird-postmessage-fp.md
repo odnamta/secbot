@@ -1,4 +1,6 @@
-# postMessage Handlers Missing Origin Validation
+# postMessage Handlers Missing Origin Validation — ARCHIVED (False Positive)
+
+> **Archived 2026-08-08:** Handler snippet from raw scan is generic mouse-event coordinate code (`pageX`/`clientX`/`clientY`) from a third-party library (Intercom or jQuery) — not a security-sensitive message handler. The scanner detected addEventListener calls and classified them as postMessage handlers, but the actual handler logic processes mouse events, not cross-origin messages. Classic library-code FP.
 
 **Severity:** medium | **CVSS:** 6.1 | CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N
 **Platform:** HackerOne | **Program:** Moneybird
