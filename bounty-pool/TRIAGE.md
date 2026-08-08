@@ -15,7 +15,6 @@
 | 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
-| 5 | moneybird.com | DOM XSS via URL fragment on www.moneybird.com homepage | Medium | Playwright detected payload `#<img src=x onerror=alert("secbot-xss-37")>` reaching two innerHTML sinks. Confidence: medium. **ACTION REQUIRED:** Open `https://www.moneybird.com/#<img src=x onerror=alert("secbot-xss-37")>` in a browser and confirm alert fires. If confirmed, draft is ready in `pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md`. Marketing page (lower severity), but HackerOne programs often accept marketing-site XSS. |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -23,6 +22,9 @@ Moved to `bounty-pool/archived/`:
 - shopify.com CORS /__dux — Non-exploitable (SameSite+empty body)
 - konghq.com missing headers — Informational, auto-rejected by triagers
 - gitlab.com GraphQL introspection — By design, publicly documented
+- moneybird.com DOM XSS via URL fragment (6d09cce8) — FP: browser URL-encodes fragment before innerHTML; confirmed not-applicable in outcomes.json (×2)
+- moneybird.com Missing CSP (09dd5267) — FP: CSP report-only already set; marketing page
+- moneybird.com postMessage handlers (8c0823c1) — FP: handler is mouse-event coordinate code, not a security sink
 
 ### OWN APPS — Fix These
 
@@ -99,10 +101,9 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ## Next Steps (Priority Order)
 
-1. **Verify moneybird DOM XSS** — Open `https://www.moneybird.com/#<img src=x onerror=alert("secbot-xss-37")>` in a browser. If alert fires, submit via HackerOne (draft ready). This is the most actionable item right now and requires only a browser click to verify.
-2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
@@ -122,7 +123,7 @@ No new scans since March 2026. This session resolved 3 moneybird pending files t
 |---------|------|---------|--------|
 | Missing CSP (`09dd5267`) | `pending/moneybird/09dd5267-...` | **FP → Archived** | Marketing homepage, auto-rejected. Importantly, response has `content-security-policy-report-only` — Moneybird is already testing enforcement. Moved to `archived/`. |
 | postMessage handler (`8c0823c1`) | `pending/moneybird/8c0823c1-...` | **FP → Archived** | Handler snippet is generic mouse event coordinate code (`pageX`/`clientX`) — not a postMessage security issue. Third-party library code (Intercom/jQuery). Moved to `archived/`. |
-| DOM XSS via URL fragment (`6d09cce8`) | `pending/moneybird/6d09cce8-...` | **HOLD — VERIFY** | Playwright detected payload in two innerHTML sinks. Medium confidence. Draft file corrected (curl won't reproduce URL fragment XSS; must use browser). See Tier 2 item #5 for action. |
+| DOM XSS via URL fragment (`6d09cce8`) | `archived/2026-03-22-moneybird-dom-xss-url-fragment-fp.md` | **FP → Archived** | Initially held for browser verification, then corrected: `learning-data/outcomes.json` has two prior `not-applicable` records for this exact finding ID (2026-03-22 and 2026-03-26), both noting "browser URL-encodes fragment payload." Root cause: SecBot's dom-sink detector saw its marker string in the DOM as inert URL-encoded text, not as executed HTML. |
 
 ### Additional Moneybird Findings from Scan (previously unaddressed)
 

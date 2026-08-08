@@ -2,9 +2,9 @@
 
 **Severity:** medium | **CVSS:** 6.1 | CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N
 **Platform:** HackerOne | **Program:** Moneybird
-**Confidence:** medium — NEEDS MANUAL BROWSER VERIFICATION BEFORE SUBMITTING
+**Confidence:** medium (scanner) / **FALSE POSITIVE** (confirmed)
 
-> **Triage note (2026-08-08):** SecBot/Playwright detected the payload marker in two innerHTML sinks (dom-sink detection). curl cannot reproduce this — URL fragments are not sent to the server. Verify by opening the URL in a real browser and confirming the alert fires. If not confirmed, do not submit.
+> **Archived 2026-08-08:** Confirmed FP — recorded as `not-applicable` twice in `learning-data/outcomes.json` (2026-03-22 and 2026-03-26). Root cause: browser URL-encodes the fragment before it reaches any innerHTML sink, so the payload is rendered as inert text, not executed as HTML. The SecBot dom-sink detector saw its marker string in the DOM but the payload was already encoded and harmless.
 
 ## Description
 The homepage directly writes URL fragment content into the DOM via innerHTML without sanitization. An attacker can craft a malicious URL containing an HTML/JS payload in the fragment (e.g., #<img src=x onerror=alert(1)>) and trick a user into clicking it, causing arbitrary JavaScript execution in the victim's browser.
