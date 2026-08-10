@@ -1,7 +1,7 @@
-# SecBot Hunt Registry — Diagnostic Run #1
+# SecBot Hunt Registry
 # Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
-# Strategy: low competition + web app depth + SecBot strengths
+# Updated: 2026-08-10 (Bounty Scout: +4 targets — GoTo Financial, DANA, Zoho, Lark)
+# Strategy: low competition + web app depth + SecBot strengths + SEA home advantage
 
 - name: kredivo
   platform: other
@@ -37,3 +37,37 @@
   profile: stealth
   schedule: weekly
   enabled: true
+
+# --- Added 2026-08-10 by Bounty Scout ---
+
+- name: goto-financial
+  platform: yeswehack
+  scope_file: scopes/goto-financial.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: "Indonesian fintech (GoPay/GoPayLater), $5-$7k bounty, 14 scopes. High competition (568 reports) — stealth mandatory."
+
+- name: dana
+  platform: yeswehack
+  scope_file: scopes/dana.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: "Indonesian e-wallet, $0-$3k bounty. Stealth required. Web scope: m.dana.id, mgs.dana.id."
+
+- name: zoho
+  platform: other
+  scope_file: scopes/zoho.txt
+  profile: standard
+  schedule: weekly
+  enabled: true
+  notes: "Self-hosted at bugbounty.zohocorp.com. $50-$3k. Validated findings from tools accepted. Submit via Zoho portal."
+
+- name: lark
+  platform: hackerone
+  scope_file: scopes/lark.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: "ByteDance SaaS collaboration, $100-$2k, 17 targets. Good for IDOR/CORS/JWT/XSS on rich-text editor."

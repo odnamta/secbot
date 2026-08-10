@@ -1,0 +1,35 @@
+# Program: Zoho
+# Platform: Self-hosted (bugbounty.zohocorp.com)
+# URL: https://bugbounty.zohocorp.com/bb/info
+# Bounty: $50 (low) / $200 (medium) / $800 (high) / $3,000 (critical)
+# Company: Zoho Corporation — Indian SaaS conglomerate, 100M+ users globally
+# Notes: Self-managed program, submit via Zoho's portal. Broad scope covers ALL Zoho and
+#        ManageEngine products. "Unvalidated findings from automated tools" are excluded,
+#        meaning SecBot's auto-verify + AI validation step satisfies their validation
+#        requirement — include Playwright screenshot evidence and reproduction steps.
+#        Sweet spots: Zoho CRM (crm.zoho.com), Zoho Desk (desk.zoho.com),
+#        Zoho Projects (projects.zoho.com), ManageEngine ServiceDesk Plus.
+#        Self-XSS, email enumeration, HTML injection, missing security headers are excluded.
+
+In Scope
+*.zoho.com
+*.zohocorp.com
+*.manageengine.com
+*.site24x7.com
+crm.zoho.com
+desk.zoho.com
+projects.zoho.com
+mail.zoho.com
+accounts.zoho.com
+
+Out of Scope
+- Self-XSS (only exploitable by the victim themselves)
+- Email enumeration
+- HTML injection without clear security impact
+- Unvalidated redirects
+- Missing security headers without a demonstrable exploit
+- CSRF on unauthenticated forms
+- Tapjacking without sensitive action
+- CSV injection
+- Social engineering / phishing
+- Any finding from unvalidated automated scanner output

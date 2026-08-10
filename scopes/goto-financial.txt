@@ -1,0 +1,24 @@
+# Program: GoTo Financial
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/goto-financial-public-bounty-program
+# Bounty: $5 (low) – $7,000 (critical)
+# Company: GoTo Group financial services arm — GoPay, GoPayLater, merchant platform
+# Notes: Indonesian fintech, 14 in-scope targets (api/domain/mobile/wildcard), 568 reports as of Aug 2026
+#        Use stealth profile to stay under radar. YesWeHack standard policy likely prohibits
+#        "automated scanners generating excessive traffic" — SecBot stealth mode (Gaussian delays,
+#        max 10 concurrent, human simulation) is compliant; avoid deep/brute profiles.
+#        Last updated 2026-05-04. Verify full scope on YesWeHack before scanning.
+
+In Scope
+gopay.co.id
+*.gopay.co.id
+gofin.co.id
+*.gofin.co.id
+gopaylater.co.id
+*.gopaylater.co.id
+
+Out of Scope
+- Non-production / staging / sandbox environments
+- GoTo Group non-financial properties (Gojek ride-hailing, Tokopedia)
+- Third-party integrations not owned by GoTo Financial
+- Denial of service attacks
