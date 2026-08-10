@@ -12,15 +12,15 @@
 #        Self-XSS, email enumeration, HTML injection, missing security headers are excluded.
 
 In Scope
-*.zoho.com
-*.zohocorp.com
-*.manageengine.com
-*.site24x7.com
 crm.zoho.com
 desk.zoho.com
 projects.zoho.com
 mail.zoho.com
 accounts.zoho.com
+*.zoho.com
+*.zohocorp.com
+*.manageengine.com
+*.site24x7.com
 
 Out of Scope
 - Self-XSS (only exploitable by the victim themselves)

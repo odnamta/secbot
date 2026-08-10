@@ -64,10 +64,11 @@
   enabled: true
   notes: "Self-hosted at bugbounty.zohocorp.com. $50-$3k. Validated findings from tools accepted. Submit via Zoho portal."
 
-- name: lark
+- name: lark_technologies
   platform: hackerone
   scope_file: scopes/lark.txt
   profile: stealth
   schedule: weekly
   enabled: true
-  notes: "ByteDance SaaS collaboration, $100-$2k, 17 targets. Good for IDOR/CORS/JWT/XSS on rich-text editor."
+  exclude_checks: rate-limit
+  notes: "ByteDance SaaS collaboration, $100-$2k, 17 targets. Good for IDOR/CORS/JWT/XSS on rich-text editor. rate-limit excluded per program policy."

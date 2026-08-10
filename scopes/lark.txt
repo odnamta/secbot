@@ -1,5 +1,6 @@
 # Program: Lark Technologies
 # Platform: HackerOne
+# HackerOne handle: lark_technologies
 # URL: https://hackerone.com/lark_technologies
 # Bounty: $100 (low) – $2,000 (critical); some critical findings may exceed table max
 # Company: Lark (ByteDance) — enterprise SaaS collaboration suite (chat, docs, calendar, video)

@@ -63,6 +63,7 @@ function buildProgram(raw: Record<string, string>): Program {
   if (raw['auth']) program.auth = raw['auth'];
   if (raw['lastScan']) program.lastScan = raw['lastScan'];
   if (raw['enabled'] !== undefined) program.enabled = raw['enabled'] !== 'false';
+  if (raw['excludeChecks']) program.excludeChecks = raw['excludeChecks'].split(',').map(s => s.trim()).filter(Boolean);
 
   return program;
 }

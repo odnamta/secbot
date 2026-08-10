@@ -18,7 +18,12 @@ gopaylater.co.id
 *.gopaylater.co.id
 
 Out of Scope
-- Non-production / staging / sandbox environments
-- GoTo Group non-financial properties (Gojek ride-hailing, Tokopedia)
-- Third-party integrations not owned by GoTo Financial
-- Denial of service attacks
+staging.gopay.co.id
+dev.gopay.co.id
+sandbox.gopay.co.id
+staging.gofin.co.id
+dev.gofin.co.id
+sandbox.gofin.co.id
+staging.gopaylater.co.id
+dev.gopaylater.co.id
+sandbox.gopaylater.co.id
