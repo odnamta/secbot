@@ -1,0 +1,27 @@
+# Program: Lark Technologies
+# Platform: HackerOne
+# HackerOne handle: lark_technologies
+# URL: https://hackerone.com/lark_technologies
+# Bounty: $100 (low) – $2,000 (critical); some critical findings may exceed table max
+# Company: Lark (ByteDance) — enterprise SaaS collaboration suite (chat, docs, calendar, video)
+# Notes: Program launched Dec 2020, 17 confirmed bounty-eligible targets (domain/mobile/executable).
+#        Growing enterprise tool with complex OAuth flows, document sharing, and API surface —
+#        strong candidates for IDOR, CORS, broken access control, XSS in rich-text editors,
+#        and JWT issues. Program explicitly excludes: spam/mail-bomb, DoS, rate-limiting on
+#        non-auth endpoints, MITM-only attacks. First-reporter requirement applies.
+#        Verify exact scope list on HackerOne (auth required for full target list).
+
+In Scope
+larksuite.com
+*.larksuite.com
+lark.global
+*.lark.global
+feishu.cn
+*.feishu.cn
+
+Out of Scope
+- Spam, mail spoofing, mail bomb attacks
+- Attacks requiring physical device access or MITM
+- DoS / DDoS
+- Rate limiting on non-authentication endpoints
+- Vulnerabilities in third-party libraries without a specific exploitable chain

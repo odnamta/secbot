@@ -10,6 +10,7 @@ export interface Program {
   auth?: string;
   lastScan?: string;
   enabled?: boolean;
+  excludeChecks?: string[];
 }
 
 export interface EscalationItem {

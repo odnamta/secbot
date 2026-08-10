@@ -1,0 +1,22 @@
+# Program: DANA
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/dana-bug-bounty-program
+# Bounty: $0 (low) – $3,000 (critical); critical severity earns highest payout
+# Company: DANA Indonesia — digital wallet used by 150M+ Indonesians
+# Notes: Program launched June 2021, still active as of Aug 2026. Indonesian e-wallet with
+#        strong focus on payment flows, merchant integrations, and user account security.
+#        YesWeHack policy prohibits "automated scanners generating excessive traffic";
+#        SecBot stealth profile (Gaussian delays, human simulation) is acceptable.
+#        Confirm exact scope on YesWeHack — mobile apps (com.dana.indo) are also in scope
+#        but SecBot focuses on the web dashboard/API targets below.
+
+In Scope
+m.dana.id
+mgs.dana.id
+
+Out of Scope
+- Non-production / staging / dev environments
+- Third-party merchant sites integrated with DANA
+- Social engineering and phishing
+- Data manipulation or destruction of any user data
+- Physical attacks
