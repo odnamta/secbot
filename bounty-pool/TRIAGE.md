@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-08-12 (Session 9)
 
 ## Submission Priority
 
@@ -29,6 +29,47 @@ Moved to `bounty-pool/archived/`:
 |---|--------|---------|----------|-------|
 | A1 | finance.atmando.app | No rate limiting on /login and /graphql | HIGH | Brute-force risk on finance app. Add Cloudflare rate limiting + app-level throttle. |
 | A2 | finance.atmando.app | Missing HSTS header | MEDIUM | Middleware has HSTS configured but it's not appearing in response. Docker rebuild or middleware bug. |
+
+---
+
+## Session 9 Analysis — March 22, 2026 v1 Scans (Triaged 2026-08-12)
+
+Three v1 scans from March 22 (pre-dating the v2 re-scans triaged in Session 8) were not previously reviewed: **cal.com v1**, **openproject v1**, **kredivo**.
+
+### Cal.com v1 (HackerOne) — `scan-results/cal-com/secbot-2026-03-22T11-36-33-679Z.json`
+
+This scan pre-dates the calcom-v2 scan (March 26, triaged in Session 8). Headline severity looked alarming (2 critical, 2 high) — all FPs.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Directory Traversal on `/api/geolocation` (critical, medium) | **FP** | Scanner sends `https://cal.com/api/../../../etc/passwd` — Cloudflare + Next.js normalize/block path traversal in URL at the infrastructure layer. `/api/geolocation` is a JSON endpoint returning IP geolocation data; it has no `path` file-read parameter. No actual file content confirmed in response. |
+| XXE on `/api/geolocation` (critical, medium) | **FP** | Scanner posts `Content-Type: application/xml` + XXE payload to what is a JSON/REST GET endpoint. Cal.com is Next.js — no server-side XML parser on this route. Payload ignored or rejected. |
+| Exposed Admin Routes `/admin`, `/administrator` (high, low) | **FP** | Scanner itself notes: "suggesting these may be legitimate public-facing routes…rather than unprotected admin pages." Cal.com's `/admin` requires NextAuth session — Next.js SPA returns HTTP 200 for all client-side routes, auth enforced client-side. Low confidence confirmed by scanner. |
+| Sensitive Token in URL `/api/web_experiments/?token=` (high, medium) | **FP** | This is a Statsig A/B testing client key, not an auth/session token. Public experiment assignment tokens are intentionally passed in URLs across all Statsig customers. Not sensitive or exploitable. |
+| Missing Rate Limiting on Auth Endpoints (medium) | **FP** | GET probe FP — same pattern as all prior rate-limit findings. |
+| OAuth State Not Enforced (medium, low) | **FP** | Low confidence. Wrong endpoint — `/api/auth/session` is NextAuth's session getter, not an OAuth authorization URL. |
+| Missing SRI on External Scripts (medium, high) | **FP** | Third-party CDN scripts (same finding triaged in calcom-v2 Session 8). |
+| Auth Cookie Missing HttpOnly (low, high) | **FP** | `__Secure-next-auth.callback-url` stores redirect URL post-login, not an auth token. Same FP as calcom-v2 triage. |
+
+### OpenProject v1 (YesWeHack) — `scan-results/openproject/secbot-2026-03-22T12-38-03-985Z.json`
+
+Superseded by openproject-v2 scan (March 26, triaged in Session 8). Findings are a subset of v2 findings.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Missing Rate Limiting (medium) | **FP** | GET probe FP. |
+| Missing SRI on External Scripts (medium, high) | **FP** | CDN assets (Chargebee, OpenProject CDN). Not exploitable without XSS chain. |
+
+### Kredivo (RedStorm) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+First Kredivo scan, targeting `blog.kredivo.com` (in-scope per `scopes/kredivo.txt`).
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Missing CSP, X-Frame-Options, etc. (high/medium, from HTTP 403) | **FP/Artifact** | All header findings detected against HTTP 403 responses — the CDN/WAF blocked the scanner. Headers on 403 error pages are not representative of app security posture. |
+| `_hcc` cookie missing HttpOnly + Secure (medium, medium) | **FP** | `_hcc` is HubSpot's Click Cookie — a third-party marketing analytics cookie intentionally JS-accessible for state management. Set by CDN on 403 response. Not an auth token, not bounty-worthy. |
+| WordPress `/wp-login.php` accessible, HTTP 200 (high, high) | **Informational** | Blog subdomain running WordPress. Login page is accessible (normal WordPress default) BUT has Google reCAPTCHA v3 (`api.js?render=6Lcq-sgZ...`) protecting it. With reCAPTCHA active, brute-force threat is mitigated. Marketing blog wp-admin exposure is typically Out Of Scope or Informational on RedStorm. Scope is `blog.kredivo.com` but bounty targets are typically app/API surfaces. Not submittable. |
+| Missing Rate Limiting on GET `/login` (medium) | **FP** | GET probe FP. |
 
 ---
 
@@ -80,19 +121,21 @@ Also reviewed: moneybird (2026-03-22).
 
 ---
 
-## Honest Assessment (Jun 2026, Session 8)
+## Honest Assessment (Aug 2026, Session 9)
 
-**Bounty readiness: Still LOW.** Three more scans, same pattern:
-- 0 injection vulnerabilities found (XSS, SQLi, SSTI, SSRF, etc.)
-- All "high/medium" findings are passive (headers, cookies) — none submittable
-- Rate limiting findings are all GET-probe FPs
-- Open redirect findings are same-org redirect FPs
-- No authenticated scanning performed on any target
+**Bounty readiness: Still LOW.** Three more v1 scans cleared — all FPs.
 
-**Root cause unchanged:** Unauthenticated scan + hardened targets = passive findings only.
+Session 9 closed out the last untriaged scans. All March 2026 scan results are now fully triaged.
 
-**Bright spot:** OpenProject CVE analysis (`OPENPROJECT-CVE-ANALYSIS.md`) documents 22 real CVEs
-with exact endpoints and payloads. The path forward is a local Docker test → authenticated scan.
+**Pattern holds:**
+- Scanner produces FP "critical" findings (path traversal, XXE) via pattern-matching against JSON endpoints — no actual payload confirmation
+- All real-looking high/medium findings remain passive (headers, cookies) — not submittable
+- GET-probe rate limit FPs continue across all targets
+- Kredivo blog scan was WAF-blocked (403 responses) — no real app surface reached
+
+**No new bounty reports drafted in this session.** 0 of 8 new findings pass triage.
+
+**Current submittable queue: 1 item** — Indeed CSRF cookie inconsistency (Tier 1, needs Dio's go-ahead).
 
 ---
 
