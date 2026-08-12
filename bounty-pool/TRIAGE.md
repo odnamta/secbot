@@ -67,7 +67,7 @@ First Kredivo scan, targeting `blog.kredivo.com` (in-scope per `scopes/kredivo.t
 | Finding | Verdict | Reason |
 |---------|---------|--------|
 | Missing CSP, X-Frame-Options, etc. (high/medium, from HTTP 403) | **FP/Artifact** | All header findings detected against HTTP 403 responses — the CDN/WAF blocked the scanner. Headers on 403 error pages are not representative of app security posture. |
-| `_hcc` cookie missing HttpOnly + Secure (medium, medium) | **FP** | `_hcc` is HubSpot's Click Cookie — a third-party marketing analytics cookie intentionally JS-accessible for state management. Set by CDN on 403 response. Not an auth token, not bounty-worthy. |
+| `_hcc` cookie missing HttpOnly + Secure (medium, medium) | **FP** | Cookie has `Max-Age=30` (30-second lifetime) — definitively a short-lived tracking/analytics token, not a WAF state or auth cookie (those use session-length or long-lived lifetimes). Set on a 403 CDN error response, not the app itself. Even if the purpose were unknown, a 30s Max-Age cookie with no session-critical function is not bounty-worthy. |
 | WordPress `/wp-login.php` accessible, HTTP 200 (high, high) | **Informational** | Blog subdomain running WordPress. Login page is accessible (normal WordPress default) BUT has Google reCAPTCHA v3 (`api.js?render=6Lcq-sgZ...`) protecting it. With reCAPTCHA active, brute-force threat is mitigated. Marketing blog wp-admin exposure is typically Out Of Scope or Informational on RedStorm. Scope is `blog.kredivo.com` but bounty targets are typically app/API surfaces. Not submittable. |
 | Missing Rate Limiting on GET `/login` (medium) | **FP** | GET probe FP. |
 
