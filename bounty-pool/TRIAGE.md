@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-08-15 (Session 9)
 
 ## Submission Priority
 
@@ -96,14 +96,71 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ---
 
+---
+
+## Session 9 Analysis — August 15, 2026
+
+Three untriaged March 22 scans processed + three pre-existing moneybird pending drafts assessed.
+
+### Moneybird Pending Drafts (bounty-pool/pending/moneybird/)
+
+Three auto-generated drafts from an earlier scan session, never formally assessed in prior TRIAGE.md sessions.
+
+| Finding | File | Verdict | Reason |
+|---------|------|---------|--------|
+| Missing CSP on www.moneybird.com | `09dd5267-missing-content-security-policy-header.md` | **FP** | Already triaged in Session 8. Marketing homepage — auto-rejected by triagers. Duplicate assessment. |
+| postMessage handlers missing origin validation | `8c0823c1-postmessage-handlers-missing-origin-validation.md` | **FP** | Medium confidence, no confirmed impact. Scanner detected 3 postMessage listeners but could not enumerate handler logic or demonstrate any exploitable behavior. `curl` cannot reproduce. Likely third-party widget (Intercom/Drift pattern). Cannot submit without confirmed impact. |
+| DOM XSS via URL fragment | `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` | **NEEDS HUMAN VERIFICATION** | Claim is specific (`#<img src=x onerror=alert("secbot-xss-37")>`) and confidence is "high", suggesting Playwright may have detected an alert dialog. However: (1) `curl` cannot reproduce — fragments are never sent to server; (2) target is `www.moneybird.com` marketing homepage, not `app.moneybird.com`; (3) marketing homepage has no user session cookies, limiting bounty impact. **Action needed:** Manually visit `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in Chrome DevTools to confirm or deny. If confirmed real, submit as Low/Info due to marketing-page context with no session exposure. |
+
+### Kredivo blog.kredivo.com — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+**Note:** Scan target is `blog.kredivo.com` (blog/WordPress subdomain), not the Kredivo fintech app.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Missing CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy | **FP** | **All findings from HTTP 403 response** — scanner was blocked by WAF/CDN from the first request. All header findings reflect the WAF error page headers, not the application. Scanner could not access any app content. `_hcc` cookie in Set-Cookie confirms WAF challenge enforcement. No findings are from the actual application. |
+| Missing COOP/COEP headers | **FP** | Same reason — 403 WAF block on all 10 scanned URLs. |
+
+**Verdict:** Zero actionable findings. Kredivo blog actively blocks unauthenticated scanners. If Kredivo is a priority target, focus on the main app endpoints after solving WAF bypass or using auth.
+
+### Cal.com Marketing Site — `scan-results/cal-com/secbot-2026-03-22T11-36-33-679Z.json`
+
+**Note:** Superseded by calcom-v2 (March 26) scan already fully triaged in Session 8. This is the `cal.com` Framer marketing site (not `app.cal.com`), 5 pages scanned.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Missing CSP on cal.com/ (Framer marketing site) | **FP** | Marketing landing page on Framer CDN. Triagers auto-reject header findings on marketing sites. Same pattern as Session 8. |
+| Other header findings | **FP** | Marketing site, same pattern. No new findings beyond Session 8 calcom-v2 assessment. |
+
+### OpenProject community.openproject.org v1 — `scan-results/openproject/secbot-2026-03-22T12-38-03-985Z.json`
+
+**Note:** Superseded by openproject-v2 (March 26) already triaged in Session 8. This earlier scan has a single finding.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Missing Permissions-Policy header | **Informational** | Only finding in entire scan. community.openproject.org has a strong CSP (nonce-based), HSTS, X-Frame-Options: SAMEORIGIN, X-Content-Type-Options. Permissions-Policy absence is informational at best, auto-rejected. Not submittable. |
+
+---
+
+## Session 9 Summary
+
+**Findings triaged this session: 9 across 4 scan sets + 3 pending drafts**
+**New reports drafted: 0**
+**Bounty readiness: Still LOW**
+
+Same root cause: no injection vulnerabilities found in any scan, all medium+ findings collapse to FPs on review. The moneybird DOM XSS is the only item worth a 5-minute manual browser check.
+
+---
+
 ## Next Steps (Priority Order)
 
-1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+1. **Manually verify Moneybird DOM XSS** — Open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in browser. If alert fires, submit as Low (marketing page context, no session). If not, close `6d09cce8` as FP.
+2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
