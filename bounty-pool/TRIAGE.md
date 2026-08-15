@@ -114,31 +114,48 @@ Three auto-generated drafts from an earlier scan session, never formally assesse
 
 ### Kredivo blog.kredivo.com — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
 
-**Note:** Scan target is `blog.kredivo.com` (blog/WordPress subdomain), not the Kredivo fintech app.
+**Note:** Scan target is `blog.kredivo.com` (WordPress blog subdomain), not the main Kredivo fintech app. 10 pages attempted; homepage and sitemaps returned HTTP 403 (WAF blocked), but two specific probes reached the application.
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| Missing CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy | **FP** | **All findings from HTTP 403 response** — scanner was blocked by WAF/CDN from the first request. All header findings reflect the WAF error page headers, not the application. Scanner could not access any app content. `_hcc` cookie in Set-Cookie confirms WAF challenge enforcement. No findings are from the actual application. |
-| Missing COOP/COEP headers | **FP** | Same reason — 403 WAF block on all 10 scanned URLs. |
+| Missing CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, COOP/COEP headers | **FP** | All header findings are from HTTP 403 WAF error pages. These reflect the WAF/CDN's error page headers, not the application. Not actionable. |
+| `_hcc` cookie missing HttpOnly + Secure | **FP** | `_hcc` is the WAF challenge token (HubSpot CDN challenge cookie) issued by the 403 response — not an application cookie. Not actionable for bounty. |
+| WordPress login page at `/wp-login.php` accessible (HTTP 200) | **Informational** | Real finding: `blog.kredivo.com/wp-login.php` returns HTTP 200 with a full WordPress login form (title: "Log In ‹ Kredivo — WordPress"). The WAF blocked the homepage but left `/wp-login.php` exposed. This is a real WordPress instance. However: (1) this is the blog subdomain, not the fintech app; (2) WordPress admin login exposure is typically informational/low severity in bug bounty programs; (3) check if `blog.kredivo.com` is in scope for Kredivo's RedStorm program before submitting. |
+| Missing rate limiting on `/login` (GET, 15 rapid requests → all 200) | **FP** | GET page-load probe only. Rate limit on POST credential submission was not tested. Standard FP pattern. |
+| Exposed `/wp-login.php` interpreted finding (CVSS 8.1 assigned) | **Over-scored** | Scanner combined the WordPress login exposure + missing rate limit into a high-severity interpreted finding. The CVSS 8.1 is inflated for a blog subdomain. If in scope, this would be low/informational. |
 
-**Verdict:** Zero actionable findings. Kredivo blog actively blocks unauthenticated scanners. If Kredivo is a priority target, focus on the main app endpoints after solving WAF bypass or using auth.
+**Verdict:** One real but low-value finding (WordPress login exposed on blog subdomain). Worth checking if `blog.kredivo.com` is in scope for RedStorm before deciding to submit as Low/Informational. No injection or access control vulnerabilities found.
 
 ### Cal.com Marketing Site — `scan-results/cal-com/secbot-2026-03-22T11-36-33-679Z.json`
 
-**Note:** Superseded by calcom-v2 (March 26) scan already fully triaged in Session 8. This is the `cal.com` Framer marketing site (not `app.cal.com`), 5 pages scanned.
+**Note:** This scan targets `cal.com` (Framer marketing homepage), 5 pages scanned. Contains both `rawFindings` (header/cookie/sensitive-url) and 8 `interpretedFindings` including critical-severity claims. Partially superseded by the calcom-v2 scan, but the interpreted findings were not assessed in Session 8.
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| Missing CSP on cal.com/ (Framer marketing site) | **FP** | Marketing landing page on Framer CDN. Triagers auto-reject header findings on marketing sites. Same pattern as Session 8. |
-| Other header findings | **FP** | Marketing site, same pattern. No new findings beyond Session 8 calcom-v2 assessment. |
+| Missing CSP, X-Frame-Options, Referrer-Policy, Permissions-Policy, COOP/COEP/CORP headers | **FP** | Framer marketing site. Auto-rejected by triagers. Same as Session 8 calcom-v2. |
+| Cookie `__Secure-next-auth.callback-url` missing HttpOnly | **FP** | Stores post-login redirect URL, not auth token. Same as Session 8 calcom-v2. |
+| **Directory Traversal on `/api/geolocation`** (CVSS 9.0, critical, confidence medium) | **FP** | Scanner itself notes: "this may be a false positive caused by the scanner misinterpreting a generic error or redirect response as file content." `/api/geolocation` is a location lookup endpoint — it does not accept file path parameters. Cal.com is MIT open source and among the most-tested Next.js apps by security researchers. No evidence of actual `/etc/passwd` content in response. |
+| **XXE Injection on `/api/geolocation`** (CVSS 9.1, critical, confidence medium) | **FP** | Both critical findings target the same endpoint. Scanner warns "manual verification recommended given WAF/CDN layer." A geolocation API returning IP-to-location data has no reason to parse XML. `detectionMethod: entity-expansion` likely means scanner sent XML and got a non-JSON error response that it misinterpreted. |
+| **Exposed admin routes** (`/admin`, `/administrator`, `/manage`, etc.) returning HTTP 200 | **FP** | Already assessed in Session 8 calcom-v2: standard Next.js app shell. `/administrator` returns 404 on the app instance. Marketing site Next.js routes rendering HTML ≠ unprotected admin. Confidence is LOW in the scanner output. |
+| **Sensitive token in URL** (`/api/web_experiments/?token=`) | **FP** | `token=` value appears empty in evidence. This is the PostHog feature flags SDK endpoint — the "token" is a public-facing anonymous project key, standard for client-side feature flag SDKs. Not a user auth token. Cal.com is open source and their PostHog project key is visible in the public codebase. |
+| Rate limiting on `/api/auth/session` (GET probe) | **FP** | GET requests to the NextAuth session getter endpoint. Same FP pattern as calcom-v2 Session 8 analysis — rate limiting applies to POST credential submissions, not session-read GETs. |
+| OAuth state on `/api/auth/session` | **FP** | Scanner probing wrong endpoint. Same as Session 8 calcom-v2 — NextAuth's `/api/auth/session` is not an OAuth authorization endpoint. NextAuth handles state parameter internally. |
+| Missing SRI (7 external scripts: PostHog, Twitter Ads, CloudFront) | **FP** | Analytics/ads scripts — frequently updated, SRI not practical. Same as Session 8 calcom-v2. |
+
+**Verdict:** All 8 interpreted findings are FP after context-aware review. The two critical scanner claims (traversal + XXE on `/api/geolocation`) are scanner artifacts with medium confidence and self-acknowledged uncertainty. No actionable bounty findings.
 
 ### OpenProject community.openproject.org v1 — `scan-results/openproject/secbot-2026-03-22T12-38-03-985Z.json`
 
-**Note:** Superseded by openproject-v2 (March 26) already triaged in Session 8. This earlier scan has a single finding.
+**Note:** Superseded by openproject-v2 (March 26) triaged in Session 8. This scan has more findings than previously documented — raw findings include SRI and rate-limit checks in addition to header findings, and there are 2 `interpretedFindings`.
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| Missing Permissions-Policy header | **Informational** | Only finding in entire scan. community.openproject.org has a strong CSP (nonce-based), HSTS, X-Frame-Options: SAMEORIGIN, X-Content-Type-Options. Permissions-Policy absence is informational at best, auto-rejected. Not submittable. |
+| Missing Permissions-Policy, COOP/COEP/CORP headers | **Informational** | Strong overall security posture (nonce-CSP, HSTS, X-Frame-Options). Permissions-Policy absence is informational. Not submittable. |
+| **Missing SRI on `cdn.aws-de-community.openproject.com`** (8 external resources, medium severity, high confidence) | **FP for bounty** | The CDN is OpenProject's own (`aws-de-community.openproject.com`) — not a third-party CDN they don't control. Missing SRI on your own CDN is technically a supply-chain risk, but community.openproject.org is OpenProject's own community instance. Submitting a bug about their own infrastructure to YesWeHack would be out-of-scope for the product program. If it were a customer-hosted instance, it might be relevant. Not submittable. |
+| **Missing rate limiting on `/login` and `/login?back_url=...`** (GET, 15 rapid requests → all 200, medium severity) | **FP** | GET page-load probe only. Rate limiting is not expected on page-load endpoints. Same FP pattern as calcom-v2 and openproject-v2 Session 8 analysis. |
+| Rate limiting on `/api/v3/attachments/.../content` and `/api/v3/configuration` (GET, low severity) | **FP** | Public read-only API endpoints returning non-sensitive configuration data. No rate limiting expected on publicly documented REST API endpoints. |
+
+**Verdict:** No actionable findings. OpenProject community instance has strong security posture (nonce-CSP, HSTS, X-Frame-Options). SRI on own CDN is not a bounty-worthy finding for the community instance. Rate limit findings are all GET-probe FPs.
 
 ---
 
