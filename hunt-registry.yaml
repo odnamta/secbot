@@ -51,12 +51,14 @@
   scope_file: scopes/gojek.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false
   notes: >
     Indonesian superapp. 16 scopes, $5-$3,500 bounties. Last updated 2026-08-03.
     HIGH PRIORITY: home advantage + rich web app surface (merchant portal, driver
-    dashboard, consumer accounts). Verify exact domain list on YesWeHack before
-    first scan.
+    dashboard, consumer accounts). DISABLED until exact in-scope domain list is
+    verified on YesWeHack — current scope file uses *.gojek.com wildcard which
+    may cover assets not declared in the program's 16 authorized scopes.
+    Enable after replacing wildcard with verified domain list.
 
 - name: goto-financial
   platform: yeswehack
@@ -80,9 +82,9 @@
     Good IDOR opportunity (HR data sensitivity). Conversations product is OOS.
     Runs periodic 1.5x bonus campaigns — watch for announcements.
 
-- name: lark
+- name: lark_technologies
   platform: hackerone
-  scope_file: scopes/lark.txt
+  scope_file: scopes/lark_technologies.txt
   profile: stealth
   schedule: weekly
   enabled: true
@@ -90,3 +92,4 @@
     ByteDance collaboration SaaS. $500 medium / $2,000 high / $5,000 critical.
     Large APAC user base, rich authenticated surface (docs, admin console, OAuth).
     Focus web app (larksuite.com); program is mature — go for high-confidence findings.
+    Name must match HackerOne handle (lark_technologies) for --auto-submit to work.
