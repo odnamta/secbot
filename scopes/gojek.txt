@@ -1,0 +1,20 @@
+# Program: Gojek
+# Platform: YesWeHack
+# Program URL: https://yeswehack.com/programs/gojek-bug-bounty-program
+# Bounty: $5 - $3,500 (est. Medium ~$150-500, High ~$1,000+)
+# Notes: Indonesian superapp (ride-hailing, food delivery, logistics, payments).
+#        16 declared scopes, 939+ reports, last updated 2026-08-03.
+#        Web dashboards include merchant portal, driver portal, consumer account,
+#        and various API surfaces — strong match for SecBot's XSS/CORS/IDOR/SSRF checks.
+# WARNING: Verify full in-scope domain list at the YesWeHack program page before
+#          running any scans. Automated scanning is generally permitted on YesWeHack
+#          programs with stealth profile + rate limiting. Confirm there is no explicit
+#          automated-scanner ban in the program policy.
+
+In Scope
+gojek.com
+*.gojek.com
+
+Out of Scope
+# Review YesWeHack program page for up-to-date out-of-scope list.
+# Typically: infrastructure/CDN endpoints, third-party integrations, mobile-only flows.

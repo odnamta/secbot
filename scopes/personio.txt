@@ -1,0 +1,25 @@
+# Program: Personio
+# Platform: Intigriti
+# Program URL: https://app.intigriti.com/programs/personio/personio/detail
+# Bounty: €50 - €5,000 (Medium ~€500-1,500, High ~€2,000-3,500)
+# Notes: European HR & people operations SaaS (~350+ employees, Munich-based).
+#        Serves SMEs across DACH, Southern Europe, UK. Rails/React stack likely.
+#        Scope covers main web app + REST API — strong fit for SecBot's IDOR/CSRF/
+#        broken-access-control/info-disclosure checks (HR data = high-sensitivity).
+#        Program runs special campaigns with 1.5x payout boosts for specific endpoints.
+#        Researchers rate program as "above market rate, fair duplicate handling".
+# WARNING: Conversations product is explicitly OUT OF SCOPE (per 2024 update).
+#          Do not scan *.conversations.personio.com or similar.
+#          Automated scanning permitted on Intigriti; use stealth profile.
+
+In Scope
+www.personio.de
+www.personio.com
+www.personio.es
+api.personio.de
+support.personio.de
+
+Out of Scope
+- Conversations product (all related endpoints/subdomains)
+- statuspage.personio.de
+- Third-party integrations not hosted on personio.de/com/es
