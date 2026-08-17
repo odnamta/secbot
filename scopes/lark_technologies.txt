@@ -1,0 +1,23 @@
+# Program: Lark Technologies
+# Platform: HackerOne
+# Program URL: https://hackerone.com/lark_technologies
+# Bounty: $100 (Low) / $500 (Medium) / $2,000 (High) / $5,000 (Critical)
+# Notes: ByteDance's enterprise collaboration suite (Slack/Notion/G Suite competitor).
+#        ~50M+ users, primarily APAC. Web app at larksuite.com includes messaging,
+#        docs, calendar, video conferencing, HR workflows, and admin console.
+#        Rich authenticated surface: file sharing, user management, OAuth, webhook
+#        integrations — excellent for SecBot's IDOR/XSS/SSRF/broken-access-control.
+#        Launched HackerOne program Dec 2020, mature program with active triage.
+# WARNING: Large attack surface — focus on the web app (larksuite.com), not mobile.
+#          Program is publicly disclosed; some findings already well-known.
+#          No DoS/spam testing. Automated scanning accepted with stealth + rate limits.
+
+In Scope
+www.larksuite.com
+*.larksuite.com
+
+Out of Scope
+- Mobile apps (iOS/Android binaries — focus on web)
+- Third-party plugins/integrations not operated by Lark
+- Denial of service testing
+- Social engineering

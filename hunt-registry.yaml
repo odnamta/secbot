@@ -1,14 +1,20 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# SecBot Hunt Registry
+# Created: 2026-03-22  |  Last updated: 2026-08-17 (Bounty Scout run)
+# Purpose: Automated bounty hunting across well-matched public programs
 # Strategy: low competition + web app depth + SecBot strengths
 
+# ── ORIGINAL COHORT ───────────────────────────────────────────────────────────
+
 - name: kredivo
-  platform: other
+  platform: other          # RedStorm (redstorm.io)
   scope_file: scopes/kredivo.txt
   profile: stealth
   schedule: weekly
   enabled: true
+  notes: >
+    Indonesian fintech BNPL. Medium bounty ~$32 (below $100 threshold) but
+    home-advantage + low competition justifies inclusion. Review payout
+    acceptability before submitting medium findings.
 
 - name: anytask
   platform: bugcrowd
@@ -25,7 +31,7 @@
   enabled: true
 
 - name: openproject
-  platform: other
+  platform: yeswehack
   scope_file: scopes/openproject.txt
   profile: stealth
   schedule: weekly
@@ -37,3 +43,53 @@
   profile: stealth
   schedule: weekly
   enabled: true
+
+# ── 2026-08-17 ADDITIONS (Bounty Scout) ──────────────────────────────────────
+
+- name: gojek
+  platform: yeswehack
+  scope_file: scopes/gojek.txt
+  profile: stealth
+  schedule: weekly
+  enabled: false
+  notes: >
+    Indonesian superapp. 16 scopes, $5-$3,500 bounties. Last updated 2026-08-03.
+    HIGH PRIORITY: home advantage + rich web app surface (merchant portal, driver
+    dashboard, consumer accounts). DISABLED until exact in-scope domain list is
+    verified on YesWeHack — current scope file uses *.gojek.com wildcard which
+    may cover assets not declared in the program's 16 authorized scopes.
+    Enable after replacing wildcard with verified domain list.
+
+- name: goto-financial
+  platform: yeswehack
+  scope_file: scopes/goto-financial.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: >
+    Indonesian fintech (GoPay, Midtrans, MokaPOS). $5-$5,000 bounties.
+    HIGH PRIORITY: payment APIs + merchant dashboards = prime CORS/JWT/SSRF surface.
+    Use deep profile on app.midtrans.com merchant dashboard specifically.
+
+- name: personio
+  platform: intigriti
+  scope_file: scopes/personio.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: >
+    European HR SaaS. €50-€5,000 bounties, above-market payouts, fast triage.
+    Good IDOR opportunity (HR data sensitivity). Conversations product is OOS.
+    Runs periodic 1.5x bonus campaigns — watch for announcements.
+
+- name: lark_technologies
+  platform: hackerone
+  scope_file: scopes/lark_technologies.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: >
+    ByteDance collaboration SaaS. $500 medium / $2,000 high / $5,000 critical.
+    Large APAC user base, rich authenticated surface (docs, admin console, OAuth).
+    Focus web app (larksuite.com); program is mature — go for high-confidence findings.
+    Name must match HackerOne handle (lark_technologies) for --auto-submit to work.
