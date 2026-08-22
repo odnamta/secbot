@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-08-22 (Session 9)
 
 ## Submission Priority
 
@@ -15,6 +15,7 @@
 | 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
+| 5 | moneybird.com | DOM XSS via URL fragment on www.moneybird.com | High | Playwright auto-verify fired alert dialog — high confidence. But www.moneybird.com is the **marketing site**, not the app (app.moneybird.com). Need: (1) manual browser confirmation that alert fires, (2) verify HackerOne scope includes www.moneybird.com, (3) write proper report with Playwright steps (curl won't reproduce DOM XSS). Pending file: `bounty-pool/pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md`. |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -107,3 +108,80 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
 4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
 5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+
+---
+
+## Session 9 Analysis — August 22, 2026 (Report Drafter Run)
+
+**Items reviewed this session:**
+1. `bounty-pool/pending/moneybird/` — 3 new auto-generated finding files
+2. `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json` — not previously triaged
+3. `scan-results/cal-com/secbot-2026-03-22T11-36-33-679Z.json` — not previously triaged (cal.com v1)
+4. `scan-results/openproject/secbot-2026-03-22T12-38-03-985Z.json` — not previously triaged (openproject v1)
+
+**New bounty reports drafted: 0**
+
+### Moneybird — `bounty-pool/pending/moneybird/` (3 files)
+
+| Finding | File | Verdict | Reason |
+|---------|------|---------|--------|
+| DOM XSS via URL fragment | `6d09cce8-*.md` | **HOLD (Tier 2)** | Playwright confirmed alert fires (high confidence). Marketing site (www.moneybird.com), not app. Needs human browser verification + HackerOne scope check before submitting. curl cannot reproduce DOM XSS — client-side only. |
+| Missing CSP | `09dd5267-*.md` | **FP** | Marketing homepage. Informational, auto-rejected by triagers. Already noted in Session 8 triage. |
+| postMessage without origin validation | `8c0823c1-*.md` | **FP** | Classic third-party widget pattern (likely Intercom/HubSpot/Drift on marketing page). Medium confidence. The reproduction steps show no actual impact — scanner cannot determine what the handler does with received data. |
+
+**Action:** Moved DOM XSS to Tier 2. The other two remain in `pending/` but are marked FP here. Do not submit.
+
+### Kredivo v1 — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+Target: `https://blog.kredivo.com/` (WordPress blog subdomain)
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Exposed WordPress Login Page (`/wp-login.php`) | **Informational** | blog.kredivo.com is a marketing blog, not the financial platform. WP login exposure is commonly rejected as informational. Not in Kredivo/RedStorm's main scope. |
+| Missing CSP | **FP** | Blog marketing subdomain. Informational, auto-rejected. |
+| `_hcc` cookie missing HttpOnly/Secure | **FP** | `_hcc` is the HubSpot Chat cookie — a third-party marketing tool. Classic analytics/marketing cookie FP pattern. Not in-scope for cookie flag findings. |
+
+### Cal.com v1 — `scan-results/cal-com/secbot-2026-03-22T11-36-33-679Z.json`
+
+Target: `https://cal.com/` (marketing/landing page scan)
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Directory Traversal on `/api/geolocation` (critical/medium) | **FP** | AI report itself flags it as likely FP with WAF in place. `/api/geolocation` is an IP lookup endpoint — it doesn't accept file paths or read from disk. Scanner got error response and misidentified it. |
+| XXE Injection on `/api/geolocation` (critical/medium) | **FP** | Same endpoint as above. Geolocation APIs are JSON-based (they take an IP). Scanner sent XML at a JSON endpoint, got an error, flagged it as XXE. Not exploitable. |
+| Sensitive token in URL (`/api/web_experiments/?token=`) | **Informational** | "web experiments" = feature flags / A/B testing API. The token is a public experiment configuration key, not an auth secret. Not bounty-worthy. |
+| Missing rate limiting on auth endpoints | **FP** | GET page-load probe FP. Same pattern as calcom-v2 (Session 8). |
+| OAuth missing state on `/api/auth/session` | **FP** | Same FP as calcom-v2 (Session 8) — wrong endpoint. |
+| Missing SRI (24 external resources) | **FP** | Same SRI FP as calcom-v2 (Session 8). Cal.com is MIT open source. |
+| Auth cookie missing HttpOnly (`__Secure-next-auth.callback-url`) | **FP** | Same cookie FP as calcom-v2 (Session 8) — callback URL redirect, not auth token. |
+| Exposed admin routes without auth (high/low) | **FP** | Low confidence. 404s on admin-like paths. No actual auth bypass. |
+
+### OpenProject v1 — `scan-results/openproject/secbot-2026-03-22T12-38-03-985Z.json`
+
+Target: `https://community.openproject.org/`
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Missing rate limiting on auth/API endpoints (medium/medium) | **FP** | GET page-load probe FP. Same pattern as openproject-v2 (Session 8). |
+| Missing SRI on external scripts (medium/high) | **FP** | Open source project. SRI not required for CDN-hosted assets that auto-update. Same pattern noted in other scans. |
+
+---
+
+## Honest Assessment (Aug 2026, Session 9)
+
+**Bounty readiness: Still LOW.** Four scan result batches processed, all FPs.
+
+**One potential bright spot:** Moneybird DOM XSS (Tier 2) is the first finding where Playwright auto-verify actually confirmed execution. If it holds up under manual verification and scope covers www.moneybird.com, it would be the first valid active finding.
+
+**Pattern holds:** All 2026-03-22 v1 scans (kredivo, cal.com, openproject) show same FP patterns as v2 scans. Unauthenticated stealth scans on hardened targets consistently yield headers/cookies/informational findings only.
+
+---
+
+## Next Steps (Priority Order, Updated Aug 2026)
+
+1. **Verify moneybird DOM XSS** — Open https://www.moneybird.com/#<img src=x onerror=alert("test")> in browser. If alert fires: check HackerOne scope page for moneybird, write proper report with video/screenshot evidence + Playwright script as PoC. This could be first submittable active finding.
+2. **Submit Indeed finding** — CSRF cookie inconsistency (Tier 1). Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. Auth scan could find IDOR/BAC in API.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged).
