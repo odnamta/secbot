@@ -1,0 +1,19 @@
+# Program: Daytona
+# Platform: Intigriti
+# URL: https://app.intigriti.com/programs/daytona/daytonabugbounty
+# Bounty: Low €200 | Medium €500 | High €1,000 | Critical €2,500 | Exceptional €3,500
+# Tech: TypeScript / Python, Docker/OCI sandboxes, open-source (github.com/daytonaio/daytona)
+# Notes: AI code-execution sandbox provider; sub-90ms sandbox spinup; multi-region (Asia, EU, NA)
+#        Strong SSRF surface via sandbox HTTP callbacks, file system ops, and network egress from sandboxes.
+#        Open-source core makes recon easier — read source before scanning.
+# Scout-verified: 2026-08-24 (Intigriti program page, bounty tiers confirmed)
+
+In Scope
+app.daytona.io
+trust.daytona.io
+
+Out of Scope
+- www.daytona.io (marketing only)
+- status.app.daytona.io (status page)
+- www.daytona.io/docs (documentation)
+# NOTE: Full scope requires Intigriti login — verify at app.intigriti.com/programs/daytona/daytonabugbounty before scanning

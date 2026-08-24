@@ -1,11 +1,16 @@
 # Program: Cal.com
-# Platform: HackerOne
-# Bounty: $100 - $3,000 (estimated)
-# Notes: Open-source scheduling (Next.js/TypeScript), code on GitHub, small startup
+# Platform: GitHub Security Advisories (VDP only — no HackerOne, no bounty payments)
+# Bounty: NONE — recognition/credit only
+# Status: DISABLED — VDP-only, does not meet "must pay bounties" criterion
+# Notes: Open-source scheduling (Next.js/TypeScript). Closed production source code April 15, 2026
+#        (MIT-licensed cal.diy fork still public). Security reported to github.com/calcom/cal.com/security/advisories
+#        or security@cal.com. No financial rewards offered.
+#        Previous *.companyhub.com scope entry was INCORRECT (CompanyHub is an unrelated CRM product).
+# Scout-verified: 2026-08-24
 
 In Scope
 app.cal.com
-*.companyhub.com
 
 Out of Scope
-- cal.com (marketing site only, not the app)
+- cal.com (marketing site only)
+- *.companyhub.com (NOT Cal.com — removed, was an error in original scope file)

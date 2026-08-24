@@ -1,0 +1,28 @@
+# Program: GOJEK
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/gojek-bug-bounty-program
+# Bounty: Low $50 | Medium $600 | High $1,800 | Critical $3,500
+# Tech: Indonesian super-app (ride-hailing, food delivery, GoBiz merchant tools)
+# Notes: GOJEK is part of GoTo Group. 16 in-scope assets across consumer + merchant APIs.
+#        Last updated August 3, 2026 — recently maintained program, < 1 DAY first response.
+#        Home advantage — Indonesian company, lower competition.
+#        Separate from GoTo Financial (different program, overlapping company).
+# Scout-verified: 2026-08-24 (YesWeHack program page, scope and bounties confirmed)
+#
+# ⚠️  WARNING: Automated scanners EXPLICITLY PROHIBITED
+# Program rules: "Do not use automated scanners or tools that generate large amount of network traffic."
+# SecBot must NOT run full scans against this target.
+# Allowed use: Manual-guided targeted probing only with stealth profile at very low rate.
+# Recommended: Use SecBot crawl phase only (no active checks), then probe manually.
+
+In Scope
+*.gojekapi.com
+api.gojek.co.id
+gofood.co.id
+api.gobiz.co.id
+
+Out of Scope
+- All staging environments (domains with test/integration/staging)
+- All GoTo assets not explicitly listed in program scope
+- Mobile apps (Android/iOS only, not applicable to SecBot web scanning)
+# NOTE: Full 16-scope list requires YesWeHack account — verify before scanning
