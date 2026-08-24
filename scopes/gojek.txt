@@ -22,7 +22,15 @@ gofood.co.id
 api.gobiz.co.id
 
 Out of Scope
-- All staging environments (domains with test/integration/staging)
-- All GoTo assets not explicitly listed in program scope
-- Mobile apps (Android/iOS only, not applicable to SecBot web scanning)
-# NOTE: Full 16-scope list requires YesWeHack account — verify before scanning
+- staging.gojekapi.com
+- test.gojekapi.com
+- integration.gojekapi.com
+- staging.gofood.co.id
+- test.gofood.co.id
+- integration.gofood.co.id
+- staging.gobiz.co.id
+- test.gobiz.co.id
+- integration.gobiz.co.id
+# NOTE: Program rules state staging domains contain "test"/"integration"/"staging" in the name.
+#       Add any additional staging hostnames discovered during recon to this list.
+#       Full 16-scope list requires YesWeHack account — verify before scanning.

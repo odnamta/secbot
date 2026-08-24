@@ -21,5 +21,15 @@ mokapos.com
 *.go-pay.co.id
 
 Out of Scope
-- Any staging environment (URLs containing test/integration/staging)
-- All GoTo Group assets not explicitly listed above
+- staging.gopayapi.com
+- test.gopayapi.com
+- integration.gopayapi.com
+- staging.go-pay.co.id
+- test.go-pay.co.id
+- integration.go-pay.co.id
+- staging.gopaymerchant.midtrans.com
+- test.gopaymerchant.midtrans.com
+- staging.mokapos.com
+- test.mokapos.com
+# NOTE: Program rules exclude domains containing "test"/"integration"/"staging".
+#       Add any additional staging hostnames discovered during recon to this list.
