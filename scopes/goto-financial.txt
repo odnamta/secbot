@@ -1,0 +1,35 @@
+# Program: GoTo Financial
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/goto-financial-public-bounty-program
+# Bounty: Low $50-$100 | Medium $250-$600 | High $700-$2,100 | Critical $700-$5,000 (varies by asset tier)
+# Tech: Indonesian fintech (GoPay digital wallet + Midtrans payment gateway)
+# Notes: GoTo Group owns Indonesia's largest digital ecosystem (Gojek + Tokopedia + GoPay + Midtrans).
+#        Home advantage — Indonesian target, lower competition from global hunters.
+#        14 in-scope assets spanning GoPay APIs, Midtrans merchant platform, mokapos POS.
+# Scout-verified: 2026-08-24 (YesWeHack program page, scope confirmed)
+#
+# ⚠️  WARNING: Automated scanners EXPLICITLY PROHIBITED
+# Program rules: "Do not use automated scanners or tools that generate large amounts of network traffic."
+# SecBot must NOT run full scans against this target.
+# Allowed use: Manual-guided targeted probing only with stealth profile at very low rate.
+# Recommended: Use SecBot crawl phase only (no active checks), then probe manually.
+
+In Scope
+*.gopayapi.com
+gopaymerchant.midtrans.com
+mokapos.com
+*.go-pay.co.id
+
+Out of Scope
+- staging.gopayapi.com
+- test.gopayapi.com
+- integration.gopayapi.com
+- staging.go-pay.co.id
+- test.go-pay.co.id
+- integration.go-pay.co.id
+- staging.gopaymerchant.midtrans.com
+- test.gopaymerchant.midtrans.com
+- staging.mokapos.com
+- test.mokapos.com
+# NOTE: Program rules exclude domains containing "test"/"integration"/"staging".
+#       Add any additional staging hostnames discovered during recon to this list.

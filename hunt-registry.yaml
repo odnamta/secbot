@@ -1,7 +1,12 @@
-# SecBot Hunt Registry — Diagnostic Run #1
+# SecBot Hunt Registry
 # Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# Last updated: 2026-08-24 (Bounty Scout — added 3 new targets, disabled Cal.com)
+# Purpose: Active bounty hunting targets + research pool
 # Strategy: low competition + web app depth + SecBot strengths
+
+# ─────────────────────────────────────────────────────────────
+# ACTIVE TARGETS (enabled: true) — full SecBot scans
+# ─────────────────────────────────────────────────────────────
 
 - name: kredivo
   platform: other
@@ -31,9 +36,50 @@
   schedule: weekly
   enabled: true
 
+# NEW 2026-08-24: AI sandbox runner, Intigriti €200–€3,500
+# SSRF-rich surface (sandbox HTTP callbacks, file system ops, network egress)
+# TypeScript/Python open-source core — read source at github.com/daytonaio/daytona first
+- name: daytona
+  platform: intigriti
+  scope_file: scopes/daytona.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# ─────────────────────────────────────────────────────────────
+# MANUAL-ONLY TARGETS (enabled: false) — NO automated scanning
+# Indonesian/SEA priority; require manual-guided probing only
+# ─────────────────────────────────────────────────────────────
+
+# NEW 2026-08-24: GoTo Financial (GoPay + Midtrans), YesWeHack $50–$5,000
+# ⚠️  NO AUTOMATED SCANNERS — program rules explicitly prohibit it
+# Use SecBot crawl only; all active checks must be run manually
+- name: goto-financial
+  platform: yeswehack
+  scope_file: scopes/goto-financial.txt
+  profile: stealth
+  schedule: manual
+  enabled: false
+
+# NEW 2026-08-24: GOJEK super-app, YesWeHack $50–$3,500
+# ⚠️  NO AUTOMATED SCANNERS — program rules explicitly prohibit it
+# Use SecBot crawl only; all active checks must be run manually
+- name: gojek
+  platform: yeswehack
+  scope_file: scopes/gojek.txt
+  profile: stealth
+  schedule: manual
+  enabled: false
+
+# ─────────────────────────────────────────────────────────────
+# DISABLED — VDP only (no bounty payments) or program closed
+# ─────────────────────────────────────────────────────────────
+
+# DISABLED 2026-08-24: VDP-only, no bounty payments, source closed April 2026
+# Keep scope file for reference; re-enable if program launches paid bounties
 - name: calcom
   platform: hackerone
   scope_file: scopes/calcom.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false
