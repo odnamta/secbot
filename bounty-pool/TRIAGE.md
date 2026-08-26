@@ -124,8 +124,8 @@ Three pending reports in `bounty-pool/pending/moneybird/`:
 
 | Report | Verdict | Reason |
 |--------|---------|--------|
-| DOM XSS via URL Fragment | **HOLD — needs manual browser verification** | Raw finding: [HIGH][medium], no `detectionMethod`, no HTTP status. Claim is Playwright detected `innerHTML` sinks receiving URL fragment data. www.moneybird.com is a marketing WordPress site — DOM XSS on a marketing page is submittable only if confirmed. The reproduction steps reference an alert firing but this cannot be verified via curl. **Dio must open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in a fresh browser tab to confirm.** If confirmed, this is a legitimate medium-severity submission to Moneybird HackerOne. |
-| postMessage Without Origin Check | **FP / Insufficient evidence** | [LOW][medium]. Report says handlers don't validate origin but provides no evidence of what the handlers do with received data or what impact is possible. Moneybird marketing page uses third-party widgets (likely HubSpot/Intercom) that intentionally use postMessage. Too vague to submit. Archived. |
+| DOM XSS via URL Fragment | **FP — Archived** | Browser URL-encodes fragment content: `#<img...>` → `#%3Cimg...>`. The `innerHTML` sink receives `%3C` (encoded), not `<` (raw). `xss.ts:1290-1294` (commit `6aef881`) explicitly requires unencoded `<>` in innerHTML sinks before reporting XSS — this finding was generated before that fix. Not a real XSS. Report moved to `archived/`. |
+| postMessage Without Origin Check | **FP — Archived** | [LOW][medium]. No evidence of handler impact. Likely a third-party widget (HubSpot/Intercom). Too vague to submit. Pending copy deleted; archived copy retained for reference. |
 | Missing CSP (moneybird) | **Informational** | Marketing homepage. If DOM XSS is confirmed and submitted, include missing CSP as supplementary evidence of elevated severity. Do not submit standalone — triagers auto-reject header findings on marketing pages. |
 
 ---
@@ -145,8 +145,7 @@ Three pending reports in `bounty-pool/pending/moneybird/`:
 
 ## Next Steps (Priority Order)
 
-1. **Browser-verify Moneybird DOM XSS** — Open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in a fresh browser tab (no extensions). If alert fires → clean up the draft report and submit. If no alert → delete the pending/ report. 5 minutes of work.
-2. **Submit Indeed finding** — CSRF cookie inconsistency (unchanged). Cookie is JS-set so needs Playwright reproduction before submitting.
+1. **Submit Indeed finding** — CSRF cookie inconsistency (unchanged). Cookie is JS-set so needs Playwright reproduction before submitting.
 3. **Run new scans** — Hunt registry targets haven't been scanned since March 2026. Schedule `secbot hunt` or manual scan of kredivo.com (main app, not blog), moneybird.com/app, cal.com (authenticated).
 4. **Authenticate Twitch** — Twitch Tier 2 cookie findings remain on hold pending credentials.
 5. **OpenProject Docker test** — Highest ROI path to a confirmed finding (22 documented CVEs with exact endpoints). Still unchanged from March.
