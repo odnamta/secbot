@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-08-26 (Session 9)
 
 ## Submission Priority
 
@@ -80,30 +80,74 @@ Also reviewed: moneybird (2026-03-22).
 
 ---
 
-## Honest Assessment (Jun 2026, Session 8)
+## Session 9 Analysis — Aug 26, 2026 (No new scans; catch-up triage)
 
-**Bounty readiness: Still LOW.** Three more scans, same pattern:
-- 0 injection vulnerabilities found (XSS, SQLi, SSTI, SSRF, etc.)
-- All "high/medium" findings are passive (headers, cookies) — none submittable
-- Rate limiting findings are all GET-probe FPs
-- Open redirect findings are same-org redirect FPs
-- No authenticated scanning performed on any target
+Two previously unreviewed datasets processed: **kredivo** (scan from 2026-03-22, missed in all prior sessions) and **cal.com v2** (injection-type findings missed by session 8's triage of the same calcom-v2 JSON). Moneybird pending reports also reassessed.
 
-**Root cause unchanged:** Unauthenticated scan + hardened targets = passive findings only.
+### Kredivo — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
 
-**Bright spot:** OpenProject CVE analysis (`OPENPROJECT-CVE-ANALYSIS.md`) documents 22 real CVEs
-with exact endpoints and payloads. The path forward is a local Docker test → authenticated scan.
+Target: `blog.kredivo.com` (Kredivo's WordPress blog subdomain, NOT the main app)
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Missing CSP, X-Frame-Options, other headers | **FP** | All header findings are on HTTP 403 responses from nginx WAF. Headers measured on the WAF block page, not the real application. |
+| Cookie `_hcc` missing HttpOnly/Secure | **FP** | `_hcc` is an internal CDN/WAF session cookie (Cloudflare or similar). Not an auth token. Matches known CDN cookie naming patterns. |
+| Rate limiting on `GET /login` | **FP** | GET page-load probe only. Standard scanner FP — same pattern as cal.com session 8. |
+| WordPress login at `/wp-login.php` | **Informational / Out-of-scope** | `blog.kredivo.com` is a blog subdomain running WordPress. Exposed WordPress login is expected behavior for any WP site. Not in Kredivo's main app scope (RedStorm program targets financial app, not blog). |
+
+**Verdict for kredivo scan: 0 submittable findings. All noise.** Scan targeted the wrong subdomain (blog vs. main app).
+
+---
+
+### Cal.com v2 — Missed injection findings (session 8 gap)
+
+Session 8 reviewed only the passive/header findings from `calcom-v2/secbot-2026-03-26T08-17-21-602Z.json`. The following active-check findings were missed and are now triaged:
+
+| Finding | [Sev][Conf] | Verdict | Reason |
+|---------|-------------|---------|--------|
+| LDAP Injection — Error-Based, `user` param | [HIGH][high] | **FP** | Payload `*)(objectClass=*` on `auth/login?user=1`. Response is standard Next.js HTML — the regex pattern `invalid.*dn\|invalid.*filter` matched UI text or Next.js build artifacts in the page body, NOT an actual LDAP error. Cal.com uses NextAuth.js + database auth, not LDAP. No LDAP error in response. |
+| XPath Injection — Boolean-based, `month` param | [HIGH][medium] | **FP** | 17% response size difference between tautology and contradiction payloads. The `month` parameter controls the calendar view (`?month=2026-04`) — different months render different booking data, naturally producing large response size deltas. Not injection. |
+| XPath Injection — Boolean-based, `user` param | [HIGH][medium] | **FP** | 12% size difference on `/auth/login?user=1`. Dynamic login page content varies by user presence; size diff is normal for a Next.js SSR app, not injection. |
+| XPath Injection — Boolean-based, `_rsc` param | [HIGH][medium] | **FP** | `_rsc` is a Next.js React Server Components internal routing parameter. Scanner injected SQL into a framework-internal param. Size difference is RSC route behavior. |
+| HTTP Method Override — DELETE via `X-HTTP-Method-Override` | [HIGH][medium] | **FP** | Baseline POST → 403, probe POST+method-override → 403. No change in response status — server blocks both. Different response body size is from different error messages, not a bypass. |
+| HTTP Method Override — PUT/DELETE via body params | [HIGH][medium] | **FP** | Baseline POST → 404, probe → 403. Server recognizes the override header/param and correctly returns 403 (auth check fires). This is intended behavior, not privilege escalation. |
+| XXE — Parameter entity, `/api/trpc/features/map` | [HIGH][medium] | **FP** | Response is HTTP 403 Cloudflare HTML error page. The `<!DOCTYPE html>` and IE conditional comments (`<!--[if lt IE 7]>`) in the Cloudflare 403 page triggered the DTD/XXE detection regex. Not real XXE. |
+| Username Enumeration — content-based | [MEDIUM][high] | **Informational** | Pattern `wrong\s*password` detected in login response for probe username `admin`. Likely real (login form distinguishes wrong password from unknown user) but accepted as informational on HackerOne. Low bounty priority. |
+
+**Cal.com v2 injections: All FP.** Session 8 was correct to triage the surface findings; these active-check findings confirm no exploitable injection on app.cal.com.
+
+---
+
+### Moneybird Pending Reports — Reassessment
+
+Three pending reports in `bounty-pool/pending/moneybird/`:
+
+| Report | Verdict | Reason |
+|--------|---------|--------|
+| DOM XSS via URL Fragment | **HOLD — needs manual browser verification** | Raw finding: [HIGH][medium], no `detectionMethod`, no HTTP status. Claim is Playwright detected `innerHTML` sinks receiving URL fragment data. www.moneybird.com is a marketing WordPress site — DOM XSS on a marketing page is submittable only if confirmed. The reproduction steps reference an alert firing but this cannot be verified via curl. **Dio must open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in a fresh browser tab to confirm.** If confirmed, this is a legitimate medium-severity submission to Moneybird HackerOne. |
+| postMessage Without Origin Check | **FP / Insufficient evidence** | [LOW][medium]. Report says handlers don't validate origin but provides no evidence of what the handlers do with received data or what impact is possible. Moneybird marketing page uses third-party widgets (likely HubSpot/Intercom) that intentionally use postMessage. Too vague to submit. Archived. |
+| Missing CSP (moneybird) | **Informational** | Marketing homepage. If DOM XSS is confirmed and submitted, include missing CSP as supplementary evidence of elevated severity. Do not submit standalone — triagers auto-reject header findings on marketing pages. |
+
+---
+
+## Honest Assessment (Aug 2026, Session 9)
+
+**Bounty readiness: Still LOW.** No new scans since March 2026 (5 months of no data). This session caught up on untriaged data from existing scans:
+- Kredivo blog scan: 0 findings (wrong subdomain + WAF)
+- Cal.com v2 injection findings (missed by session 8): All confirmed FP
+- Moneybird DOM XSS: Unconfirmed, needs browser test
+
+**The pattern holds:** Unauthenticated scans against hardened targets yield passive findings only. Injection findings from these scans are all FP from pattern-matching on dynamic content or WAF error pages.
+
+**One actionable item:** The Moneybird DOM XSS report in pending/ could be worth submitting if manually verified. This requires 5 minutes in a browser tab — low effort, possible medium bounty.
 
 ---
 
 ## Next Steps (Priority Order)
 
-1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
-   - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
-   - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
-   - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
-   - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+1. **Browser-verify Moneybird DOM XSS** — Open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in a fresh browser tab (no extensions). If alert fires → clean up the draft report and submit. If no alert → delete the pending/ report. 5 minutes of work.
+2. **Submit Indeed finding** — CSRF cookie inconsistency (unchanged). Cookie is JS-set so needs Playwright reproduction before submitting.
+3. **Run new scans** — Hunt registry targets haven't been scanned since March 2026. Schedule `secbot hunt` or manual scan of kredivo.com (main app, not blog), moneybird.com/app, cal.com (authenticated).
+4. **Authenticate Twitch** — Twitch Tier 2 cookie findings remain on hold pending credentials.
+5. **OpenProject Docker test** — Highest ROI path to a confirmed finding (22 documented CVEs with exact endpoints). Still unchanged from March.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
