@@ -54,17 +54,21 @@ Also triaging the Kredivo scan (`scan-results/kredivo/secbot-2026-03-22T12-37-39
 
 ### Kredivo (RedStorm) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
 
-**Target:** `blog.kredivo.com` (their marketing blog, not the main lending app)
+**Target:** `blog.kredivo.com` (WordPress blog, in scope per `scopes/kredivo.txt`, but not the main fintech app)
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| Missing CSP [high/medium] on blog.kredivo.com | **FP** | All requests returned **HTTP 403** (WAF/CDN block). Security headers are missing from the 403 error page, not from the actual application. Scanner is measuring the CDN block page, not the app. |
-| Missing X-Frame-Options [medium/low] | **FP** | Same as above — 403 block page artifact. |
-| Missing X-Content-Type-Options [low/low] | **FP** | 403 block page artifact. |
-| Missing Referrer-Policy [low/low] | **FP** | 403 block page artifact. |
-| Missing Permissions-Policy [info/low] | **FP** | 403 block page artifact. |
+| Missing CSP [high/medium] | **FP** | Root `/` returned HTTP 403 (CDN block). Header findings on the root 403 page are CDN error page artifacts, not the app. |
+| Missing X-Frame-Options [medium/low] | **FP** | Same — 403 root page artifact. |
+| Missing X-Content-Type-Options [low/low] | **FP** | 403 root page artifact. |
+| Missing Referrer-Policy [low/low] | **FP** | 403 root page artifact. |
+| Missing Permissions-Policy [info/low] | **FP** | 403 root page artifact. |
+| `_hcc` cookie missing HttpOnly/Secure [medium/medium] | **FP** | `_hcc` is a CDN/WAF human-challenge-check cookie (Kinsta CDN), not an application auth token. CDN cookies are not in scope for cookie-flag findings. |
+| WordPress login page detected [low/low] on `/wp-login.php` (HTTP 200) | **Informational** | `blog.kredivo.com` runs WordPress. The WP admin login being accessible is the default for any WordPress install, not a vulnerability. Not bounty-worthy standalone. |
+| Rate Limiting on `/login` [medium/high] (HTTP 200, 15/15 probes) | **FP** | Scanner fires 15 GET requests at the WordPress login page and records "all succeeded". GET probes on a login *form page* always return 200 — rate limiting applies to POST credential submissions. Same GET-probe FP as all other targets. |
+| Exposed Internal Endpoint: `/wp-login.php` [medium/high] | **FP** | WordPress login is not an "internal endpoint" — it's the standard public-facing admin login. Expected behavior for any WP blog. |
 
-**Note:** `blog.kredivo.com` blocked the scanner entirely (HTTP 403 on all requests, including root). All 10 pages crawled were error/sitemap responses. No app functionality was reachable. The Kredivo main app (`app.kredivo.com` or `kredivo.com`) was not in this scan — the hunt runner targeted the blog subdomain. Update the scope file to point at the actual app.
+**Scope note:** `kredivo.com` (the apex domain) is **NOT in scope** per `scopes/kredivo.txt`. The fix is to add `app.kredivo.com` scans to the hunt runner — `app.kredivo.com` is already listed as in-scope and is the actual fintech application. `blog.kredivo.com` can remain in the scope file but yields only WordPress blog content.
 
 ---
 
@@ -137,7 +141,7 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 1. **Verify moneybird DOM XSS manually** — Open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in a browser and confirm alert fires. If confirmed, check whether `.moneybird.com` cookies are accessible (check DevTools → Application → Cookies for domain scope). Submit as Low if cookies not accessible, Medium if they are.
 2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-3. **Fix Kredivo scope** — Update `scopes/kredivo.txt` to target `kredivo.com` or the main lending app, not `blog.kredivo.com`. The blog subdomain is 403-blocked by the CDN.
+3. **Scan `app.kredivo.com`** — `app.kredivo.com` is already listed in-scope in `scopes/kredivo.txt`. Configure the hunt runner to scan it directly (not just `blog.kredivo.com`). Note: `kredivo.com` apex is explicitly OUT of scope — use only the listed subdomains.
 4. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
 5. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
