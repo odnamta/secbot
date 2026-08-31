@@ -1,15 +1,23 @@
 # Program: Kredivo
 # Platform: RedStorm (redstorm.io)
-# Bounty: Critical Rp 3,000,000 (~$190), High Rp 1,500,000 (~$95), Medium Rp 500,000 (~$32)
-# Notes: Indonesian fintech BNPL, PHP/Laravel likely, sandbox domain in scope
+# Bounty: Critical Rp 5,000,000 (~$315), High Rp 3,000,000 (~$190), Medium Rp 1,000,000 (~$63), Low Rp 500,000 (~$31)
+# Notes: Indonesian fintech BNPL, seller/merchant/payment portals now in scope — much better targets than old scope
+# Automated tools: "Unconfirmed reports from automated scanners" excluded — all findings must be manually verified on live systems
+# Updated: 2026-08-31 (major scope refresh — old domains removed, merchant portals added)
 
 In Scope
-blog.kredivo.com
-app.kredivo.com
-mysandbox.kredivo.com
-doc2.kredivo.com
-finaccel.co
-kredivocorp.com
+seller.kredivo.com
+my.kredivo.com
+merchant.kredivo.com
+pay.kredivo.com
+kredivo.id
+kredivo.com
 
 Out of Scope
-- *.kredivo.com (other subdomains not listed above)
+# Removed from old scope (no longer listed)
+blog.kredivo.com
+doc2.kredivo.com
+app.kredivo.com
+mysandbox.kredivo.com
+finaccel.co
+kredivocorp.com
