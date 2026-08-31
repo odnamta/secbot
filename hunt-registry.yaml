@@ -7,6 +7,7 @@
 - name: kredivo
   platform: other         # RedStorm (redstorm.io)
   scope_file: scopes/kredivo.txt
+  urls_file: scopes/kredivo-seeds.txt
   profile: stealth
   schedule: weekly
   enabled: true
@@ -48,6 +49,7 @@
 - name: paddle
   platform: yeswehack
   scope_file: scopes/paddle.txt
+  urls_file: scopes/paddle-seeds.txt
   profile: stealth
   schedule: weekly
   enabled: true
@@ -59,6 +61,7 @@
 - name: dana
   platform: yeswehack
   scope_file: scopes/dana.txt
+  urls_file: scopes/dana-seeds.txt
   profile: stealth
   schedule: weekly
   enabled: true

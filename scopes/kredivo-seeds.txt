@@ -1,0 +1,7 @@
+# Kredivo seed URLs — seller/merchant/my/pay portals are separate apps not cross-linked
+https://seller.kredivo.com
+https://my.kredivo.com
+https://merchant.kredivo.com
+https://pay.kredivo.com
+https://kredivo.id
+https://kredivo.com
