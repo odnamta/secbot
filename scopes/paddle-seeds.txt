@@ -1,0 +1,10 @@
+# Paddle seed URLs — disconnected subdomains not reachable by crawling vendors.paddle.com
+# These are passed to --urls so the hunt covers all key app surfaces
+https://vendors.paddle.com
+https://login.paddle.com
+https://api.paddle.com
+https://customer-portal.paddle.com
+https://sandbox-vendors.paddle.com
+https://sandbox-login.paddle.com
+https://sandbox-api.paddle.com
+https://sandbox-buy.paddle.com

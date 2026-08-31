@@ -63,6 +63,7 @@ function buildProgram(raw: Record<string, string>): Program {
   if (raw['auth']) program.auth = raw['auth'];
   if (raw['lastScan']) program.lastScan = raw['lastScan'];
   if (raw['enabled'] !== undefined) program.enabled = raw['enabled'] !== 'false';
+  if (raw['urlsFile']) program.urlsFile = raw['urlsFile'];
 
   return program;
 }

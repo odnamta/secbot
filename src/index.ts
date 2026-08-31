@@ -1639,6 +1639,7 @@ program
       args.push('-o', join(homedir(), '.secbot', 'results', prog.name));
       args.push('-y'); // auto-consent for non-interactive
       if (prog.auth) args.push('-a', resolve(prog.auth));
+      if (prog.urlsFile) args.push('--urls', resolve(prog.urlsFile));
 
       // Run scan as child process
       const { execFile } = await import('node:child_process');

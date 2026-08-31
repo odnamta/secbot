@@ -1,14 +1,20 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# SecBot Hunt Registry — Updated 2026-08-31
+# Bounty Scout run: added 3 new programs, refreshed Kredivo scope
 # Strategy: low competition + web app depth + SecBot strengths
 
+# ── Original targets ─────────────────────────────────────────────────────────
+
 - name: kredivo
-  platform: other
+  platform: other         # RedStorm (redstorm.io)
   scope_file: scopes/kredivo.txt
+  urls_file: scopes/kredivo-seeds.txt
   profile: stealth
   schedule: weekly
   enabled: true
+  notes: |
+    SCOPE UPDATED 2026-08-31: merchant/seller/pay portals now in scope —
+    far better targets than old blog/sandbox domains. Bounty also increased
+    (Critical now Rp 5M up from Rp 3M).
 
 - name: anytask
   platform: bugcrowd
@@ -25,7 +31,7 @@
   enabled: true
 
 - name: openproject
-  platform: other
+  platform: other         # YesWeHack
   scope_file: scopes/openproject.txt
   profile: stealth
   schedule: weekly
@@ -37,3 +43,54 @@
   profile: stealth
   schedule: weekly
   enabled: true
+
+# ── New targets added 2026-08-31 ─────────────────────────────────────────────
+
+- name: paddle
+  platform: yeswehack
+  scope_file: scopes/paddle.txt
+  urls_file: scopes/paddle-seeds.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: |
+    UK fintech (merchant-of-record SaaS). Vendor dashboard, login portal,
+    REST API, sandbox environment all in scope. $50-$5,000 bounty range.
+    Append "BugBounty" to user-agent; self-hosted tools allowed.
+
+- name: dana
+  platform: yeswehack
+  scope_file: scopes/dana.txt
+  urls_file: scopes/dana-seeds.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: |
+    Indonesian digital wallet (e-money). Low competition, home advantage.
+    Web scope: m.dana.id + mgs.dana.id. €300-€3,000 bounty.
+    Manually re-verify ALL findings before submission — live PoC required.
+
+- name: mattermost
+  platform: bugcrowd
+  scope_file: scopes/mattermost.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: |
+    Open-source team messaging (Node.js/Go). Moved to Bugcrowd Nov 2024
+    with expanded scope (+4 plugin targets). Web UI + WebSocket + GraphQL
+    all testable. Full scope: bugcrowd.com/engagements/mattermost-mbb-public
+
+# ── Watchlist (not currently accepting) ──────────────────────────────────────
+
+# - name: gojek
+#   platform: hackerone
+#   scope_file: scopes/gojek.txt   # not yet created
+#   profile: stealth
+#   schedule: weekly
+#   enabled: false
+#   notes: |
+#     Indonesian super-app (GoFood, GoSend, GoRide). $100-$5,000.
+#     Explicitly allows automated tools with custom X-Bug-Bounty header.
+#     Currently PAUSED / not accepting submissions as of 2026-08.
+#     Re-enable when program resumes.

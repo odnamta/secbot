@@ -1,0 +1,21 @@
+# Program: DANA
+# Platform: YesWeHack
+# Bounty: €300 (Low) — €3,000 (Critical), +€2,000 bonus for face verification bypass
+# Notes: Indonesian digital wallet/e-money, low competition, home advantage — web + mobile app scope
+# Company size: ~500 employees
+# Automated tools: Unvalidated scanner output is non-qualifying — SecBot auto-validates; stealth profile required
+# ⚠️ Manually re-verify ALL findings before submission (live evidence + PoC required)
+
+In Scope
+m.dana.id
+mgs.dana.id
+
+Out of Scope
+webdev.dana.id
+wp.dana.id
+fiat.dana.id
+cmsdev.dana.id
+techops.dana.id
+dm.dana.id
+encrypt.dana.id
+*.dana.id (all other subdomains)

@@ -1,0 +1,3 @@
+# DANA seed URLs — mgs.dana.id (merchant/gateway) is not linked from m.dana.id
+https://m.dana.id
+https://mgs.dana.id

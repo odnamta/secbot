@@ -1,0 +1,19 @@
+# Program: Mattermost
+# Platform: Bugcrowd (moved from HackerOne — Nov 2024)
+# Bounty: Estimated $100 (Low) — $5,000 (Critical) — standard Bugcrowd P1-P4 scale
+# Notes: Open-source team messaging (Node.js/Go), cloud + self-hosted scope, expanding scope with plugins
+# Company size: ~500 employees
+# Full scope: https://bugcrowd.com/engagements/mattermost-mbb-public
+# Automated tools: Policy not confirmed publicly — use stealth profile; manually validate all findings
+
+In Scope
+mattermost.com
+*.mattermost.com
+# Mattermost Server application (test via self-hosted local instance or cloud trial)
+# Mattermost Boards plugin
+# Mattermost Copilot plugin
+# Mattermost for Microsoft Teams integration
+
+Out of Scope
+# Customer self-hosted instances (only Mattermost-operated infrastructure)
+# Third-party integrations/plugins not maintained by Mattermost

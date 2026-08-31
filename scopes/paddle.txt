@@ -1,0 +1,26 @@
+# Program: Paddle
+# Platform: YesWeHack
+# Bounty: $50 (Low/Medium asset) — $5,000 (Critical/High asset)
+# Reward table: Low $50-$100, Medium $200-$500, High $500-$1,500, Critical $1,500-$5,000
+# Notes: UK fintech merchant-of-record SaaS, Node.js API + merchant/vendor portal + login, active program
+# Company size: ~400 employees
+# Automated tools: Append "BugBounty" to user-agent; self-hosted tools allowed
+# ⚠️ No tools generating large network traffic — use stealth profile
+
+In Scope
+vendors.paddle.com
+sandbox-vendors.paddle.com
+api.paddle.com
+sandbox-api.paddle.com
+login.paddle.com
+sandbox-login.paddle.com
+customer-portal.paddle.com
+sandbox-buy.paddle.com
+sandbox-checkout-service.paddle.com
+paddle.net
+developer.paddle.com
+www.paddle.com
+
+Out of Scope
+checkout-service.paddle.com
+buy.paddle.com
