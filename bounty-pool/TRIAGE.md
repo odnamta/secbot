@@ -42,7 +42,7 @@ Previously untriaged. Scanner hit `blog.kredivo.com` (in scope per `scopes/kredi
 |---------|---------|--------|
 | Exposed WordPress Login Page `/wp-login.php` [high][high] | **FP** | Accessing `/wp-login.php` is default WordPress behavior — every WordPress install exposes this. Not a vulnerability by itself. Rate limit evidence was GET-probe only (same FP pattern as cal.com/openproject); no POST credential test was performed. Blog subdomain reduces bounty interest even further. |
 | Missing CSP on `blog.kredivo.com` [high][medium] | **FP** | Content/marketing blog. Triagers auto-reject header findings on blog subdomains. |
-| Cookie `_hcc` Missing HttpOnly/Secure [medium][high] | **FP** | `_hcc` is the HubSpot Conversations Cookie — a third-party analytics cookie set by HubSpot's embed script, not Kredivo's own code. Classic third-party cookie FP pattern. |
+| Cookie `_hcc` Missing HttpOnly/Secure [medium][high] | **FP** | Cookie detected on a **HTTP 403 response** from Kredivo's CDN (Automattic/a8c-cdn, per `server-timing` header), not on a normal page load. The cookie value decodes to IP address + Unix timestamp — this is a short-lived (Max-Age: 30s) CDN anti-bot challenge token issued when the scanner was WAF-blocked. Cookie flags on WAF challenge cookies are irrelevant for bounty purposes. Even stronger FP than a typical third-party cookie: the scanner was never served the real application. |
 
 **Kredivo result: 0 submittable findings.** All three interpreted findings are FPs.
 
@@ -54,7 +54,7 @@ Session 8 triaged the moneybird scan JSON but missed reviewing three auto-drafte
 
 | File | Finding | Verdict | Reason |
 |------|---------|---------|--------|
-| `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` | DOM XSS via URL Fragment [high][high] on `www.moneybird.com` | **HOLD — Needs browser verification** | `www.moneybird.com` is in scope (moneybird.com scope). Auto-verify via Playwright may have confirmed marker in DOM, but the curl command in the draft won't reproduce DOM XSS (fragments aren't server-sent; curl doesn't execute JS). Needs manual browser test: open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in a real browser and confirm alert fires. If confirmed, this is a submittable High on HackerOne. |
+| `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` | DOM XSS via URL Fragment on `www.moneybird.com` | **HOLD — Needs browser verification** | `www.moneybird.com` is in scope. **Evidence level:** raw finding is `confidence: medium`, `detectionMethod: dom-sink` — the scanner detected the payload marker reaching two `innerHTML` sinks, but `alert()` execution was NOT confirmed (response status 0; Playwright navigated but no HTTP exchange recorded for a fragment URL). AI validation was skipped. The auto-verifier cannot replay this because `verifyXss` revisits `finding.url` (bare homepage, no fragment). This is Playwright **sink detection**, not execution confirmation. Needs manual browser test: open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in Chrome and confirm alert fires. If confirmed, submittable. Priority is lower than originally assessed — this is an unconfirmed scanner lead, not a verified finding. |
 | `09dd5267-missing-content-security-policy-header.md` | Missing CSP on `www.moneybird.com` [high][high] | **FP** | Marketing homepage. Already triaged as FP in Session 8. Triagers auto-reject missing headers on marketing pages. |
 | `8c0823c1-postmessage-handlers-missing-origin-validation.md` | postMessage Missing Origin Validation on `www.moneybird.com` [medium][medium] | **FP** | Marketing homepage. No evidence of what handlers do — almost certainly third-party widgets (Intercom/HubSpot/Drift). "Automated testing could not fully enumerate handler logic" = weak evidence. Matches known FP pattern from CLAUDE.md. |
 
@@ -114,7 +114,7 @@ Also reviewed: moneybird (2026-03-22).
 
 **Scan data is 6 months stale** (last scans: March 26, 2026). No new findings from new scans.
 
-**One potential true positive emerged from backlog review:** Moneybird DOM XSS on `www.moneybird.com` (high/high, Playwright auto-verified). This needs manual browser confirmation before submission. If real, it's immediately submittable.
+**One unconfirmed lead to check manually:** Moneybird DOM XSS on `www.moneybird.com` — scanner detected payload marker reaching `innerHTML` sinks (medium confidence, sink detection only; alert() NOT confirmed, auto-verifier cannot replay fragments). Needs browser test before any submission consideration.
 
 **Bounty readiness: LOW (but one lead to check).** Overall pattern from March 2026 scans:
 - 0 injection vulnerabilities found (XSS, SQLi, SSTI, SSRF, etc.)
@@ -132,7 +132,7 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ## Next Steps (Priority Order, Updated 2026-09-02)
 
-1. **[URGENT] Verify Moneybird DOM XSS in browser** — Open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in Chrome/Firefox. If alert fires, this is an immediately submittable High on HackerOne (moneybird.com is in scope). Draft ready at `bounty-pool/pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md`. Time-sensitive — marketing pages change frequently.
+1. **Verify Moneybird DOM XSS in browser** — Open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in Chrome/Firefox. **Note:** this is an unconfirmed scanner lead (medium confidence, DOM sink detection only — alert() was NOT auto-verified). If alert fires, it's submittable (draft at `bounty-pool/pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md`); if not, mark as FP.
 2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction). Draft ready at `bounty-pool/pending/2026-03-14-indeed-csrf-cookie-SUBMISSION.md`.
 3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
 4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
