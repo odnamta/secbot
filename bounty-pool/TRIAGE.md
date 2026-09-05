@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-09-05 (Session 9)
 
 ## Submission Priority
 
@@ -80,19 +80,55 @@ Also reviewed: moneybird (2026-03-22).
 
 ---
 
-## Honest Assessment (Jun 2026, Session 8)
+## Session 9 Analysis — September 5, 2026 (Triaged 2026-09-05)
 
-**Bounty readiness: Still LOW.** Three more scans, same pattern:
-- 0 injection vulnerabilities found (XSS, SQLi, SSTI, SSRF, etc.)
-- All "high/medium" findings are passive (headers, cookies) — none submittable
-- Rate limiting findings are all GET-probe FPs
-- Open redirect findings are same-org redirect FPs
-- No authenticated scanning performed on any target
+Three previously un-triaged scans reviewed: **moneybird** (pending drafts), **cal-com v1** (2026-03-22), **kredivo** (2026-03-22).
+Session 8 missed moneybird DOM XSS and did not process cal-com v1 or kredivo scans at all.
 
-**Root cause unchanged:** Unauthenticated scan + hardened targets = passive findings only.
+### Moneybird — `bounty-pool/pending/moneybird/` (scan: 2026-03-22)
 
-**Bright spot:** OpenProject CVE analysis (`OPENPROJECT-CVE-ANALYSIS.md`) documents 22 real CVEs
-with exact endpoints and payloads. The path forward is a local Docker test → authenticated scan.
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| DOM XSS via URL Fragment on www.moneybird.com | **FP** | Pre-cycle-18 scan (completed 12:49 UTC 2026-03-22; cycle 18 committed 13:06 UTC same day). Cycle 18 was created specifically to fix this Moneybird result: browser URL-encodes the fragment (`#<img src=x>` → `#%3Cimg%20src%3Dx%3E`), so the innerHTML assignment receives an encoded string that browsers render as plain text — no XSS. Alert never fires. Already browser-verified as FP per cycle 18 commit message. Archive draft. |
+| postMessage handlers missing origin validation | **FP** | 3 handlers on www.moneybird.com homepage. Pattern: chat/analytics widgets (Intercom, Drift, HotJar) register postMessage listeners without origin checks by design. No handler logic that processes sensitive actions confirmed. Archive. |
+| Missing CSP on www.moneybird.com | **FP** | Marketing homepage. Already noted Session 8. Archive. |
+
+### Cal.com v1 — `scan-results/cal-com/secbot-2026-03-22T11-36-33-679Z.json`
+
+Note: Session 8 only analyzed calcom-v2 (app.cal.com). This is the v1 scan of cal.com marketing/landing.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Directory Traversal on `/api/geolocation` [critical/medium] | **FP** | curl normalizes `..` segments client-side before sending (default behavior without `--path-as-is`), so the traversal sequence never reaches the server. Response was a Next.js 404, not file content. Detection method `path-traversal-response` fired on response shape, not confirmed data exfil. FP cause: client-side URL normalization. |
+| XXE on `/api/geolocation` [critical/medium] | **FP** | HTTP 403 Cloudflare WAF block page returned for XML POST. Scanner's indicator regex `/root:.*:0:0|\/bin\/(ba)?sh|error|DTD/i` matched `error` and `DOCTYPE` in the Cloudflare HTML block page — not actual entity expansion. FP cause: WAF block-page content matching scanner's overly broad indicator pattern. |
+| Exposed Admin Routes [high/low] | **FP** | Low confidence, `/admin` etc. on cal.com → redirects to login or 404. Next.js + NextAuth pattern, no sensitive access without credentials. |
+| Sensitive Token in URL `/api/web_experiments/?token=` [high/medium] | **Informational** | A/B test experiment tokens, not auth tokens. These are non-sensitive split-test IDs. Token leaking to analytics Referer is standard A/B testing design. Not submittable. |
+| Missing SRI / Auth Cookie HttpOnly | **FP** | Same findings as calcom-v2 Session 8 — already marked FP. |
+
+### Kredivo — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+Target: `blog.kredivo.com` (WordPress blog, in scope per scopes/kredivo.txt).
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| WordPress /wp-login.php accessible [high/high] | **Informational** | HTTP 200 confirmed at `blog.kredivo.com/wp-login.php`. Technically real (not a scanner FP). However: this is a marketing blog, not the financial app. Attacker gain = blog content defacement, not account/financial data access. RedStorm bounty programs typically pay $0–$32 for blog WordPress admin exposure; likely N/A. Hold unless Dio wants to submit as informational to show engagement. |
+| Missing CSP on blog.kredivo.com [high/high] | **FP** | Marketing blog. Informational, auto-rejected. |
+| `_hcc` cookie missing HttpOnly/Secure [medium/high] | **FP** | `_hcc` = HubSpot analytics cookie. Third-party cookie FP pattern. |
+
+---
+
+## Honest Assessment (Sep 2026, Session 9)
+
+**Bounty readiness: Still LOW.** Session 9 caught 3 previously un-triaged scans:
+- Moneybird DOM XSS: corrected to FP — pre-cycle-18 scan, URL encoding prevents alert (browser-verified per cycle 18 commit)
+- Cal.com v1 critical findings (traversal, XXE) are FPs: client-side URL normalization + Cloudflare WAF block-page match
+- Kredivo WordPress login is real but informational-grade (blog, not fintech app)
+- Still 0 injection vulnerabilities confirmed by auto-verify across all scans
+- Still 0 authenticated scans performed
+
+**Root cause unchanged:** Unauthenticated scan + hardened targets + CDN-fronted apps = passive findings only.
+
+**OpenProject CVE analysis** (`OPENPROJECT-CVE-ANALYSIS.md`) still documents 22 real CVEs with exact endpoints. The path forward is a local Docker test → authenticated scan.
 
 ---
 
@@ -100,10 +136,10 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
 2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. Highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. Auth scan on console.neon.tech could find IDOR/BAC in API.
 5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
