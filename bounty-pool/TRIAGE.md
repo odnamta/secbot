@@ -12,10 +12,9 @@
 
 | # | Target | Finding | Severity | Notes |
 |---|--------|---------|----------|-------|
-| 2 | moneybird.com | DOM XSS via URL Fragment on www.moneybird.com | High | Draft: `pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md`. Detected via `dom-sink` static analysis (innerHTML sink reads `window.location.hash`). Scanner claims `#<img src=x onerror=alert("secbot-xss-37")>` fires. **NEEDS: Open URL in browser to confirm alert fires before submitting.** Marketing page, so impact is account-context-limited but still submittable to HackerOne if real. |
-| 3 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
-| 4 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
-| 5 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
+| 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
+| 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
+| 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -90,7 +89,7 @@ Session 8 missed moneybird DOM XSS and did not process cal-com v1 or kredivo sca
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| DOM XSS via URL Fragment on www.moneybird.com | **TIER 2** | Scanner detected innerHTML sink reading `window.location.hash` — claims alert fired. Detection via static `dom-sink` analysis (not live browser execution). Cycle 18 patched a DOM XSS FP class; this finding post-dates that fix. Draft exists. **Action needed: Dio verify in browser** — open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` and confirm alert. If confirmed: submit to HackerOne Moneybird. |
+| DOM XSS via URL Fragment on www.moneybird.com | **FP** | Pre-cycle-18 scan (completed 12:49 UTC 2026-03-22; cycle 18 committed 13:06 UTC same day). Cycle 18 was created specifically to fix this Moneybird result: browser URL-encodes the fragment (`#<img src=x>` → `#%3Cimg%20src%3Dx%3E`), so the innerHTML assignment receives an encoded string that browsers render as plain text — no XSS. Alert never fires. Already browser-verified as FP per cycle 18 commit message. Archive draft. |
 | postMessage handlers missing origin validation | **FP** | 3 handlers on www.moneybird.com homepage. Pattern: chat/analytics widgets (Intercom, Drift, HotJar) register postMessage listeners without origin checks by design. No handler logic that processes sensitive actions confirmed. Archive. |
 | Missing CSP on www.moneybird.com | **FP** | Marketing homepage. Already noted Session 8. Archive. |
 
@@ -100,8 +99,8 @@ Note: Session 8 only analyzed calcom-v2 (app.cal.com). This is the v1 scan of ca
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| Directory Traversal on `/api/geolocation` [critical/medium] | **FP** | curl `cal.com/api/../../../etc/passwd` — Cloudflare normalizes URL path before it reaches Next.js. No actual file content in evidence. Detection method `path-traversal-response` fires on response shape, not confirmed data exfil. |
-| XXE on `/api/geolocation` [critical/medium] | **FP** | POST XML to a JSON geolocation endpoint. Next.js API route rejects non-JSON bodies. No entity expansion confirmed in evidence — scanner fired because server responded (didn't 500), not because XML was processed. |
+| Directory Traversal on `/api/geolocation` [critical/medium] | **FP** | curl normalizes `..` segments client-side before sending (default behavior without `--path-as-is`), so the traversal sequence never reaches the server. Response was a Next.js 404, not file content. Detection method `path-traversal-response` fired on response shape, not confirmed data exfil. FP cause: client-side URL normalization. |
+| XXE on `/api/geolocation` [critical/medium] | **FP** | HTTP 403 Cloudflare WAF block page returned for XML POST. Scanner's indicator regex `/root:.*:0:0|\/bin\/(ba)?sh|error|DTD/i` matched `error` and `DOCTYPE` in the Cloudflare HTML block page — not actual entity expansion. FP cause: WAF block-page content matching scanner's overly broad indicator pattern. |
 | Exposed Admin Routes [high/low] | **FP** | Low confidence, `/admin` etc. on cal.com → redirects to login or 404. Next.js + NextAuth pattern, no sensitive access without credentials. |
 | Sensitive Token in URL `/api/web_experiments/?token=` [high/medium] | **Informational** | A/B test experiment tokens, not auth tokens. These are non-sensitive split-test IDs. Token leaking to analytics Referer is standard A/B testing design. Not submittable. |
 | Missing SRI / Auth Cookie HttpOnly | **FP** | Same findings as calcom-v2 Session 8 — already marked FP. |
@@ -121,8 +120,8 @@ Target: `blog.kredivo.com` (WordPress blog, in scope per scopes/kredivo.txt).
 ## Honest Assessment (Sep 2026, Session 9)
 
 **Bounty readiness: Still LOW.** Session 9 caught 3 previously un-triaged scans:
-- Moneybird DOM XSS is the only finding promoted to TIER 2 — **needs Dio browser verification**
-- Cal.com v1 critical findings (traversal, XXE) are CDN-normalization FPs, not real
+- Moneybird DOM XSS: corrected to FP — pre-cycle-18 scan, URL encoding prevents alert (browser-verified per cycle 18 commit)
+- Cal.com v1 critical findings (traversal, XXE) are FPs: client-side URL normalization + Cloudflare WAF block-page match
 - Kredivo WordPress login is real but informational-grade (blog, not fintech app)
 - Still 0 injection vulnerabilities confirmed by auto-verify across all scans
 - Still 0 authenticated scans performed
@@ -135,13 +134,12 @@ Target: `blog.kredivo.com` (WordPress blog, in scope per scopes/kredivo.txt).
 
 ## Next Steps (Priority Order)
 
-1. **[IMMEDIATE] Dio: verify Moneybird DOM XSS in browser** — open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in Chrome. If alert fires, the draft at `pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` is ready to submit to HackerOne Moneybird.
-2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. Highest-ROI next step.
+1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. Highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. Auth scan on console.neon.tech could find IDOR/BAC in API.
-6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. Auth scan on console.neon.tech could find IDOR/BAC in API.
+5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
