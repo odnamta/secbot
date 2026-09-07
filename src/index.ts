@@ -1619,9 +1619,9 @@ program
 
       // Build scan command args
       const args: string[] = [];
+      let huntSeedFile: string | undefined;
       if (prog.scopeFile) {
-        // Use first in-scope domain as target URL
-        const { readFileSync: readSync } = await import('node:fs');
+        const { readFileSync: readSync, writeFileSync: writeSync } = await import('node:fs');
         const scopeContent = readSync(resolve(prog.scopeFile), 'utf-8');
         const { parseScopeFile: parseSF } = await import('./utils/scope-parser.js');
         const scope = parseSF(scopeContent);
@@ -1629,10 +1629,19 @@ program
           log.warn(`No in-scope targets for ${prog.name}`);
           return { program: prog.name, findings: { high: 0, medium: 0, low: 0 }, escalations: 0, duration: 0 };
         }
-        // Resolve first in-scope entry to a URL
-        const firstTarget = scope.inScope[0].startsWith('http') ? scope.inScope[0] : `https://${scope.inScope[0]}`;
+        // Resolve all concrete in-scope entries to URLs (skip wildcard patterns)
+        const allTargets = scope.inScope
+          .filter(h => !h.startsWith('*'))
+          .map(h => h.startsWith('http') ? h : `https://${h}`);
+        const firstTarget = allTargets[0];
         args.push(firstTarget);
         args.push('--scope-file', resolve(prog.scopeFile));
+        // Seed every listed host via --urls so none are skipped by the crawler
+        if (allTargets.length > 1) {
+          huntSeedFile = join(tmpdir(), `secbot-hunt-${prog.name}-${Date.now()}.txt`);
+          writeSync(huntSeedFile, allTargets.join('\n'), { mode: 0o600 });
+          args.push('--urls', huntSeedFile);
+        }
       }
       args.push('-p', prog.profile);
       args.push('-f', 'json');
@@ -1658,6 +1667,10 @@ program
         // Exit code 1 = findings found (expected), 2 = error
         if (exitCode === 2) {
           throw new Error(`Scan failed for ${prog.name}: ${(err as Error).message}`);
+        }
+      } finally {
+        if (huntSeedFile) {
+          try { (await import('node:fs')).unlinkSync(huntSeedFile); } catch { /* best-effort cleanup */ }
         }
       }
 
