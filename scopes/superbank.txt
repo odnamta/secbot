@@ -1,0 +1,16 @@
+# Program: Superbank
+# Platform: YesWeHack — https://yeswehack.com/programs/superbank-public-bug-bounty-program
+# Bounty: TBD (check platform for current amounts)
+# Notes: Indonesian digital bank backed by Grab & Singtel, relatively new (2023+)
+#        Scope covers web profile, API, app webview — web assets are in scope
+#        Less competitive than GoTo/DANA (newer program), good home-field advantage
+
+In Scope
+superbank.id
+api.superbank.id
+*.superbank.id
+
+Out of Scope
+- Mobile application binaries (native app code, not web/API)
+- Third-party services not owned by Superbank
+- Denial-of-service attacks

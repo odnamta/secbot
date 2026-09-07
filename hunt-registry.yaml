@@ -37,3 +37,24 @@
   profile: stealth
   schedule: weekly
   enabled: true
+
+- name: dana
+  platform: yeswehack
+  scope_file: scopes/dana.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: superbank
+  platform: yeswehack
+  scope_file: scopes/superbank.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: maya
+  platform: yeswehack
+  scope_file: scopes/maya.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
