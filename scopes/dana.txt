@@ -1,0 +1,20 @@
+# Program: DANA
+# Platform: YesWeHack — https://yeswehack.com/programs/dana-bug-bounty-program
+# Bounty: $0 - $3,000 (bonus up to $2,000 for face-verification bypass)
+# Notes: Indonesian e-wallet (30M+ users), public program launched 2021, 4 scopes
+#        294 reports to date, first response < 1 day, last updated 2026-09-02
+#        Indonesian mobile number required to register an account
+#        SEA home advantage — high priority
+
+In Scope
+dana.id
+app.dana.id
+api.dana.id
+sandbox.dana.id
+
+Out of Scope
+- Any dana.id subdomain not listed above
+- Denial-of-service attacks (strictly forbidden)
+- Social engineering
+- Physical attacks
+- Third-party services

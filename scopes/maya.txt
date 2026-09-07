@@ -1,0 +1,21 @@
+# Program: Maya (formerly PayMaya)
+# Platform: YesWeHack — https://yeswehack.com/programs/maya-public-bug-bounty-program
+# Bounty: $50 - $5,000
+# Notes: Philippines #1 digital bank and payments app, rebranded from PayMaya in 2022
+#        API-heavy scope — strong match for SecBot's API security checks
+#        SEA program, lower competition than global targets
+
+In Scope
+api.paymaya.com
+pg.paymaya.com
+payoutapi.maya.ph
+op.paymaya.com
+connect.paymaya.com
+paymayabiller-prod.paymaya.com
+
+Out of Scope
+- All domains/subdomains not listed above
+- Non-production environments (test, dev, staging, sandbox)
+- Other paymaya.com subdomains with no direct app integration
+- Social engineering
+- Physical attacks
