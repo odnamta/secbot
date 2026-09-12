@@ -4,12 +4,16 @@
 **Date:** 2026-09-12
 **Severity:** Medium
 **Confidence:** High
-**CVSS Score:** 5.3
+**CVSS Score:** 6.5
 **CVSS Vector:** CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N
-**CWE:** CWE-284 (Improper Access Control)
-**OWASP:** A01:2021 - Broken Access Control
+**CWE:** CWE-307 (Improper Restriction of Excessive Authentication Attempts)
+**OWASP:** A07:2021 - Identification and Authentication Failures
 
-> **DRAFTER NOTE (DO NOT SUBMIT AS-IS):** The SecBot scanner confirmed wp-login.php returns HTTP 200 via GET probe. Rate limiting claim was inferred by the scanner, not directly tested via POST brute-force. Before submitting, manually verify: (1) send 20+ POST requests to wp-login.php and confirm no throttling, (2) check if Cloudflare or a WordPress security plugin has a WAF rule protecting it. Also confirm impact is acceptable to submit for a blog subdomain.
+> **DRAFTER NOTE (DO NOT SUBMIT AS-IS):** Multiple manual verifications required before submission:
+> 1. **reCAPTCHA v3 present** — Scan evidence confirms the login page loads `google.com/recaptcha/api.js?render=6Lcq-sgZ...` (invisible reCAPTCHA v3). This is server-side token validation — a headless curl loop CANNOT prove rate limiting is absent. You MUST use a browser (Playwright or manual) and confirm the server accepts POST submissions without enforcing the reCAPTCHA token, OR verify the reCAPTCHA threshold is so high it doesn't prevent credential stuffing.
+> 2. **Rate limiting unverified on POST** — Scanner confirmed GET access only. Send 20+ POST requests (see updated curl below) and check response bodies for lockout/CAPTCHA messages, not just HTTP status codes. HTTP 200 can contain a lockout page.
+> 3. **Username enumeration unverified** — The default WordPress error messages may be customized. Verify directly before including that claim.
+> 4. **Consider dropping** — If reCAPTCHA v3 is properly enforced server-side, this finding may not be submittable. Confirm first.
 
 ---
 
@@ -29,7 +33,7 @@ The WordPress administration login page at `https://blog.kredivo.com/wp-login.ph
 
 1. Navigate to `https://blog.kredivo.com/wp-login.php` in a browser.
 2. Observe the WordPress login form is rendered (HTTP 200, full HTML page).
-3. No CAPTCHA, IP restriction, or rate limiting is visible.
+3. **Note:** The page loads invisible reCAPTCHA v3 — verify server-side enforcement separately (see Drafter Note).
 
 ```bash
 # Confirm the login page is accessible
@@ -44,18 +48,20 @@ curl -s 'https://blog.kredivo.com/wp-json/wp/v2/users' | python3 -m json.tool
 ```
 
 ```bash
-# Confirm no rate limiting: send 10 rapid POST requests and observe no lockout
-for i in $(seq 1 10); do
-  curl -s -o /dev/null -w "%{http_code} " \
+# Verify rate limiting: send 20 POST requests and inspect FULL response body for lockout/CAPTCHA
+for i in $(seq 1 20); do
+  echo "--- Request $i ---"
+  curl -s \
     -X POST 'https://blog.kredivo.com/wp-login.php' \
     -d 'log=admin&pwd=wrongpassword&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1' \
     -H 'Content-Type: application/x-www-form-urlencoded' \
-    -H 'Cookie: wordpress_test_cookie=WP+Cookie+check'
+    -H 'Cookie: wordpress_test_cookie=WP+Cookie+check' \
+    | grep -Ei "error|locked|blocked|captcha|too many|throttle|limit" \
+    || echo "(no lockout text detected)"
 done
-echo
 ```
 
-Expected: 10x `200` responses with no throttling, CAPTCHA, or lockout.
+**Important:** HTTP 200 does NOT mean unprotected — WordPress security plugins and reCAPTCHA can block within a 200 response body. Check each response body for lockout messages, not just status codes.
 
 ## Impact
 
@@ -64,14 +70,15 @@ Expected: 10x `200` responses with no throttling, CAPTCHA, or lockout.
 3. **Username enumeration**: WordPress returns different error messages for invalid usernames vs. invalid passwords, allowing exact username discovery without auth.
 4. **Lateral movement risk**: If blog admin credentials are reused on Kredivo internal systems or the blog server has access to the internal network, impact escalates significantly.
 
-## WordPress Username Enumeration Detail
+## WordPress Username Enumeration (Needs Manual Verification)
 
-WordPress's default error responses differ depending on whether the username exists:
+> **NOT VERIFIED** — The scan did not compare valid vs. invalid username login responses. WordPress's default behavior shows different error messages per username, but this site may have customized error messages (common with security plugins). Before including this as an impact, manually POST with a known-nonexistent username and compare the response to one with a likely-valid username (e.g., `admin`).
 
+Default WordPress behavior (if not customized):
 - Invalid username: `"Error: The username or email address is not registered on this site."`
 - Valid username, wrong password: `"Error: The password you entered for the username X is incorrect."`
 
-This allows an attacker to enumerate valid admin accounts before conducting targeted brute-force.
+If the site returns identical responses for both cases, remove this impact claim from the submission.
 
 ## Suggested Fix
 
@@ -102,6 +109,6 @@ This allows an attacker to enumerate valid admin accounts before conducting targ
 
 ## References
 
-- CWE-284: https://cwe.mitre.org/data/definitions/284.html
-- OWASP A01:2021: https://owasp.org/Top10/A01_2021-Broken_Access_Control/
+- CWE-307: https://cwe.mitre.org/data/definitions/307.html
+- OWASP A07:2021: https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/
 - WordPress Hardening Guide: https://wordpress.org/documentation/article/hardening-wordpress/
