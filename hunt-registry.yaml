@@ -41,23 +41,23 @@
 # --- Added by Bounty Scout 2026-09-14 ---
 
 # GoTo Financial: GoPay + Midtrans + MokaPos — Indonesian fintech, YesWeHack public program
-# Verify automated-scanning policy on YesWeHack page before running
+# DISABLED until automated-scanning policy confirmed on YesWeHack program page
 - name: goto-financial
   platform: yeswehack
   scope_file: scopes/goto-financial.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false
 
 # Gojek super-app (rides/food/delivery) — YesWeHack program ONLY
 # WARNING: HackerOne program explicitly bans automated scanning; this is the YesWeHack variant
-# Check YesWeHack program page for automated tool policy before running
+# DISABLED until YesWeHack program automated-scanning policy confirmed
 - name: gojek
   platform: yeswehack
   scope_file: scopes/gojek.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false
 
 # Traveloka — Indonesian travel unicorn, Bugcrowd PRIVATE program
 # DISABLED until Bugcrowd invite obtained (email bug@traveloka.com first)

@@ -108,6 +108,13 @@ export async function saveLastScan(
 
     if (nameMatch) {
       const name = stripQuotes(nameMatch[1]);
+      // Flush last_scan for the previous program before switching to the new one.
+      // Without this, blank lines / comments between entries cause the insertion to
+      // be missed because the "next line is - name:" check fires too late.
+      if (inTargetProgram && !lastScanUpdated) {
+        result.push(`    last_scan: ${date}`);
+        lastScanUpdated = true;
+      }
       inTargetProgram = name === programName;
       lastScanUpdated = false;
     }
