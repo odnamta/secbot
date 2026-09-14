@@ -1,0 +1,24 @@
+# Program: Gojek
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/gojek-bug-bounty-program
+# Bounty: $5 - $5,000 (estimated medium ~$100-$500)
+# Notes: Indonesian ride-hailing + delivery + marketplace super-app (150M+ users SEA).
+#   Parent company is GoTo Group. Financial services are in a SEPARATE program
+#   under goto-financial (see scopes/goto-financial.txt).
+#   WARNING: Gojek's HackerOne program EXPLICITLY BANS automated scanning tools.
+#   This entry targets the SEPARATE YesWeHack program which may have different terms.
+#   VERIFY automated scanning policy on the YesWeHack program page before any scan.
+#   Use stealth profile only. Respect rate limits strictly.
+#   Good targets: XSS in GoFood/GoSend dashboard, IDOR on order/delivery IDs,
+#   CORS on partner APIs, open redirect in OAuth flows, host header injection.
+#   Scope below is approximate — verify exact in-scope domains on YesWeHack.
+
+In Scope
+gojek.com
+driver.gojek.com
+merchant.gojek.com
+
+Out of Scope
+- Mobile app-only endpoints (Gojek, GoFood consumer apps)
+- GoPay financial services (covered by goto-financial program)
+- *.tokopedia.com (separate entity under GoTo Group)
