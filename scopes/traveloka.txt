@@ -1,0 +1,25 @@
+# Program: Traveloka
+# Platform: Bugcrowd (PRIVATE — invite required)
+# Invite: Email bug@traveloka.com with a valid vulnerability PoC to request access
+# Bounty: Monetary rewards via Bugcrowd (amounts not publicly disclosed;
+#   estimated medium ~$100-$500 based on company profile and similar SEA programs)
+# Notes: Indonesian travel super-app (unicorn, ~$6B valuation). Covers flights,
+#   hotels, activities, fintech (PayLater). Tech stack: likely Java/Spring + React.
+#   ~300-600 employees in engineering. Strong web app surface with booking flows,
+#   loyalty accounts, affiliate portals.
+#   IMPORTANT: Program is PRIVATE/INVITE-ONLY. Do NOT scan before securing a
+#   Bugcrowd invite. Email bug@traveloka.com first; reference a past responsible
+#   disclosure or SecBot's track record. Once invited, submit findings via Bugcrowd.
+#   Good targets: IDOR on booking reference IDs, XSS in search/booking form,
+#   CORS on api.traveloka.com, JWT in affiliate/loyalty tokens, CSRF on checkout.
+#   Entry is disabled until invite is obtained.
+
+In Scope
+traveloka.com
+account.traveloka.com
+affiliate.traveloka.com
+
+Out of Scope
+- Mobile apps (iOS/Android Traveloka)
+- Third-party payment processors integrated into checkout
+- partner.traveloka.com (not confirmed in scope — verify)
