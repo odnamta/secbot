@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-09-16 (Session 9)
 
 ## Submission Priority
 
@@ -29,6 +29,57 @@ Moved to `bounty-pool/archived/`:
 |---|--------|---------|----------|-------|
 | A1 | finance.atmando.app | No rate limiting on /login and /graphql | HIGH | Brute-force risk on finance app. Add Cloudflare rate limiting + app-level throttle. |
 | A2 | finance.atmando.app | Missing HSTS header | MEDIUM | Middleware has HSTS configured but it's not appearing in response. Docker rebuild or middleware bug. |
+
+---
+
+---
+
+## Session 9 Analysis — March 2026 Scans Re-triaged (2026-09-16)
+
+Session 8 missed several findings in `interpretedFindings` (used wrong JSON key during parse). Full re-triage of all 7 scan result files.
+
+### Moneybird — `scan-results/moneybird/secbot-2026-03-22T12-37-45-339Z.json`
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| DOM-Based XSS via URL Fragment | **FP — URL encoding** | Browser-verified false positive per commit `6aef881`. Browser URL-encodes the fragment (`#<img...>` → `#%3Cimg...%3E`) before writing to `innerHTML` — encoded string is safe, no JS executes, no alert fires. Scan used old detector that only required marker string match; `xss.ts:1290-1294` now requires unencoded `<>` chars for innerHTML sinks. Draft `2026-09-16-moneybird-dom-xss.md` removed. |
+| postMessage Handlers Missing Origin Check | **FP** | Handler snippet is a mouse event polyfill (`i.pageX || i.pageY || ...`), not a chat widget. Even if triggered via postMessage, it processes mouse coordinate data only — no sensitive action or data sink reachable. |
+| Missing CSP (already triaged) | **FP** | Marketing homepage, same verdict as Session 8. |
+| Mixed Content (already triaged) | **Informational** | Same verdict as Session 8. |
+
+### Kredivo — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Exposed WordPress Login Page (/wp-login.php) | **Informational** | `blog.kredivo.com` is a marketing blog, not the app. WordPress admin login being publicly accessible is standard WordPress behavior. Raw finding was `[info-disclosure][low][low]` before AI upgrade. RedStorm programs rarely reward this. Not worth submitting. |
+| Missing Rate Limiting on /login | **FP** | Same GET-probe pattern as all other rate limit FPs. No POST credential test. |
+| Cookie `_hcc` Missing HttpOnly/Secure | **FP** | `_hcc` = HubSpot click cookie (analytics). Third-party tracking cookie — not bounty-worthy. |
+| Missing CSP | **Informational** | Blog subdomain, marketing content. |
+
+### Cal.com v1 — `scan-results/cal-com/secbot-2026-03-22T11-36-33-679Z.json`
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Directory Traversal on /api/geolocation | **OUT OF SCOPE** | Per `scopes/calcom.txt`: `cal.com` (marketing) is explicitly OUT OF SCOPE. Only `app.cal.com` is in scope. All v1 findings invalid. |
+| XXE on /api/geolocation | **OUT OF SCOPE** | Same — cal.com is excluded. |
+| Sensitive Token in URL (/api/web_experiments/?token=) | **OUT OF SCOPE + FP** | Out of scope AND the token is a web experiments (feature flags) token, not an auth token. |
+| Admin-like routes without auth | **OUT OF SCOPE** | Same. |
+
+### Cal.com v2 — `scan-results/calcom-v2/secbot-2026-03-26T08-17-21-602Z.json`
+
+All v2 findings on `app.cal.com` (in scope) re-triaged:
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| XPath Injection × 3 (month, user, _rsc params) | **FP** | Cal.com uses Prisma ORM + PostgreSQL. No XPath processing anywhere. Boolean difference detection is a SQLi heuristic misfiring on response variance. `_rsc` is a Next.js RSC internal param, not user-facing. |
+| XXE on /api/trpc/features/map | **FP** | tRPC endpoint, JSON-only. No XML parser in use. "parameter-entity" XXE technique on a JSON endpoint = guaranteed FP. |
+| LDAP Injection on /auth/login?user=1 | **FP** | Cal.com authenticates via NextAuth (database strategy). No LDAP in the stack. |
+| HTTP Method Override × 4 (on /api/trpc/me/myStats and /api/trpc/slots/getSchedule) | **FP** | These are unauthenticated read-only tRPC endpoints. Even if server processes the override header, sending DELETE to a stats/availability endpoint has no security impact. Scanner detected response difference (405 vs 200) as "accepted" — not actual method processing. |
+| Web Cache Deception (already triaged) | **FP** | cf-cache-status: DYNAMIC, same verdict as Session 8. |
+
+### Neon.tech, OpenProject (previously triaged in Session 8)
+
+No change from Session 8 analysis. All findings confirmed FP.
 
 ---
 
@@ -99,11 +150,22 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 ## Next Steps (Priority Order)
 
 1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+
+## Session 9 Honest Assessment (Sep 2026)
+
+**Bounty readiness: Still LOW.** Session 9 corrected a parser bug (wrong JSON key) and re-triaged all 7 scan files:
+- Moneybird DOM XSS initially looked promising but confirmed FP: URL-encoded fragment in innerHTML = safe. Commit `6aef881` already fixed the detector for this exact case.
+- Cal.com v1 findings all out of scope (cal.com marketing excluded per scope file)
+- Cal.com v2 injection FPs (XPath/XXE/LDAP on Next.js/tRPC)
+- All other scans: consistent FP pattern (headers, cookies, passive only)
+- Zero injection vulns found on authenticated endpoints across all scans
+
+**Root cause unchanged:** Unauthenticated scanning on hardened targets = passive findings only. Indeed CSRF cookie remains the only Tier 1 candidate.
