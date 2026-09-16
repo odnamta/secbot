@@ -7,7 +7,6 @@
 | # | Target | Finding | Severity | Notes |
 |---|--------|---------|----------|-------|
 | 1 | indeed.com | CSRF cookie missing Secure on login page | Medium | Inconsistency between CSRF and INDEED_CSRF_TOKEN strengthens report. **CAVEAT:** Cookie set via JS, not HTTP header — curl won't reproduce. Needs Playwright/browser to verify. Submission draft ready: `2026-03-14-indeed-csrf-cookie-SUBMISSION.md` |
-| 2 | moneybird.com | DOM-Based XSS via URL Fragment on homepage | Medium | Playwright confirmed payload `#<img src=x onerror=...>` reached two innerHTML sinks. CSP is report-only only, allows unsafe-inline. **CAVEAT:** On marketing homepage (www.moneybird.com), not the app — impact depends on cookie sharing. **Requires browser verification before submit.** Draft: `2026-09-16-moneybird-dom-xss.md` |
 
 ### TIER 2 — Hold (needs more work)
 
@@ -43,7 +42,7 @@ Session 8 missed several findings in `interpretedFindings` (used wrong JSON key 
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| DOM-Based XSS via URL Fragment | **DRAFT REPORT** | Playwright confirmed `#<img src=x onerror=alert("secbot-xss-37")>` reached two `innerHTML` sinks on `www.moneybird.com`. CSP is report-only (not enforced). Scope: `moneybird.com` covers `www.moneybird.com`. Impact caveat: marketing homepage, no auth context confirmed. Browser verification required to check cookie scope. → `2026-09-16-moneybird-dom-xss.md` |
+| DOM-Based XSS via URL Fragment | **FP — URL encoding** | Browser-verified false positive per commit `6aef881`. Browser URL-encodes the fragment (`#<img...>` → `#%3Cimg...%3E`) before writing to `innerHTML` — encoded string is safe, no JS executes, no alert fires. Scan used old detector that only required marker string match; `xss.ts:1290-1294` now requires unencoded `<>` chars for innerHTML sinks. Draft `2026-09-16-moneybird-dom-xss.md` removed. |
 | postMessage Handlers Missing Origin Check | **FP** | Handler snippet is a mouse event polyfill (`i.pageX || i.pageY || ...`), not a chat widget. Even if triggered via postMessage, it processes mouse coordinate data only — no sensitive action or data sink reachable. |
 | Missing CSP (already triaged) | **FP** | Marketing homepage, same verdict as Session 8. |
 | Mixed Content (already triaged) | **Informational** | Same verdict as Session 8. |
@@ -150,8 +149,7 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ## Next Steps (Priority Order)
 
-1. **Verify + Submit Moneybird DOM XSS** — Open `https://www.moneybird.com/#<img src=x onerror=alert(document.domain)>` in a browser. If alert fires, also check `document.cookie` to assess session data exposure. If real, submit `2026-09-16-moneybird-dom-xss.md`. Likely Medium severity (~$200-500 if accepted).
-2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
 3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
 4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
@@ -163,11 +161,11 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ## Session 9 Honest Assessment (Sep 2026)
 
-**Bounty readiness: LOW but improving.** Session 9 found a genuine missed finding:
-- 1 DOM XSS on Moneybird marketing page (high/high Playwright confirmed) — needs browser verification
-- Previous session missed it due to parsing the wrong JSON key (`findings` vs `interpretedFindings`)
-- All other scans: consistent FP pattern (headers, cookies, injection FPs on non-vulnerable stacks)
-- Still zero injection vulns found on authenticated endpoints
+**Bounty readiness: Still LOW.** Session 9 corrected a parser bug (wrong JSON key) and re-triaged all 7 scan files:
+- Moneybird DOM XSS initially looked promising but confirmed FP: URL-encoded fragment in innerHTML = safe. Commit `6aef881` already fixed the detector for this exact case.
+- Cal.com v1 findings all out of scope (cal.com marketing excluded per scope file)
+- Cal.com v2 injection FPs (XPath/XXE/LDAP on Next.js/tRPC)
+- All other scans: consistent FP pattern (headers, cookies, passive only)
+- Zero injection vulns found on authenticated endpoints across all scans
 
-**Root cause unchanged:** Unauthenticated scanning on hardened targets = passive findings only.
-Moneybird DOM XSS is the first potentially submittable finding since the Indeed CSRF cookie report.
+**Root cause unchanged:** Unauthenticated scanning on hardened targets = passive findings only. Indeed CSRF cookie remains the only Tier 1 candidate.
