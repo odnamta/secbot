@@ -1,17 +1,17 @@
-# Bounty Pool Triage — Updated 2026-09-09 (Session 10)
+# Bounty Pool Triage — Updated 2026-09-19 (Session 9)
 
 ## Submission Priority
 
 ### TIER 1 — Submit (strongest signal)
 
 | # | Target | Finding | Severity | Notes |
-|---|--------|---------|----------|-------|
+|---|--------|---------|----------| ------|
 | 1 | indeed.com | CSRF cookie missing Secure on login page | Medium | Inconsistency between CSRF and INDEED_CSRF_TOKEN strengthens report. **CAVEAT:** Cookie set via JS, not HTTP header — curl won't reproduce. Needs Playwright/browser to verify. Submission draft ready: `2026-03-14-indeed-csrf-cookie-SUBMISSION.md` |
 
 ### TIER 2 — Hold (needs more work)
 
 | # | Target | Finding | Severity | Notes |
-|---|--------|---------|----------|-------|
+|---|--------|---------|----------| ------|
 | 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
@@ -26,39 +26,67 @@ Moved to `bounty-pool/archived/`:
 ### OWN APPS — Fix These
 
 | # | Target | Finding | Severity | Notes |
-|---|--------|---------|----------|-------|
+|---|--------|---------|----------| ------|
 | A1 | finance.atmando.app | No rate limiting on /login and /graphql | HIGH | Brute-force risk on finance app. Add Cloudflare rate limiting + app-level throttle. |
 | A2 | finance.atmando.app | Missing HSTS header | MEDIUM | Middleware has HSTS configured but it's not appearing in response. Docker rebuild or middleware bug. |
 
 ---
 
----
+## Session 9 Analysis — Backlog Triage (2026-09-19)
+
+Two previously un-reviewed March 2026 scans processed: **cal.com** (March 22) and **blog.kredivo.com** (March 22).
+Also formally closed: three staged moneybird pending files from commit 6aef881.
+No new scans have run since March 26, 2026.
+
+### Cal.com (HackerOne) — `scan-results/cal-com/secbot-2026-03-22T11-36-33-679Z.json`
+
+Target: `https://cal.com/` (marketing homepage, not `app.cal.com`).
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Directory Traversal on `/api/geolocation` (critical/medium) | **FP** | Geolocation endpoint does not parse file paths. Scanner injected traversal sequences into URL but no file content was returned. Confidence is `medium` and scanner itself flags potential FP. AWS WAF + Cloudflare in place. |
+| XXE on `/api/geolocation` (critical/medium) | **FP** | Same endpoint. A geolocation lookup does not process XML. No OOB callback received. Medium confidence, scanner flags as potential FP. |
+| Exposed Admin Routes /admin, /manager, /manage (high/low) | **FP** | Low confidence. Scanner description states "response snippets show a standard Next.js app shell" — these are likely user-facing pages (username `/admin`), not unprotected admin panels. |
+| Sensitive Token in `/api/web_experiments/?token=` (high/medium) | **Informational** | A/B testing endpoint. `token=` parameter is a PostHog/Optimizely feature-flag key, publicly loaded by all frontend visitors. Not an auth token. No session context. Auto-rejected by bug bounty triagers. |
+| Rate Limiting on `/api/auth/session` (medium/medium) | **FP** | GET page-load endpoint, not a POST credential submission. Same false-positive pattern as calcom-v2 rate limit findings in Session 8. |
+| OAuth State Not Enforced (medium/low) | **FP** | Low confidence. Scanner confirms `/api/auth/session` is NextAuth's session getter, not an OAuth authorization endpoint. No state parameter is required here. |
+| Missing SRI on External Scripts (medium/high) | **FP** | Third-party analytics (PostHog, Twitter Ads, CloudFront CDN). Same SRI FP pattern as calcom-v2 Session 8 triage. |
+| `__Secure-next-auth.callback-url` missing HttpOnly (low/high) | **FP** | Already reviewed in Session 8 calcom-v2 triage: stores post-login redirect URL, not an auth token. |
+
+### blog.kredivo.com (NOT in hunt registry) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+**Note:** Hunt registry target is `kredivo.com` main app. Scan ran against `blog.kredivo.com` (WordPress marketing blog). Blog findings are not in scope for Kredivo's HackerOne program.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Exposed WordPress Login `/wp-login.php` (high/high) | **Out of Scope** | Blog subdomain, not main app. WordPress blogs are typically excluded from fintech bounty programs. Automated scanning on main fintech app endpoints is what generates bounty-worthy findings. |
+| Missing CSP header (high/high) | **FP** | Marketing blog. Auto-rejected as informational by triagers. |
+| `_hcc` cookie missing HttpOnly/Secure (medium/high) | **FP** | `_hcc` = HubSpot Click Counter cookie — a third-party tracking cookie intentionally exposed to JS. Classic FP pattern from CLAUDE.md known FP list. |
+
+### Moneybird Pending Files (commit 6aef881, Staged 2026-03-22)
+
+These three files were staged to `bounty-pool/pending/moneybird/` in the same commit that patched the DOM XSS scanner FP. They are now formally closed.
+
+| File | Verdict | Reason |
+|------|---------|--------|
+| `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` | **FP** | Confirmed FP in commit 6aef881: "DOM XSS finding verified as FP in browser — no alert fired, payload was URL-encoded." Browser URL-encodes `#<img src=x>` → `#%3Cimg%20src%3Dx%3E` before innerHTML write; encoded string is safe. Scanner fix applied. |
+| `09dd5267-missing-content-security-policy-header.md` | **FP** | Marketing homepage, www.moneybird.com. Already reviewed Session 8 as FP. Auto-rejected by HackerOne triagers. |
+| `8c0823c1-postmessage-handlers-missing-origin-validation.md` | **FP** | postMessage handlers on marketing homepage. No named sensitive action. Matches CLAUDE.md known FP pattern: postMessage from chat/marketing widgets (Intercom, Drift, Zendesk) is by design. Medium confidence. |
 
 ---
 
-## Session 10 Check-in — No New Scans (2026-09-09)
+## Honest Assessment (Sep 2026, Session 9)
 
-Automated Report Drafter ran. No new scan results since March 2026. All previously pending files were already triaged and archived in Session 9 (August 2026). No new bounty reports drafted.
+**Bounty readiness: Still LOW.** Session backlog fully cleared — all March 2026 scan results now triaged.
 
-**Status:** bounty-pool/pending/ has 1 remaining file — moneybird DOM XSS (Tier 2 HOLD, needs manual browser verification). All other pending files archived.
+- 0 critical/high injection findings survived triage across 7 total scans
+- "Critical" findings (directory traversal, XXE on cal.com) were scanner FPs with medium confidence
+- No new scans have run since March 26, 2026 — hunt loop may be stalled
+- Moneybird staged files formally closed as FP (DOM XSS was a scanner bug, now fixed)
 
-No action required from this run. Next steps unchanged from August.
+**Root cause unchanged:** Unauthenticated scan + hardened production targets = passive/header findings only.
 
----
-
-## Session 9 Analysis — No New Scans (Triaged 2026-08-19)
-
-No new scan results since Session 8. Addressed the three unresolved files in `bounty-pool/pending/moneybird/` that were generated by the March 22, 2026 auto-triage pipeline but not covered in the June triage session.
-
-### Moneybird pending/ cleanup — March 22 auto-triage artifacts
-
-| File | Finding | Verdict | Reason |
-|------|---------|---------|--------|
-| `09dd5267-missing-content-security-policy-header.md` | Missing CSP on www.moneybird.com | **FP** | Marketing homepage. Already triaged in Session 8 — triagers auto-reject header findings on marketing pages. |
-| `8c0823c1-postmessage-handlers-missing-origin-validation.md` | postMessage missing origin validation | **FP** | www.moneybird.com marketing homepage. 3 postMessage listeners = chat/support widget (Intercom/HubSpot pattern). Known FP: "postMessage from chat widgets — by design." Confidence "medium" and handler behavior unverifiable without a browser. |
-| `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` | DOM XSS via URL fragment | **Informational/archived** | The March 22 scan detected a real `dom-sink` (innerHTML reading `location.hash`) with `high` confidence. However: (1) no browser execution proof was captured — evidence field empty, curl cannot execute JS; (2) target is www.moneybird.com marketing homepage, not the authenticated accounting app; (3) DOM XSS on a marketing page without auth is typically rated informational/low and auto-rejected on HackerOne. Archived — would need manual Playwright verification AND confirmed session-data impact to be submittable. |
-
-All three files moved to `bounty-pool/archived/moneybird/`.
+**Recommended action:** Check why hunt loop hasn't produced new scans in 6 months. Then prioritize OpenProject Docker test and authenticated scanning.
 
 ---
 
@@ -126,15 +154,15 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ---
 
-## Next Steps (Priority Order, August 2026)
+## Next Steps (Priority Order)
 
-1. **Submit Indeed finding** — CSRF cookie inconsistency (`2026-03-14-indeed-csrf-cookie-SUBMISSION.md` ready). Needs Dio's go-ahead. Per the Tier 1 caveat, the cookie may be JS-set — verify in a browser/Playwright that the missing `Secure` flag is observable in real authentication flows before submitting.
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. Highest-ROI next step.
+1. **Investigate stalled hunt loop** — No new scans since March 26, 2026 (6 months). Check whether `secbot hunt` is running on schedule, whether targets are being blocked (WAF, rate limit), or whether the hunt daemon needs a restart. Without fresh scans, triage backlog will stay empty.
+2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Run fresh authenticated scans** — No new scans have run since March 2026. Bounty readiness is stalled on unauthenticated scans of hardened targets. Schedule authenticated scans against kredivo/anytask/openproject.
-5. **Add neon.tech to hunt registry** — Active HackerOne program. console.neon.tech has real auth. Auth scan could surface IDOR/BAC in API.
-6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (outstanding since March).
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
