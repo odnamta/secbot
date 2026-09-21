@@ -1,7 +1,8 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# SecBot Hunt Registry
+# Created: 2026-03-22 | Last updated: 2026-09-21 (Bounty Scout run)
 # Strategy: low competition + web app depth + SecBot strengths
+
+# ─── ORIGINAL TARGETS ──────────────────────────────────────────────────────────
 
 - name: kredivo
   platform: other
@@ -9,6 +10,7 @@
   profile: stealth
   schedule: weekly
   enabled: true
+  # Platform: RedStorm (redstorm.io)
 
 - name: anytask
   platform: bugcrowd
@@ -29,7 +31,9 @@
   scope_file: scopes/openproject.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false
+  # Platform: YesWeHack
+  # DISABLED 2026-09-21: program ended June 2026 (EU Commission funding concluded)
 
 - name: calcom
   platform: hackerone
@@ -37,3 +41,40 @@
   profile: stealth
   schedule: weekly
   enabled: true
+  # NOTE 2026-09-21: Cal.com went closed source in April 2026 citing AI-scanner risk.
+  # Cloud app (app.cal.com) still runs as SaaS; HackerOne program may still be active.
+  # Verify program status before next scan run — scope may have narrowed.
+
+# ─── NEW TARGETS — added 2026-09-21 ──────────────────────────────────────────
+
+- name: gojek
+  platform: other
+  scope_file: scopes/gojek.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  # Platform: YesWeHack
+  # Indonesian super app (GoTo Group). Bounty $5–$3,500. Last updated Aug 2026.
+  # In-scope web: gofood.co.id, portal.gofoodmerchant.co.id, gocorp.gojek.com
+  # Good fit: CORS, CSRF, IDOR, broken access control, XSS, rate-limit
+
+- name: goto-financial
+  platform: other
+  scope_file: scopes/goto-financial.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  # Platform: YesWeHack
+  # Indonesian fintech — GoPay wallet + Midtrans payment gateway.
+  # Bounty $5–$5,000 (up to $7,000 promo). High-value payment flows in scope.
+  # Good fit: CORS, CSRF, broken access control, IDOR, JWT, host-header, XSS
+
+- name: mattermost
+  platform: bugcrowd
+  scope_file: scopes/mattermost.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  # Team communication platform (Node.js/Go). Moved HackerOne→Bugcrowd Nov 2024.
+  # Avg payout ~$273 (Sep 2026). Expanded scope with plugin targets.
+  # Good fit: XSS, CORS, broken access control, rate-limit, CSRF, info-disclosure
