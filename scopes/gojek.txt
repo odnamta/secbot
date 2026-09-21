@@ -1,0 +1,18 @@
+# Program: Gojek
+# Platform: YesWeHack
+# Program URL: https://yeswehack.com/programs/gojek-bug-bounty-program
+# Bounty: $5 - $3,500 (critical)
+# Last Updated: August 3, 2026
+# Notes: Indonesian super app — on-demand transport, food delivery, logistics.
+#        Java/Go/Node.js backend. GoTo Group's consumer-facing platform.
+#        SEA target with home advantage. No staging environments in scope.
+
+In Scope
+gofood.co.id
+portal.gofoodmerchant.co.id
+gocorp.gojek.com
+
+Out of Scope
+- Staging environments (test/integration/staging subdomains)
+- All other *.gojek.com subdomains not listed above
+- GoTo Financial assets (separate program — see goto-financial.txt)

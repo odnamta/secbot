@@ -1,0 +1,21 @@
+# Program: GoTo Financial
+# Platform: YesWeHack
+# Program URL: https://yeswehack.com/programs/goto-financial-public-bounty-program
+# Bounty: $5 - $5,000 (critical) — up to $7,000 per YesWeHack promo
+# Notes: Indonesian fintech — GoPay digital wallet, Midtrans payment gateway, Moka POS.
+#        Part of GoTo Group (Gojek parent). High-value fintech assets: payment flows,
+#        merchant portals, API endpoints. Great fit for CORS, CSRF, IDOR, broken access control.
+#        No staging environments in scope.
+
+In Scope
+gopaymerchant.midtrans.com
+app.midtrans.com
+www.midtrans.com
+mokapos.com
+go-pay.co.id
+api.midtrans.com
+
+Out of Scope
+- Staging environments (test/integration/staging subdomains)
+- Mobile apps (GoPay iOS/Android) — web only for SecBot
+- All other GoTo assets not listed above

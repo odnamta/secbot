@@ -1,0 +1,17 @@
+# Program: Mattermost
+# Platform: Bugcrowd
+# Program URL: https://bugcrowd.com/engagements/mattermost-mbb-public
+# Bounty: P1 (critical) ~$3,500 / P2 (high) ~$1,500 / P3 (medium) ~$500 / P4 (low) ~$175
+# Average payout: ~$273 (recent 3 months, Sep 2026)
+# Notes: Open-source team communication platform (Node.js/Go/React).
+#        Transitioned from HackerOne to Bugcrowd in Nov 2024.
+#        Strong web app target — dashboards, API, plugins, admin panels.
+#        Good fit for XSS, SQLi, CORS, broken access control, CSRF, rate-limiting.
+
+In Scope
+mattermost.com
+*.mattermost.com
+
+Out of Scope
+- Self-hosted Mattermost instances not operated by Mattermost Inc.
+- Third-party plugins not officially maintained by Mattermost
