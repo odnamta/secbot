@@ -5,11 +5,12 @@
 # ─── ORIGINAL TARGETS ──────────────────────────────────────────────────────────
 
 - name: kredivo
-  platform: other            # RedStorm (redstorm.io)
+  platform: other
   scope_file: scopes/kredivo.txt
   profile: stealth
   schedule: weekly
   enabled: true
+  # Platform: RedStorm (redstorm.io)
 
 - name: anytask
   platform: bugcrowd
@@ -26,11 +27,13 @@
   enabled: true
 
 - name: openproject
-  platform: other            # YesWeHack
+  platform: other
   scope_file: scopes/openproject.txt
   profile: stealth
   schedule: weekly
-  enabled: false             # DISABLED 2026-09-21: program ended June 2026 (EU Commission funding concluded)
+  enabled: false
+  # Platform: YesWeHack
+  # DISABLED 2026-09-21: program ended June 2026 (EU Commission funding concluded)
 
 - name: calcom
   platform: hackerone
@@ -45,21 +48,23 @@
 # ─── NEW TARGETS — added 2026-09-21 ──────────────────────────────────────────
 
 - name: gojek
-  platform: other            # YesWeHack
+  platform: other
   scope_file: scopes/gojek.txt
   profile: stealth
   schedule: weekly
   enabled: true
+  # Platform: YesWeHack
   # Indonesian super app (GoTo Group). Bounty $5–$3,500. Last updated Aug 2026.
   # In-scope web: gofood.co.id, portal.gofoodmerchant.co.id, gocorp.gojek.com
   # Good fit: CORS, CSRF, IDOR, broken access control, XSS, rate-limit
 
 - name: goto-financial
-  platform: other            # YesWeHack
+  platform: other
   scope_file: scopes/goto-financial.txt
   profile: stealth
   schedule: weekly
   enabled: true
+  # Platform: YesWeHack
   # Indonesian fintech — GoPay wallet + Midtrans payment gateway.
   # Bounty $5–$5,000 (up to $7,000 promo). High-value payment flows in scope.
   # Good fit: CORS, CSRF, broken access control, IDOR, JWT, host-header, XSS
