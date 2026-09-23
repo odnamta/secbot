@@ -7,7 +7,6 @@
 | # | Target | Finding | Severity | Notes |
 |---|--------|---------|----------| ------|
 | 1 | indeed.com | CSRF cookie missing Secure on login page | Medium | Inconsistency between CSRF and INDEED_CSRF_TOKEN strengthens report. **CAVEAT:** Cookie set via JS, not HTTP header — curl won't reproduce. Needs Playwright/browser to verify. Submission draft ready: `2026-03-14-indeed-csrf-cookie-SUBMISSION.md` |
-| 2 | blog.kredivo.com | Unprotected WP login — no rate limiting, username enumeration | High | CVSS 7.5. Full curl reproduction. blog.kredivo.com explicitly in scope (RedStorm). Draft ready: `2026-09-23-kredivo-wordpress-brute-force.md`. **Verify /wp-login.php still accessible before submitting.** |
 
 ### TIER 2 — Hold (needs more work)
 
@@ -17,6 +16,7 @@
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
 | 5 | cal.com | Sensitive token exposed in URL (`/api/web_experiments/?token=`) | High | HOLD — token is likely an A/B experiment config token, not a user auth token. Needs verification: what does the `token=` value look like? Is it per-user or global? Does it appear in Referer headers sent to third-party analytics? Cal.com is HackerOne. Worth escalating to Dio to check manually. CVSS 7.0. |
+| 6 | blog.kredivo.com | WP login accessible + possible missing rate limiting on POST | Medium–High | HOLD — scanner only tested GET page-loads. Login page loads reCAPTCHA v3 (may protect POSTs). Manual POST testing required: 20+ attempts to `/wp-login.php`, verify reCAPTCHA v3 doesn't block. Also need valid username for enumeration claim. Draft notes updated: `2026-09-23-kredivo-wordpress-brute-force.md`. |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -108,7 +108,7 @@ Three previously untriaged v1 scans processed: **kredivo**, **cal.com** (marketi
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| Exposed WP Login + no rate limiting on /wp-login.php | **DRAFT REPORT** | blog.kredivo.com in scope. High/High confidence. No rate limiting confirmed by curl (20 requests, zero 429). Username enumeration via distinct error messages. Full report: `2026-09-23-kredivo-wordpress-brute-force.md`. Needs live verification before submission. |
+| WP login accessible + reCAPTCHA v3 present | **HOLD** | Scanner only tested GET page-loads (not POST). Login page loads reCAPTCHA v3 — may protect against brute-force at POST level. Username 'admin' not confirmed valid. Draft notes in `2026-09-23-kredivo-wordpress-brute-force.md` include manual verification checklist. Cannot submit until POST rate limit and reCAPTCHA bypass tested. |
 | Missing CSP Header on blog.kredivo.com | **FP** | Marketing/company blog homepage. Missing headers on landing/marketing pages auto-rejected as informational. |
 | Cookie `_hcc` missing HttpOnly/Secure | **FP** | `_hcc` = HubSpot Marketing Cookie (analytics/tracking). Third-party analytics cookie — canonical FP pattern. |
 
@@ -141,16 +141,16 @@ Note: Session 8 triaged `app.cal.com` (calcom-v2). This is the marketing homepag
 
 Key pattern continues: unauthenticated scans on hardened targets → passive findings + FPs.
 
-**One genuine signal this session:**
-- Kredivo WP login brute-force — a real, reproducible, in-scope finding. Bounty: ~Rp 1,500,000 (~$95).
+**One potential signal this session (unconfirmed):**
+- Kredivo WP login — page accessible, reCAPTCHA v3 present. Cannot claim brute-force risk until POST login attempts tested. Moved to Tier 2 HOLD pending manual verification.
 
-**Pattern broken once:** cal.com token-in-URL is worth a manual look — could be a weak medium if the token is per-user.
+**Worth checking:** cal.com token-in-URL could be a weak medium if the token is per-user.
 
 ---
 
 ## Next Steps (Priority Order)
 
-1. **Verify and submit Kredivo WP login** — Check `curl -I https://blog.kredivo.com/wp-login.php` still returns 200. If yes, submit `2026-09-23-kredivo-wordpress-brute-force.md` to RedStorm. Expected: High bounty (~$95 USD). Fast to triage since it's fully reproducible with curl.
+1. **Manually test Kredivo WP login** — Run POST login attempts (see checklist in `2026-09-23-kredivo-wordpress-brute-force.md`). Confirm reCAPTCHA v3 doesn't block automated POSTs, find a valid username, verify 20+ attempts return no lockout. Only then submit to RedStorm.
 2. **Investigate cal.com token-in-URL** — Load cal.com in browser with DevTools network tab. Check what `token=` in `/api/web_experiments/` contains. If it's a user-specific value (not a global config key), escalate to HackerOne.
 3. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
 4. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.

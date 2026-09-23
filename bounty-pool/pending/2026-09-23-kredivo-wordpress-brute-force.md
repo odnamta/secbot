@@ -1,124 +1,140 @@
-# Unprotected WordPress Admin Login Enables Unlimited Brute-Force Attacks
+# WordPress Login Page Accessible — Rate Limiting Unverified (Needs Manual Testing)
 
 **Target:** blog.kredivo.com  
 **Platform:** RedStorm  
-**Severity:** High  
-**CVSS Score:** 7.5  
-**CVSS Vector:** `CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:L/A:N`  
+**Severity:** Medium–High (pending manual verification)  
+**CVSS Score:** TBD after verification  
 **CWE:** CWE-307 (Improper Restriction of Excessive Authentication Attempts)  
 **OWASP:** A07:2021 – Identification and Authentication Failures  
+**Status:** HOLD — see verification checklist below before submitting
 
 ---
 
 ## Summary
 
-The WordPress administration login page at `https://blog.kredivo.com/wp-login.php` is publicly accessible and accepts unlimited login attempts without enforcing any rate limiting, account lockout, or CAPTCHA. An attacker can conduct automated brute-force or credential-stuffing attacks against the admin account at full speed, with no server-side mitigation in place.
+The WordPress administration login page at `https://blog.kredivo.com/wp-login.php` is publicly accessible (HTTP 200). The automated scan confirmed the page is reachable and the WordPress login form is present. However, **the scanner only tested GET page-load requests, not POST login attempts**, and the login page **loads Google reCAPTCHA v3** — meaning actual brute-force protection may be in place at the POST handler level. Manual POST testing is required before submitting this report.
 
 ---
 
-## Steps to Reproduce
+## What the Scan Confirmed
 
-### 1. Confirm the login page is accessible
+### Login page is accessible
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}" https://blog.kredivo.com/wp-login.php
 # Returns: 200
 ```
 
-### 2. Confirm the page renders the WordPress login form
-
 ```bash
-curl -sL https://blog.kredivo.com/wp-login.php | grep -i 'wp-login\|user_login\|user_pass'
+curl -sL https://blog.kredivo.com/wp-login.php | grep -i 'user_login\|user_pass\|recaptcha'
 ```
 
-Expected output includes form fields `user_login` and `user_pass`, confirming this is a live WordPress login form.
-
-### 3. Confirm no rate limiting is enforced
-
-Send 20 rapid POST requests — observe all return HTTP 200 with no `X-RateLimit-*`, `Retry-After`, or `429` response:
-
-```bash
-for i in $(seq 1 20); do
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-    -X POST https://blog.kredivo.com/wp-login.php \
-    -d 'log=admin&pwd=wrongpassword&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1' \
-    -H 'Cookie: wordpress_test_cookie=WP+Cookie+check')
-  echo "Request $i: HTTP $STATUS"
-done
-```
-
-Expected: all 20 requests return `200` (invalid credentials redirect to login page again). No lockout, no throttling.
-
-### 4. Enumerate admin username via WordPress error disclosure
-
-WordPress differentiates between "Invalid username" and "The password you entered is incorrect":
-
-```bash
-# Wrong username:
-curl -s -X POST https://blog.kredivo.com/wp-login.php \
-  -d 'log=nonexistent_user_xyz&pwd=test&wp-submit=Log+In' \
-  -H 'Cookie: wordpress_test_cookie=WP+Cookie+check' | grep -i 'error\|invalid'
-
-# Correct username (try 'admin', 'kredivo', 'editor'):
-curl -s -X POST https://blog.kredivo.com/wp-login.php \
-  -d 'log=admin&pwd=wrongpassword&wp-submit=Log+In' \
-  -H 'Cookie: wordpress_test_cookie=WP+Cookie+check' | grep -i 'error\|password'
-```
-
-The different error messages allow username enumeration before brute-forcing begins.
+The response includes:
+- WordPress login form fields (`user_login`, `user_pass`)
+- **Google reCAPTCHA v3 script:** `<script src="https://www.google.com/recaptcha/api.js?render=6Lcq-sgZAAAAAKO4bLDFjEvdj3ItNQopxmyb3LHq">`
 
 ---
 
-## Impact
+## What Has NOT Been Verified (Required Before Submission)
 
-1. **Credential brute-force:** With no rate limiting, an attacker can test password lists at full network speed (tens of thousands of attempts per hour) against the admin account.
-2. **Credential stuffing:** Leaked credential databases (from breaches of other services) can be automatically tested with zero friction.
-3. **Username enumeration:** WordPress's distinct error messages reveal valid usernames, narrowing the brute-force surface.
-4. **Full blog takeover:** A successful login grants WordPress admin access — ability to install plugins (including shells), modify PHP files, inject malicious JavaScript, or deface the blog. Given that `blog.kredivo.com` is the official Kredivo blog, a defacement carries significant reputational risk for an Indonesian fintech brand.
-5. **Pivot risk:** If the WordPress server shares credentials or network access with other Kredivo infrastructure, a blog compromise could be a stepping stone.
+### 1. POST rate limiting on login attempts
+
+The scanner sent 15 GET requests to `/login` and observed no rate-limit headers. **This does not test POST authentication attempts against `/wp-login.php`.** Manual testing required:
+
+```bash
+# Test actual login POST — run 10 times and watch for 429, lockout message, or CAPTCHA challenge
+for i in $(seq 1 10); do
+  curl -s -c /tmp/kredivo-cookies.txt -b /tmp/kredivo-cookies.txt \
+    -X POST https://blog.kredivo.com/wp-login.php \
+    -d 'log=<KNOWN_USERNAME>&pwd=wrongpassword&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1' \
+    -H 'Cookie: wordpress_test_cookie=WP+Cookie+check' \
+    -D - 2>/dev/null | grep -E 'HTTP/|X-RateLimit|Retry-After|recaptcha|lockout|attempts'
+  sleep 0.2
+done
+```
+
+Check whether responses change after a threshold (e.g., change from generic "wrong password" to a lockout message, or start returning reCAPTCHA challenge tokens).
+
+**reCAPTCHA v3 note:** reCAPTCHA v3 runs invisibly and assigns a score — it will NOT return a visual challenge in curl responses. Whether it actually blocks requests depends entirely on how the WordPress plugin is configured (score threshold, action on low score). This requires browser-based testing or checking the reCAPTCHA site key score in the Google Console.
+
+### 2. Valid username confirmation
+
+Before claiming username enumeration, a valid username must be confirmed. WordPress shows different errors for invalid usernames vs. wrong passwords:
+
+```bash
+# Try to find valid username via author archive enumeration (non-intrusive):
+curl -sL "https://blog.kredivo.com/?author=1" -o /dev/null -w "%{url_effective}"
+# If it redirects to /author/<username>/, that username is valid
+```
+
+Once a valid username is known, the enumeration claim can be tested properly.
+
+### 3. Confirm no account lockout
+
+After finding a valid username, confirm that 20+ wrong-password POST submissions do not trigger a lockout or CAPTCHA challenge before classifying as unprotected.
+
+---
+
+## Impact (if manual testing confirms no rate limiting)
+
+1. **Credential brute-force:** Automated password list testing against admin accounts
+2. **Credential stuffing:** Breached credentials from other services tested automatically
+3. **Full blog takeover:** WordPress admin access enables plugin installation, PHP modification, content injection, or defacement of Kredivo's official blog
 
 ---
 
 ## Suggested Fix
 
-**Immediate (no code changes required):**
-- Install [Wordfence Security](https://wordpress.org/plugins/wordfence/) or [Solid Security (formerly iThemes Security)](https://wordpress.org/plugins/better-wp-security/) — both enforce login rate limiting and lockout out of the box.
-- Alternatively, restrict `/wp-login.php` to Kredivo office/VPN IP ranges at the Nginx/Apache level.
+**Option 1 — WordPress plugin (recommended):**
+Install Wordfence or Solid Security — both enforce login rate limiting and account lockout.
 
-**Nginx snippet:**
-```nginx
-location = /wp-login.php {
-    allow 203.0.113.0/24;  # Replace with Kredivo office IP range
-    deny all;
-    fastcgi_pass unix:/run/php/php8.1-fpm.sock;
-    include fastcgi_params;
-    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-}
-```
+**Option 2 — Custom plugin with correct hook (pre-authentication):**
 
-**Application-level (WordPress plugin or mu-plugin):**
 ```php
 // wp-content/mu-plugins/login-rate-limit.php
-add_action('wp_login_failed', function($username) {
-    $ip = $_SERVER['REMOTE_ADDR'];
-    $key = 'login_fail_' . md5($ip);
-    $fails = (int) get_transient($key);
-    if ($fails >= 5) {
-        wp_die('Too many failed login attempts. Try again in 15 minutes.', 429);
+// IMPORTANT: must use 'authenticate' filter, not 'wp_login_failed'
+// wp_login_failed only fires on failure, allowing a correct password to bypass limits
+add_filter('authenticate', function($user, $username, $password) {
+    if (empty($username) || empty($password)) return $user;
+
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    $key = 'login_attempt_' . md5($ip);
+    $attempts = (int) get_transient($key);
+
+    if ($attempts >= 5) {
+        return new WP_Error('too_many_attempts',
+            'Too many login attempts. Please wait 15 minutes.');
     }
-    set_transient($key, $fails + 1, 15 * MINUTE_IN_SECONDS);
-});
+
+    // Increment counter for every attempt, before WordPress validates credentials
+    set_transient($key, $attempts + 1, 15 * MINUTE_IN_SECONDS);
+    return $user;
+}, 30, 3);
 ```
 
-**Additional hardening:**
-- Hide username enumeration: add `remove_filter('login_errors', ...)` to return a generic error regardless of whether the username or password is wrong.
-- Add CAPTCHA to the login form (Cloudflare Turnstile integrates well with WordPress).
+Note: using the `authenticate` filter (priority 30, runs before WordPress validates) rather than `wp_login_failed` ensures the limit is checked before credentials are verified — preventing a correct password from bypassing the lockout after the threshold.
+
+**Option 3 — Cloudflare Rate Limiting rule:**  
+Add a Cloudflare Rate Limiting rule on `POST /wp-login.php` — threshold 5 requests/minute per IP.
 
 ---
 
-## Notes for Triager
+## Verification Checklist
 
-- This finding was detected by automated scanner (SecBot v1.1.0) and confirmed by curl reproduction.
-- Tested: 2026-03-22. The login page was still accessible as of that date.
-- This is the official Kredivo company blog, not a test or staging subdomain.
-- **Please verify current state before submitting** — check that `/wp-login.php` is still returning HTTP 200 with the WordPress login form.
+Before submitting to RedStorm:
+
+- [ ] Confirm `/wp-login.php` still returns 200 with the WordPress login form
+- [ ] Test 20+ POST login attempts — confirm no 429, lockout, or effective reCAPTCHA blocking
+- [ ] Find at least one valid WordPress username (author archive enumeration)
+- [ ] Capture two distinct error messages to confirm username enumeration is possible
+- [ ] If reCAPTCHA v3 does block automated POSTs → downgrade to informational / don't submit
+
+---
+
+## Scanner Evidence
+
+- Scan date: 2026-03-22
+- Scanner: SecBot v1.1.0
+- Evidence: GET `/wp-login.php` → HTTP 200, WordPress login form present, reCAPTCHA v3 loaded
+- Raw finding IDs: `5ff75110-f427-40bb-8b6d-c5c6d9c6bb17`, `0a818d5c-22ff-4311-b2a2-63f5989003fe`
+- **Limitation:** Scanner did not send POST login requests; rate limit check was based on GET page-load probes only
