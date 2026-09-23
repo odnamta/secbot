@@ -1,20 +1,22 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-09-23 (Session 9)
 
 ## Submission Priority
 
 ### TIER 1 — Submit (strongest signal)
 
 | # | Target | Finding | Severity | Notes |
-|---|--------|---------|----------|-------|
+|---|--------|---------|----------| ------|
 | 1 | indeed.com | CSRF cookie missing Secure on login page | Medium | Inconsistency between CSRF and INDEED_CSRF_TOKEN strengthens report. **CAVEAT:** Cookie set via JS, not HTTP header — curl won't reproduce. Needs Playwright/browser to verify. Submission draft ready: `2026-03-14-indeed-csrf-cookie-SUBMISSION.md` |
 
 ### TIER 2 — Hold (needs more work)
 
 | # | Target | Finding | Severity | Notes |
-|---|--------|---------|----------|-------|
+|---|--------|---------|----------| ------|
 | 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
+| 5 | cal.com | Sensitive token exposed in URL (`/api/web_experiments/?token=`) | High | HOLD — token is likely an A/B experiment config token, not a user auth token. Needs verification: what does the `token=` value look like? Is it per-user or global? Does it appear in Referer headers sent to third-party analytics? Cal.com is HackerOne. Worth escalating to Dio to check manually. CVSS 7.0. |
+| 6 | blog.kredivo.com | WP login accessible + possible missing rate limiting on POST | Medium–High | HOLD — scanner only tested GET page-loads. Login page loads reCAPTCHA v3 (may protect POSTs). Manual POST testing required: 20+ attempts to `/wp-login.php`, verify reCAPTCHA v3 doesn't block. Also need valid username for enumeration claim. Draft notes updated: `2026-09-23-kredivo-wordpress-brute-force.md`. |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -23,10 +25,12 @@ Moved to `bounty-pool/archived/`:
 - konghq.com missing headers — Informational, auto-rejected by triagers
 - gitlab.com GraphQL introspection — By design, publicly documented
 
+---
+
 ### OWN APPS — Fix These
 
 | # | Target | Finding | Severity | Notes |
-|---|--------|---------|----------|-------|
+|---|--------|---------|----------| ------|
 | A1 | finance.atmando.app | No rate limiting on /login and /graphql | HIGH | Brute-force risk on finance app. Add Cloudflare rate limiting + app-level throttle. |
 | A2 | finance.atmando.app | Missing HSTS header | MEDIUM | Middleware has HSTS configured but it's not appearing in response. Docker rebuild or middleware bug. |
 
@@ -96,14 +100,64 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ---
 
+## Session 9 Analysis — March 2026 Scans (Triaged 2026-09-23)
+
+Three previously untriaged v1 scans processed: **kredivo**, **cal.com** (marketing site), **openproject v1**.
+
+### Kredivo (RedStorm) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| WP login accessible + reCAPTCHA v3 present | **HOLD** | Scanner only tested GET page-loads (not POST). Login page loads reCAPTCHA v3 — may protect against brute-force at POST level. Username 'admin' not confirmed valid. Draft notes in `2026-09-23-kredivo-wordpress-brute-force.md` include manual verification checklist. Cannot submit until POST rate limit and reCAPTCHA bypass tested. |
+| Missing CSP Header on blog.kredivo.com | **FP** | Marketing/company blog homepage. Missing headers on landing/marketing pages auto-rejected as informational. |
+| Cookie `_hcc` missing HttpOnly/Secure | **FP** | `_hcc` = HubSpot Marketing Cookie (analytics/tracking). Third-party analytics cookie — canonical FP pattern. |
+
+### Cal.com marketing site (cal.com) — `scan-results/cal-com/secbot-2026-03-22T11-36-33-679Z.json`
+
+Note: Session 8 triaged `app.cal.com` (calcom-v2). This is the marketing homepage (cal.com). Different surface.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Directory Traversal on /api/geolocation (CRITICAL/medium) | **FP** | Next.js normalizes `/../../../etc/passwd` paths to 404. No actual file read. Agent confirmed HTTP 404 on all 6 variants. |
+| XXE Injection on /api/geolocation (CRITICAL/medium) | **FP** | Geolocation endpoint sits behind Cloudflare WAF. Scanner matched "error" pattern in a Cloudflare 403 challenge page, not actual XML parser error. |
+| Sensitive token in URL `/api/web_experiments/?token=` (HIGH/medium) | **HOLD** | Token likely an A/B experiment config, not auth token. CVSS 7.0. Needs Dio to manually inspect: what does `token=` contain? Is it per-user? Does it leak via Referer to PostHog/Twitter Ads scripts on the page? Added to Tier 2. |
+| Missing rate limiting on /api/auth/session (MEDIUM/medium) | **FP** | `/api/auth/session` is NextAuth's current-session getter (GET endpoint), not an auth submission endpoint. Same FP as calcom-v2 in Session 8. |
+| Missing SRI on 7 external scripts (MEDIUM/high) | **FP** | PostHog, Twitter Ads, CloudFront analytics scripts on marketing site. SRI not applicable to frequently-updated CDN scripts. Same as calcom-v2 FP in Session 8. |
+| Exposed admin routes (HIGH/low) | **FP** | `/admin` in Next.js on cal.com is a valid user booking slug (cal.com/admin). Not an actual admin panel. |
+| OAuth state missing on /api/auth/session | **FP** | Wrong endpoint — session getter, not OAuth authorization endpoint. |
+
+### OpenProject v1 (community.openproject.org) — `scan-results/openproject/secbot-2026-03-22T12-38-03-985Z.json`
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Missing rate limiting on /login (MEDIUM/medium) | **FP** | GET page-load probe. Same FP as all other rate limit findings across every scan. |
+| Missing SRI on external scripts (MEDIUM/high) | **FP** | Community forum. Third-party scripts without SRI. YesWeHack triagers would reject as informational. |
+
+---
+
+## Honest Assessment (Sep 2026, Session 9)
+
+**Bounty readiness: LOW but improving.** 16 new findings analyzed, 1 draft report produced.
+
+Key pattern continues: unauthenticated scans on hardened targets → passive findings + FPs.
+
+**One potential signal this session (unconfirmed):**
+- Kredivo WP login — page accessible, reCAPTCHA v3 present. Cannot claim brute-force risk until POST login attempts tested. Moved to Tier 2 HOLD pending manual verification.
+
+**Worth checking:** cal.com token-in-URL could be a weak medium if the token is per-user.
+
+---
+
 ## Next Steps (Priority Order)
 
-1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+1. **Manually test Kredivo WP login** — Run POST login attempts (see checklist in `2026-09-23-kredivo-wordpress-brute-force.md`). Confirm reCAPTCHA v3 doesn't block automated POSTs, find a valid username, verify 20+ attempts return no lockout. Only then submit to RedStorm.
+2. **Investigate cal.com token-in-URL** — Load cal.com in browser with DevTools network tab. Check what `token=` in `/api/web_experiments/` contains. If it's a user-specific value (not a global config key), escalate to HackerOne.
+3. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+4. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+5. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+6. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+7. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
