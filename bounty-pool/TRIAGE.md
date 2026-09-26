@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-09-26 (Session 9)
 
 ## Submission Priority
 
@@ -29,6 +29,32 @@ Moved to `bounty-pool/archived/`:
 |---|--------|---------|----------|-------|
 | A1 | finance.atmando.app | No rate limiting on /login and /graphql | HIGH | Brute-force risk on finance app. Add Cloudflare rate limiting + app-level throttle. |
 | A2 | finance.atmando.app | Missing HSTS header | MEDIUM | Middleware has HSTS configured but it's not appearing in response. Docker rebuild or middleware bug. |
+
+---
+
+## Session 9 Analysis — Pending Draft Review (Triaged 2026-09-26)
+
+Three draft files were found in `bounty-pool/pending/moneybird/` from an earlier automated run (pre-cycle-18). All three are false positives and have been archived to `bounty-pool/archived/moneybird/`.
+
+| Draft File | Verdict | Reason |
+|-----------|---------|--------|
+| `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` | **FP — Archived** | Confirmed FP in browser verification. Commit `6aef881` (cycle 18) documents the root cause: browser URL-encodes `#<img src=x>` to `#%3Cimg...%3E`, so innerHTML assignment is safe. No alert fired in real browser test. Fix shipped in cycle 18. |
+| `09dd5267-missing-content-security-policy-header.md` | **FP — Archived** | Marketing homepage (www.moneybird.com). Already established as FP in Session 8. Triagers auto-reject missing headers on marketing/landing pages. |
+| `8c0823c1-postmessage-handlers-missing-origin-validation.md` | **FP — Archived** | Marketing homepage postMessage handlers. Classic third-party widget pattern (Intercom/Drift/Zendesk). Per CLAUDE.md known-FP list: "postMessage from known widgets — by design, not a vuln". Medium confidence + marketing page = no bounty value. |
+
+### Kredivo (RedStorm) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+Target: `blog.kredivo.com` (WordPress blog — in scope per `scopes/kredivo.txt`). 3 interpreted findings, all FP.
+
+| Finding | Severity | Verdict | Reason |
+|---------|----------|---------|--------|
+| Exposed WordPress Login Page `/wp-login.php` Without Protection | High | **FP** | GET-probe only — scanner confirms the page loads (HTTP 200), not that POST submissions lack rate limiting. Same false-positive pattern as cal.com/openproject rate-limit findings. Blog subdomain with default WordPress behavior; no actual brute-force test performed. |
+| Missing Content-Security-Policy Header | High | **FP** | Marketing/content WordPress blog. Same FP pattern as all other blog/marketing page CSP findings. Auto-rejected as informational by triagers. |
+| Cookie `_hcc` missing HttpOnly and Secure flags | Medium | **FP** | `_hcc` is a HubSpot Conversations analytics cookie (third-party marketing tool). Per CLAUDE.md known-FP: "Third-party cookie flags (analytics, marketing, consent widgets) — not bounty-worthy." |
+
+> **Note:** Initial triage incorrectly stated 0 findings (wrong JSON key was checked — `findings[]` was empty but `interpretedFindings[]` held 3 entries). Corrected in response to Codex review on PR #243.
+
+**Session 9 summary: 3 drafts reviewed + 3 kredivo findings triaged = 6 total. All 6 archived/FP. 0 new reports drafted.**
 
 ---
 
@@ -80,7 +106,7 @@ Also reviewed: moneybird (2026-03-22).
 
 ---
 
-## Honest Assessment (Jun 2026, Session 8)
+## Honest Assessment (Sep 2026, Session 9)
 
 **Bounty readiness: Still LOW.** Three more scans, same pattern:
 - 0 injection vulnerabilities found (XSS, SQLi, SSTI, SSRF, etc.)
