@@ -42,9 +42,19 @@ Three draft files were found in `bounty-pool/pending/moneybird/` from an earlier
 | `09dd5267-missing-content-security-policy-header.md` | **FP — Archived** | Marketing homepage (www.moneybird.com). Already established as FP in Session 8. Triagers auto-reject missing headers on marketing/landing pages. |
 | `8c0823c1-postmessage-handlers-missing-origin-validation.md` | **FP — Archived** | Marketing homepage postMessage handlers. Classic third-party widget pattern (Intercom/Drift/Zendesk). Per CLAUDE.md known-FP list: "postMessage from known widgets — by design, not a vuln". Medium confidence + marketing page = no bounty value. |
 
-Kredivo scan (`scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`): **0 findings** — no triage needed.
+### Kredivo (RedStorm) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
 
-**Session 9 summary: 3 drafts reviewed, 3 archived as FP. 0 new reports drafted.**
+Target: `blog.kredivo.com` (WordPress blog — in scope per `scopes/kredivo.txt`). 3 interpreted findings, all FP.
+
+| Finding | Severity | Verdict | Reason |
+|---------|----------|---------|--------|
+| Exposed WordPress Login Page `/wp-login.php` Without Protection | High | **FP** | GET-probe only — scanner confirms the page loads (HTTP 200), not that POST submissions lack rate limiting. Same false-positive pattern as cal.com/openproject rate-limit findings. Blog subdomain with default WordPress behavior; no actual brute-force test performed. |
+| Missing Content-Security-Policy Header | High | **FP** | Marketing/content WordPress blog. Same FP pattern as all other blog/marketing page CSP findings. Auto-rejected as informational by triagers. |
+| Cookie `_hcc` missing HttpOnly and Secure flags | Medium | **FP** | `_hcc` is a HubSpot Conversations analytics cookie (third-party marketing tool). Per CLAUDE.md known-FP: "Third-party cookie flags (analytics, marketing, consent widgets) — not bounty-worthy." |
+
+> **Note:** Initial triage incorrectly stated 0 findings (wrong JSON key was checked — `findings[]` was empty but `interpretedFindings[]` held 3 entries). Corrected in response to Codex review on PR #243.
+
+**Session 9 summary: 3 drafts reviewed + 3 kredivo findings triaged = 6 total. All 6 archived/FP. 0 new reports drafted.**
 
 ---
 
