@@ -1,0 +1,18 @@
+# Program: PostHog
+# Platform: HackerOne (public program)
+# Bounty: $200 - $3,000+ (estimated based on public disclosures)
+# Notes: Open-source product analytics (Django + Node.js + React), ~100-200 employees, Series C
+# Good for: IDOR, broken access control, CORS, JWT, info disclosure, GraphQL, API key exposure
+# AutoScan: allowed (open-source-friendly, security-conscious team)
+# WARNING: Verify scope + bounty table at h1 before running — may have evolved post-2025
+
+In Scope
+app.posthog.com
+posthog.com/api/*
+eu.posthog.com
+*.posthog.com
+
+Out of Scope
+- posthog.com (marketing pages, /blog, /docs)
+- status.posthog.com
+- Third-party dependencies not under PostHog's control

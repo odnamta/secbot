@@ -37,3 +37,26 @@
   profile: stealth
   schedule: weekly
   enabled: true
+
+# --- Added by Bounty Scout 2026-09-28 ---
+
+- name: posthog
+  platform: hackerone
+  scope_file: scopes/posthog.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: chatwoot
+  platform: hackerone
+  scope_file: scopes/chatwoot.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: infisical
+  platform: hackerone
+  scope_file: scopes/infisical.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true

@@ -1,0 +1,17 @@
+# Program: Infisical
+# Platform: HackerOne (public program)
+# Bounty: $200 - $2,500 (estimated based on public disclosures)
+# Notes: Secret management / environment variables SaaS, Node.js + React, NYC startup ~30-50 employees
+# Good for: IDOR, broken access control, JWT bypass, info disclosure, CORS, SSRF, org isolation flaws
+# AutoScan: check policy — security-sensitive product, team is security-aware, be stealthy
+# WARNING: Verify scope at h1 before running — security products often have strict automation rules
+
+In Scope
+app.infisical.com
+infisical.com/api/*
+
+Out of Scope
+- infisical.com (marketing/docs)
+- Self-hosted Infisical instances
+- Third-party identity providers (GitHub OAuth, Google OAuth, SAML IdPs)
+- Infisical CLI binary (separate scope)
