@@ -8,7 +8,7 @@
 
 In Scope
 app.posthog.com
-posthog.com/api/*
+posthog.com
 eu.posthog.com
 *.posthog.com
 

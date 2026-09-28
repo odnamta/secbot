@@ -8,7 +8,7 @@
 
 In Scope
 app.infisical.com
-infisical.com/api/*
+infisical.com
 
 Out of Scope
 - infisical.com (marketing/docs)

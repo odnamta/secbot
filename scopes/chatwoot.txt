@@ -11,6 +11,7 @@ app.chatwoot.com
 *.chatwoot.com
 
 Out of Scope
-- chatwoot.com (marketing site only)
+# marketing site only, not the app
+- chatwoot.com
 - Self-hosted Chatwoot instances not owned by Chatwoot Inc.
 - Third-party integrations (Slack, WhatsApp API, etc.)

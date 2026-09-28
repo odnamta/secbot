@@ -45,18 +45,18 @@
   scope_file: scopes/posthog.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false  # verify H1 scope + auto-scan policy before enabling
 
 - name: chatwoot
   platform: hackerone
   scope_file: scopes/chatwoot.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false  # verify H1 scope + auto-scan policy before enabling
 
 - name: infisical
   platform: hackerone
   scope_file: scopes/infisical.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false  # verify H1 scope + auto-scan policy before enabling
