@@ -1,0 +1,17 @@
+# Program: Chatwoot
+# Platform: HackerOne (public program)
+# Bounty: $100 - $1,500 (estimated)
+# Notes: Customer support/messaging platform, Ruby on Rails + Vue.js, Indian startup ~50-100 employees
+# Good for: XSS, CSRF, IDOR, broken access control, info disclosure, webhooks abuse, API auth
+# AutoScan: likely allowed (open-source project, GitHub-public codebase)
+# WARNING: Verify current program status + scope at h1 before running — newer program, rules may change
+
+In Scope
+app.chatwoot.com
+*.chatwoot.com
+
+Out of Scope
+# marketing site only, not the app
+- chatwoot.com
+- Self-hosted Chatwoot instances not owned by Chatwoot Inc.
+- Third-party integrations (Slack, WhatsApp API, etc.)
