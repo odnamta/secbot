@@ -121,4 +121,4 @@ The Bounty Scout agent has not added new scan results since the March 2026 batch
 - Tier 2: Twitch session tokens — blocked on obtaining Twitch credentials for authenticated scan
 - Tier 2: OpenProject session fixation — blocked on local Docker test setup
 
-**Recommended unblock:** Run the Bounty Scout or manually trigger `secbot scan` against authenticated targets to generate fresh findings for the next triage session.
+**Recommended unblock:** Run `secbot hunt` (uses hunt-registry.yaml) or `secbot scan <url> --auth-cookie ...` against authenticated targets to generate fresh findings for the next triage session. Note: the Bounty Scout scheduled agent only updates `hunt-registry.yaml` and scope files — it does not run scans.
