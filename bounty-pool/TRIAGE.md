@@ -41,7 +41,7 @@ Kredivo scan (`scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`) was p
 |---------|---------|--------|
 | Exposed WP Login `/wp-login.php` (HIGH/HIGH) | **HOLD** | `blog.kredivo.com` is in scope. WordPress login returns HTTP 200 with no IP restriction or HTTP Basic Auth. Scanner claims no rate limiting but only tested GETs — didn't POST brute-force to confirm lockout behavior. **Action needed:** manually confirm by POSTing 20 bad credentials and checking for 429/lockout. If confirmed, this is a valid Medium (brute-force protection missing). CVSS in scan (8.1) seems inflated — real CVSS is likely 5.3 (AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N) for a blog with low data sensitivity. |
 | Missing CSP header (HIGH/HIGH) | **Informational** | `blog.kredivo.com` is a WordPress content blog. Missing CSP on marketing/blog subdomains is auto-rejected as informational by all major programs. Not submittable without XSS proof. |
-| Cookie `_hcc` missing HttpOnly/Secure (MEDIUM/HIGH) | **FP** | `_hcc` is a HubSpot campaign cookie (third-party analytics/marketing). Intentionally JS-accessible for marketing state management. Classic FP pattern — same as neon's `neon_consent`, Twitch's tracking cookies. |
+| Cookie `_hcc` missing HttpOnly/Secure (MEDIUM/HIGH) | **Likely FP** | Cookie has a 30-second lifetime (very short) and no session/auth-state characteristics — consistent with analytics/tracking (e.g., HubSpot `_hcc`, click-counter cookies). However, HubSpot attribution was inferred, not confirmed from scan evidence. Before archiving: check `curl -sI https://blog.kredivo.com/ \| grep -i '_hcc'` to see if it's first-party or a third-party `Set-Cookie`. If the cookie name and 30s TTL confirm analytics use, treat as FP. |
 
 ---
 
@@ -112,7 +112,7 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 ## Next Steps (Priority Order)
 
 1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Verify Kredivo WP brute-force** — Run `curl -X POST 'https://blog.kredivo.com/wp-login.php' -d 'log=admin&pwd=wrongpass' -w '%{http_code}' -s -o /dev/null` × 20 in a loop. If no 429 or lockout, submit as "Brute Force Protection Missing on WordPress Admin Login" (Medium, ~$32).
+2. **Verify Kredivo WP brute-force** — First check if reCAPTCHA is present (`curl -s https://blog.kredivo.com/wp-login.php | grep -i recaptcha`). If reCAPTCHA is present, HTTP 200 responses do NOT confirm unprotected logins — CAPTCHA challenges return 200 with body-level rejection. Use a real WordPress account with known credentials and verify actual auth outcomes: does a valid login succeed after N failed attempts? If no lockout or throttle occurs on a confirmed working account, submit as "Brute Force Protection Missing on WordPress Admin Login" (Medium, ~$32).
 3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
 4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
