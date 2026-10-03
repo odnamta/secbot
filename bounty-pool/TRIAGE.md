@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-10-03 (Session 9)
 
 ## Submission Priority
 
@@ -12,9 +12,10 @@
 
 | # | Target | Finding | Severity | Notes |
 |---|--------|---------|----------|-------|
-| 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
-| 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
-| 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
+| 2 | kredivo (blog) | Exposed WordPress Login Page — missing rate limit on `/wp-login.php` | Medium | HOLD — `blog.kredivo.com` is in scope (RedStorm). WP login returns HTTP 200 with no IP restriction. Rate-limit claim unverified (scan only probed GET, didn't POST brute-force). Needs: `curl -X POST -d 'log=test&pwd=wrong' https://blog.kredivo.com/wp-login.php` ×20 to confirm no lockout. If confirmed → submit as "Admin Login Brute Force Protection Missing". |
+| 3 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
+| 4 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
+| 5 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -29,6 +30,18 @@ Moved to `bounty-pool/archived/`:
 |---|--------|---------|----------|-------|
 | A1 | finance.atmando.app | No rate limiting on /login and /graphql | HIGH | Brute-force risk on finance app. Add Cloudflare rate limiting + app-level throttle. |
 | A2 | finance.atmando.app | Missing HSTS header | MEDIUM | Middleware has HSTS configured but it's not appearing in response. Docker rebuild or middleware bug. |
+
+---
+
+## Session 9 Analysis — Kredivo Scan (Triaged 2026-10-03)
+
+Kredivo scan (`scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`) was present in the repo but had not been analyzed in Session 8. Three findings on `blog.kredivo.com` (explicitly in scope, RedStorm program).
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Exposed WP Login `/wp-login.php` (HIGH/HIGH) | **HOLD** | `blog.kredivo.com` is in scope. WordPress login returns HTTP 200 with no IP restriction or HTTP Basic Auth. Scanner claims no rate limiting but only tested GETs — didn't POST brute-force to confirm lockout behavior. **Action needed:** manually confirm by POSTing 20 bad credentials and checking for 429/lockout. If confirmed, this is a valid Medium (brute-force protection missing). CVSS in scan (8.1) seems inflated — real CVSS is likely 5.3 (AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N) for a blog with low data sensitivity. |
+| Missing CSP header (HIGH/HIGH) | **Informational** | `blog.kredivo.com` is a WordPress content blog. Missing CSP on marketing/blog subdomains is auto-rejected as informational by all major programs. Not submittable without XSS proof. |
+| Cookie `_hcc` missing HttpOnly/Secure (MEDIUM/HIGH) | **FP** | `_hcc` is a HubSpot campaign cookie (third-party analytics/marketing). Intentionally JS-accessible for marketing state management. Classic FP pattern — same as neon's `neon_consent`, Twitch's tracking cookies. |
 
 ---
 
@@ -99,11 +112,12 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 ## Next Steps (Priority Order)
 
 1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+2. **Verify Kredivo WP brute-force** — Run `curl -X POST 'https://blog.kredivo.com/wp-login.php' -d 'log=admin&pwd=wrongpass' -w '%{http_code}' -s -o /dev/null` × 20 in a loop. If no 429 or lockout, submit as "Brute Force Protection Missing on WordPress Admin Login" (Medium, ~$32).
+3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
