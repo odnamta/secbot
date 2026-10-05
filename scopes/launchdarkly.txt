@@ -11,5 +11,3 @@ app.launchdarkly.com
 app.launchdarkly.com/api/v2/
 
 Out of Scope
-- app.launchdarkly.com (marketing/docs subpaths — test the app, not marketing pages)
-- *.launchdarkly.com (other subdomains not listed above)

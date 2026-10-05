@@ -7,9 +7,8 @@
 # Automated scanners: Manual testing preferred; use staging (console-stage.neon.build) first
 
 In Scope
+console-stage.neon.build
 console.neon.tech
 console.neon.tech/api/v2/
-console-stage.neon.build
 
 Out of Scope
-- *.neon.tech (other subdomains not explicitly in scope)

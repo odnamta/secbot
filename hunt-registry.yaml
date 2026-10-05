@@ -45,7 +45,7 @@
   scope_file: scopes/launchdarkly.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false
 
 - name: neon
   platform: hackerone
