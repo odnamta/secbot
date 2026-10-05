@@ -1,0 +1,13 @@
+# Program: LaunchDarkly
+# Platform: Bugcrowd (Managed Bug Bounty Engagement)
+# Program URL: https://bugcrowd.com/engagements/launchdarkly-mbb-og
+# Bounty: $150 (P4) / $1,250 (P3) / $2,500 (P2) / $6,500-$7,500 (P1)
+# Started: May 2026 (new program, low competition)
+# Notes: Feature flag management SaaS, React/Node.js frontend, rich RBAC/permissions surface
+# Automated scanners: Policy not explicitly stated — use stealth profile, low rate
+
+In Scope
+app.launchdarkly.com
+app.launchdarkly.com/api/v2/
+
+Out of Scope

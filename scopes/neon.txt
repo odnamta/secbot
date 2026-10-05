@@ -1,0 +1,14 @@
+# Program: Neon
+# Platform: HackerOne
+# Program URL: https://hackerone.com/neon_bbp
+# Bounty: $150 (low) / $500 (medium) / $1,000 (high) / $3,000 (critical)
+# Started: Feb 2025 private, public ~mid-2025
+# Notes: Serverless Postgres SaaS, Next.js dashboard, staging env available for safe testing
+# Automated scanners: Manual testing preferred; use staging (console-stage.neon.build) first
+
+In Scope
+console-stage.neon.build
+console.neon.tech
+console.neon.tech/api/v2/
+
+Out of Scope
