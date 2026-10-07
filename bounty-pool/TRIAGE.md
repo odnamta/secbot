@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-10-07 (Session 9)
 
 ## Submission Priority
 
@@ -29,6 +29,22 @@ Moved to `bounty-pool/archived/`:
 |---|--------|---------|----------|-------|
 | A1 | finance.atmando.app | No rate limiting on /login and /graphql | HIGH | Brute-force risk on finance app. Add Cloudflare rate limiting + app-level throttle. |
 | A2 | finance.atmando.app | Missing HSTS header | MEDIUM | Middleware has HSTS configured but it's not appearing in response. Docker rebuild or middleware bug. |
+
+---
+
+## Session 9 Analysis — Moneybird Pending Files (Triaged 2026-10-07)
+
+Three auto-generated pending reports for `moneybird` (`bounty-pool/pending/moneybird/`) reviewed. All were generated before Session 8 but not triaged then.
+
+### Moneybird (HackerOne) — `bounty-pool/pending/moneybird/`
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| DOM XSS via URL fragment on `www.moneybird.com` | **FP** | `learning-data/outcomes.json` records this finding (`6d09cce8`) as `not-applicable` twice (2026-03-22 and 2026-03-26): the innerHTML sink exists but the browser URL-encodes the fragment before it reaches it — `<img src=x onerror=alert(1)>` becomes `%3Cimg...%3E`, which is harmless text. Also: the scan (`secbot-2026-03-22T12-37-45`) pre-dates the cycle 18 fix commit, so detection did NOT survive that filter. Archived. |
+| Missing CSP on `www.moneybird.com` | **FP** | CVSS 7.0 is grossly inflated for a missing defense-in-depth header. Marketing homepage = known auto-reject pattern (Session 8 already noted this). Moving to archived. |
+| postMessage handlers without origin validation | **FP** | 3 handlers on the marketing homepage with medium confidence. Classic FP: virtually all modern websites include Intercom, Drift, or similar chat widgets that register `*`-origin postMessage handlers by design. CLAUDE.md lists this explicitly as FP pattern. Moving to archived. |
+
+**Session 9 net result: 0 new reports drafted, 3 FPs archived (all moneybird pending files).**
 
 ---
 
@@ -98,12 +114,12 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ## Next Steps (Priority Order)
 
-1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+1. **Submit Indeed finding** — CSRF cookie inconsistency. Cookie is JS-set, needs Playwright/browser reproduction. Draft ready at `2026-03-14-indeed-csrf-cookie-SUBMISSION.md`.
 2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. Highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. `console.neon.tech` auth scan could find IDOR/BAC in API.
 5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
