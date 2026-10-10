@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-10-10 (Session 9)
 
 ## Submission Priority
 
@@ -107,3 +107,70 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
 4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
 5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+
+---
+
+## Session 9 Analysis — October 10, 2026
+
+No new scans since session 8. This session covers housekeeping: triaging 3 previously unreviewed v1 scan files and clearing 3 stale pending reports from `bounty-pool/pending/moneybird/`.
+
+### Stale Pending Reports — Moneybird (archived)
+
+Three auto-generated reports from cycle 18 (March 22, 2026) were sitting in `bounty-pool/pending/moneybird/`. All moved to `bounty-pool/archived/`:
+
+| File | Finding | Decision | Reason |
+|------|---------|----------|--------|
+| `09dd5267-missing-content-security-policy-header.md` | Missing CSP on www.moneybird.com | **FP** | Marketing homepage. Session 8 already triaged as auto-rejected by triagers. |
+| `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` | DOM XSS via URL fragment | **FP confirmed** | Cycle 18 commit explicitly documents: "verified as FP in browser — no alert fired, payload was URL-encoded." Scanner bug was fixed in same commit. |
+| `8c0823c1-postmessage-handlers-missing-origin-validation.md` | postMessage missing origin validation | **FP** | Homepage-only. 3 handlers likely from analytics/chat widgets (Intercom/HubSpot pattern). By design per CLAUDE.md FP rules. No exploitable path without XSS. |
+
+### Cal.com v1 (March 22, 2026) — `scan-results/cal-com/secbot-2026-03-22T11-36-33-679Z.json`
+
+Previously unreviewed. Session 8 covered the v2 scan; these findings are from the earlier v1 run on the same target.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Directory Traversal on /api/geolocation (critical, medium) | **FP** | No evidence fields populated. Endpoint is a standard geolocation API (lat/lon → timezone), not a file path handler. AWS WAF + Cloudflare in place. Scanner artifact. |
+| XXE Injection on /api/geolocation (critical, medium) | **FP** | Same endpoint. Geolocation API accepts JSON, not XML. entity-expansion detection hit on non-XML endpoint. Scanner artifact. |
+| Sensitive Token in URL /api/web_experiments/?token= (high, medium) | **Informational** | Token is empty in evidence. `/api/web_experiments/` is Cal.com's A/B variant assignment endpoint — the token is a variant identifier, not an auth credential. Not exploitable. |
+| Missing SRI on External Scripts (medium, high) | **FP** | Third-party analytics/widget scripts. SRI not applicable for CDN-hosted auto-updating scripts. Standard FP pattern. |
+| Missing Rate Limiting on /api/auth/session + /api/geolocation (medium, medium) | **FP** | Scanner sent 15 rapid GET requests to the NextAuth session-getter (`/api/auth/session`) and the public geolocation API (`/api/geolocation`). Neither is a credential submission endpoint; no brute-force vector exists on either. Same conclusion as session 8 v2 analysis. |
+| OAuth State on /api/auth/session (medium, low) | **FP** | Wrong endpoint — session getter, not OAuth authorization endpoint. Session 8 v2 analysis confirmed. |
+| Admin-like routes without auth (high, low) | **FP** | Low confidence. No concrete access demonstrated. |
+| Auth Cookie Missing HttpOnly (low, high) | **Informational** | `__Secure-next-auth.callback-url` — stores post-login redirect, not auth token. Session 8 v2 analysis confirmed. |
+
+### Kredivo (March 22, 2026) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+Never triaged. All findings on `blog.kredivo.com` (in scope per scope file).
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Exposed WordPress Login (/wp-login.php) (high, high) | **Informational** | WordPress admin login accessible by design on all WordPress installations. Without rate limit bypass proof or version-specific CVE, triagers auto-close as informational. Needs: WP version fingerprint + CVE check, or rate limit bypass demo. |
+| Missing CSP on blog.kredivo.com (high, high) | **FP** | WordPress marketing blog. No XSS found to chain with. Header-only findings on blog subdomains are auto-rejected. |
+| Cookie `_hcc` Missing HttpOnly/Secure (medium, high) | **Unclassified / Likely FP** | Purpose not confirmed from scan evidence. `_hcc` does not match any known HubSpot pattern (`hubspot*`, `__hs*`, `__hstc`, `__hssc`, `__hssrc`). May be a CDN/security cookie or WordPress plugin cookie. Set on the marketing blog, not the main app — no XSS to chain with. **Needs manual browser check** to identify the setter before closing. |
+
+### OpenProject v1 (March 22, 2026) — `scan-results/openproject/secbot-2026-03-22T12-38-03-985Z.json`
+
+Previously unreviewed. Session 8 covered the v2 scan.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Missing Rate Limiting on /login (medium, medium) | **FP** | Scanner sent 15 rapid requests (POST without credentials). Failed login without valid creds = no real brute-force test performed. Same GET/unauthenticated-probe FP as session 8 v2 analysis. |
+| Missing Rate Limiting on /api/v3/attachments/120892/content (medium, medium) | **Informational** | Public attachment download endpoint on community.openproject.org. 15 rapid GET requests got no 429. Attachments are publicly readable by design; rate limiting on a public file download is not a security finding. Informational at most. |
+| Missing SRI on External Scripts (medium, high) | **FP** | Third-party scripts (CDN-hosted). Standard FP. |
+
+### Honest Assessment (Oct 2026, Session 9)
+
+**Status unchanged from session 8: bounty readiness LOW.**
+
+No new scans have run in 6+ months. The stale Moneybird pending reports have been cleared (3 archived). The **Indeed CSRF draft** (`pending/2026-03-14-indeed-csrf-cookie-SUBMISSION.md`) remains the one live Tier 1 item awaiting manual verification. Zero injection findings across all scans; all other active findings are passive header/cookie issues.
+
+**The bottleneck is scan depth, not scan quality.** SecBot correctly identifies and rules out FPs. What it cannot do unauthenticated is reach the authenticated endpoints where real bugs live.
+
+### Next Steps (unchanged from Session 8)
+
+1. **Submit Indeed finding** — only credible pending submission. Needs Playwright browser reproduction.
+2. **OpenProject Docker test** — highest ROI. Authenticated scan against unpatched local instance.
+3. **Add neon.tech to hunt registry** — has active HackerOne program with real auth surface.
+4. **Authenticate Twitch** — unlock Tier 2 cookie findings.
+5. **Fix own app** — rate limiting + HSTS on finance.atmando.app.
