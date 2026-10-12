@@ -3,6 +3,10 @@
 # URL: https://yeswehack.com/programs/superbank-public-bug-bounty-program
 # Bounty: Low $150, Medium $400, High $1,000, Critical $2,000 (max reported $3,000)
 # Average payout: ~$831. Last updated: 2026-09-14. First response < 1 day.
+# ⚠️  DISABLED IN REGISTRY: Program rules explicitly prohibit automated scanners and tools
+#     that generate large amounts of traffic. SecBot's active scan (even stealth profile)
+#     qualifies as an automated scanner. Do NOT enable until a policy-compliant workflow
+#     is confirmed (e.g., manual-only mode, explicit written permission from Superbank).
 # Notes: Indonesian digital bank (Grab + OVO joint venture). API-heavy architecture.
 #        128 reports as of last check — relatively new, less competitive.
 #        Researchers who are current/former employees of Superbank, Grab, OVO, GxS, GxB

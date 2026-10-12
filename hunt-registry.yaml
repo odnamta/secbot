@@ -46,25 +46,25 @@
   scope_file: scopes/dana.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false  # DISABLED: program bans automated scanners — manual review required before enabling
 
 - name: superbank
   platform: yeswehack
   scope_file: scopes/superbank.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false  # DISABLED: program bans automated scanners — manual review required before enabling
 
 - name: ovo
   platform: yeswehack
   scope_file: scopes/ovo.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false  # DISABLED: program URL and scope unverified — confirm live program on YesWeHack before enabling
 
 - name: mattermost
   platform: bugcrowd
   scope_file: scopes/mattermost.txt
   profile: stealth
   schedule: weekly
-  enabled: true
+  enabled: false  # DISABLED: mattermost.com is out of scope; real targets are researcher-provisioned cloud instances SecBot cannot constrain
