@@ -1,0 +1,21 @@
+# Program: DANA Indonesia
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/dana-bug-bounty-program
+# Bounty: Low $300, Medium $300, High $1,000, Critical $3,000 (up to $5,000 for ATO / mass data extraction)
+# ⚠️  DISABLED IN REGISTRY: Program rules explicitly prohibit automated scanners and tools
+#     that generate substantial network traffic. SecBot's active scan (even in stealth profile)
+#     constitutes an automated vulnerability scanner. Do NOT enable in hunt-registry.yaml until
+#     manual verification confirms a policy-compliant workflow is in place.
+# Notes: Indonesian digital wallet (100M+ users). Web app + mobile in scope.
+#        OneFixOneReward rule: same codebase fix = one reward across paths.
+#        Must be first reporter. DoS strictly forbidden.
+#        Verify current scope on YesWeHack before each session — scope may change.
+
+In Scope
+m.dana.id
+mgs-gw.dana.id
+
+Out of Scope
+- Other *.dana.id not listed above
+- iOS/Android apps (SecBot is web-only)
+- Any action that could degrade service (DoS, mass data access)

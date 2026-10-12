@@ -1,0 +1,22 @@
+# Program: Mattermost
+# Platform: Bugcrowd
+# URL: https://bugcrowd.com/engagements/mattermost-mbb-public
+# Bounty: Paid (exact grid — check live program on Bugcrowd)
+# WARNING: DISABLED IN REGISTRY: mattermost.com (the main website) is explicitly OUT OF
+#          SCOPE per the Bugcrowd engagement. In-scope web targets are researcher-provisioned
+#          instances (bugcrowd-<your-own-instance>.cloud.mattermost.com) and the /apps/
+#          resource — neither of which SecBot can properly constrain to a single domain.
+#          Do NOT enable until a SecBot-compatible scope entry can be constructed.
+# Notes: Open-source team messaging (Node.js/React/Go). Recently migrated from HackerOne
+#        to Bugcrowd with 4 new targets added. Responds within 2 business days.
+#        Good candidate for manual testing: XSS, IDOR, broken access control, CSRF.
+
+In Scope
+# !! PLACEHOLDER — correct scope requires researcher-provisioned cloud instances !!
+# Do not add mattermost.com here — it is explicitly out of scope.
+# Format for researcher instance: bugcrowd-<your-instance>.cloud.mattermost.com
+
+Out of Scope
+- mattermost.com (main website — explicitly excluded by Bugcrowd engagement)
+- Self-hosted customer instances
+- Older unsupported versions

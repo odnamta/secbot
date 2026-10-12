@@ -1,0 +1,21 @@
+# Program: OVO Indonesia
+# Platform: YesWeHack
+# URL: UNVERIFIED — no live OVO program confirmed in current YesWeHack public catalog
+# Bounty: Historically up to $5,000 (critical) — exact grid unknown
+# WARNING: DISABLED IN REGISTRY: The OVO program URL and in-scope domain list could not
+#          be verified against the live YesWeHack program catalog. Do NOT enable for
+#          automated scanning until the live program page is confirmed and exact authorized
+#          domains are listed below. Scanning unverified domains = unauthorized testing.
+# Notes: Indonesian digital payments wallet (~200-500 employees). Previously on YesWeHack.
+#        Infrastructure on Google Cloud Platform. Related to Superbank (same OVO Group) —
+#        do not submit same vuln to both programs.
+
+In Scope
+# !! PLACEHOLDER — verify on YesWeHack before populating !!
+# Do not scan these until the live program page is confirmed.
+# ovo.id
+# my.ovo.id
+
+Out of Scope
+- iOS/Android apps (SecBot is web-only)
+- Internal/staging environments
