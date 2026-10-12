@@ -1,0 +1,18 @@
+# Program: Mattermost
+# Platform: Bugcrowd
+# URL: https://bugcrowd.com/mattermost (verify on Bugcrowd)
+# Bounty: Paid (exact grid — check live program on Bugcrowd)
+# Notes: Open-source team messaging (Node.js/React/Go). Recently migrated from
+#        HackerOne to Bugcrowd with 4 new targets added to scope.
+#        ~200-500 employees. Self-hosted + cloud (mattermost.com).
+#        Good fit for XSS, IDOR, broken access control, CORS, CSRF, rate-limit checks.
+#        Responds within 2 business days.
+
+In Scope
+# Verify exact scope on Bugcrowd after program migration.
+# Primary targets: mattermost.com app endpoints + API
+mattermost.com
+
+Out of Scope
+- Self-hosted customer instances (not Mattermost's infrastructure)
+- Older unsupported versions

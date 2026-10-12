@@ -1,6 +1,7 @@
-# SecBot Hunt Registry — Diagnostic Run #1
+# SecBot Hunt Registry
 # Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# Last updated: 2026-10-12 (Bounty Scout — added 4 new targets)
+# Purpose: Bounty hunt registry — carefully selected targets
 # Strategy: low competition + web app depth + SecBot strengths
 
 - name: kredivo
@@ -34,6 +35,36 @@
 - name: calcom
   platform: hackerone
   scope_file: scopes/calcom.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# --- Added 2026-10-12 by Bounty Scout ---
+
+- name: dana
+  platform: yeswehack
+  scope_file: scopes/dana.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: superbank
+  platform: yeswehack
+  scope_file: scopes/superbank.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: ovo
+  platform: yeswehack
+  scope_file: scopes/ovo.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: mattermost
+  platform: bugcrowd
+  scope_file: scopes/mattermost.txt
   profile: stealth
   schedule: weekly
   enabled: true
