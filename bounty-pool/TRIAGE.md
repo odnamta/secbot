@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-10-14 (Session 9)
 
 ## Submission Priority
 
@@ -7,6 +7,7 @@
 | # | Target | Finding | Severity | Notes |
 |---|--------|---------|----------|-------|
 | 1 | indeed.com | CSRF cookie missing Secure on login page | Medium | Inconsistency between CSRF and INDEED_CSRF_TOKEN strengthens report. **CAVEAT:** Cookie set via JS, not HTTP header — curl won't reproduce. Needs Playwright/browser to verify. Submission draft ready: `2026-03-14-indeed-csrf-cookie-SUBMISSION.md` |
+| 2 | moneybird.com | DOM XSS via URL fragment on homepage | High | DOM sink hit (NOT alert-confirmed): payload string reached `innerHTML` × 2 during Playwright crawl. JS execution not proven — browser may have blocked onerror or content may be encoded at sink boundary. CVSS 6.1. **Must verify in browser before submitting.** Draft: `pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md`. |
 
 ### TIER 2 — Hold (needs more work)
 
@@ -29,6 +30,30 @@ Moved to `bounty-pool/archived/`:
 |---|--------|---------|----------|-------|
 | A1 | finance.atmando.app | No rate limiting on /login and /graphql | HIGH | Brute-force risk on finance app. Add Cloudflare rate limiting + app-level throttle. |
 | A2 | finance.atmando.app | Missing HSTS header | MEDIUM | Middleware has HSTS configured but it's not appearing in response. Docker rebuild or middleware bug. |
+
+---
+
+---
+
+## Session 9 Analysis — Repo Audit (Triaged 2026-10-14)
+
+No new scans were run this session. Reviewed previously-collected scan results for findings missed in Session 8.
+
+### Moneybird (HackerOne) — Backlog Review
+
+Session 8 reported only "Missing CSP" and "Mixed Content" for moneybird. The scan JSON (`scan-results/moneybird/secbot-2026-03-22T12-37-45-339Z.json`) contains 5 interpreted findings that were not fully triaged. Retroactive analysis:
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| DOM XSS via URL fragment on www.moneybird.com | **TIER 1 — Browser verify required** | Detection method: `dom-sink`. Raw evidence: payload string appeared in two `innerHTML-set` sinks during Playwright crawl — this records DOM sink instrumentation hits, NOT confirmed alert() execution. AI validation was skipped. Corrected: CVSS changed from 7.4→6.1 (matches AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N), confidence downgraded from high to medium. Draft updated. Must open PoC URL in browser to confirm JS execution before submitting. |
+| Missing CSP on www.moneybird.com | **FP** | Marketing homepage, same as Session 8 assessment. Auto-rejected by triagers. Existing draft `09dd5267-missing-content-security-policy-header.md` should NOT be submitted. |
+| postMessage handlers missing origin validation | **FP** | Medium/medium confidence. Marketing page chat widget (Intercom/Drift pattern). Classic FP per CLAUDE.md. Existing draft `8c0823c1-postmessage-handlers-missing-origin-validation.md` should NOT be submitted. |
+
+### Kredivo (RedStorm) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| (0 findings) | **No action** | Scan returned 0 findings. No target `blog.kredivo.com` appears to be a low-feature blog subdomain. Unauthenticated scan. |
 
 ---
 
@@ -98,12 +123,13 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ## Next Steps (Priority Order)
 
-1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+1. **Verify Moneybird DOM XSS** — Open `https://www.moneybird.com/#<img src=x onerror=alert(document.domain)>` in browser. If alert fires, submit draft `pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` to HackerOne. **This is the highest-ROI immediate action.**
+2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
