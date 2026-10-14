@@ -1,8 +1,8 @@
 # DOM-Based Cross-Site Scripting (XSS) via URL Fragment
 
-**Severity:** high | **CVSS:** 7.4 | CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N
+**Severity:** high | **CVSS:** 6.1 | CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N
 **Platform:** HackerOne | **Program:** Moneybird
-**Confidence:** high (Playwright-verified: alert marker fired)
+**Confidence:** medium (DOM sink hit — JavaScript execution NOT yet confirmed; manual browser verification required)
 **CWE:** CWE-79 (Improper Neutralization of Input During Web Page Generation)
 **OWASP:** A03:2021 – Injection
 
@@ -10,7 +10,7 @@
 
 ## Description
 
-The marketing homepage (`www.moneybird.com`) reads the URL fragment (`window.location.hash`) and writes it to the DOM via `innerHTML` without sanitization. Automated Playwright testing confirmed JavaScript execution: an `alert("secbot-xss-37")` payload in the fragment fired during the scan, and the payload reached at least two separate `innerHTML` sinks on the page.
+The marketing homepage (`www.moneybird.com`) reads the URL fragment (`window.location.hash`) and writes it to the DOM via `innerHTML` without sanitization. Automated DOM sink instrumentation detected the payload string appearing in two separate `innerHTML` assignments during a Playwright crawl — indicating the page passes unsanitized fragment content to `innerHTML`. JavaScript execution has not yet been confirmed via alert dialog; manual browser verification is required before submission.
 
 An attacker can craft a malicious link and trick a Moneybird user into clicking it, executing arbitrary JavaScript in their browser session.
 
@@ -30,8 +30,9 @@ An attacker can craft a malicious link and trick a Moneybird user into clicking 
 
 **What SecBot detected (2026-03-22 scan):**
 - Playwright loaded the page with `#<img src=x onerror=alert("secbot-xss-37")>` in the fragment
-- The alert dialog fired, returning the marker `secbot-xss-37`
-- Two distinct innerHTML sinks processed the unencoded fragment value
+- DOM sink instrumentation recorded the payload string appearing in two `innerHTML` assignments (`innerHTML-set` × 2)
+- This indicates the fragment value reaches `innerHTML` without encoding, but does NOT confirm alert() execution — the browser may still have blocked the onerror handler or the content may be partially encoded at the sink boundary
+- **Manual browser test required to confirm actual JS execution before submitting**
 
 ## Impact
 

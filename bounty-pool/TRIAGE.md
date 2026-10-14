@@ -7,7 +7,7 @@
 | # | Target | Finding | Severity | Notes |
 |---|--------|---------|----------|-------|
 | 1 | indeed.com | CSRF cookie missing Secure on login page | Medium | Inconsistency between CSRF and INDEED_CSRF_TOKEN strengthens report. **CAVEAT:** Cookie set via JS, not HTTP header — curl won't reproduce. Needs Playwright/browser to verify. Submission draft ready: `2026-03-14-indeed-csrf-cookie-SUBMISSION.md` |
-| 2 | moneybird.com | DOM XSS via URL fragment on homepage | High | Playwright-verified: `alert("secbot-xss-37")` fired. Two distinct innerHTML sinks confirmed. Draft: `pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md`. **CAVEAT:** Fragment XSS requires manual browser verification (curl can't confirm). Open PoC URL in browser before submitting. Marketing homepage, not app.moneybird.com. |
+| 2 | moneybird.com | DOM XSS via URL fragment on homepage | High | DOM sink hit (NOT alert-confirmed): payload string reached `innerHTML` × 2 during Playwright crawl. JS execution not proven — browser may have blocked onerror or content may be encoded at sink boundary. CVSS 6.1. **Must verify in browser before submitting.** Draft: `pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md`. |
 
 ### TIER 2 — Hold (needs more work)
 
@@ -45,7 +45,7 @@ Session 8 reported only "Missing CSP" and "Mixed Content" for moneybird. The sca
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| DOM XSS via URL fragment on www.moneybird.com | **TIER 1 — Manual verify required** | Detection method: `dom-sink`. Playwright confirmed alert marker fired. Two innerHTML sinks. Not a known FP pattern (the CLAUDE.md FP for DOM XSS requires "input is sanitized/URL-encoded" — this was not sanitized). Draft updated and promoted to Tier 1. |
+| DOM XSS via URL fragment on www.moneybird.com | **TIER 1 — Browser verify required** | Detection method: `dom-sink`. Raw evidence: payload string appeared in two `innerHTML-set` sinks during Playwright crawl — this records DOM sink instrumentation hits, NOT confirmed alert() execution. AI validation was skipped. Corrected: CVSS changed from 7.4→6.1 (matches AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N), confidence downgraded from high to medium. Draft updated. Must open PoC URL in browser to confirm JS execution before submitting. |
 | Missing CSP on www.moneybird.com | **FP** | Marketing homepage, same as Session 8 assessment. Auto-rejected by triagers. Existing draft `09dd5267-missing-content-security-policy-header.md` should NOT be submitted. |
 | postMessage handlers missing origin validation | **FP** | Medium/medium confidence. Marketing page chat widget (Intercom/Drift pattern). Classic FP per CLAUDE.md. Existing draft `8c0823c1-postmessage-handlers-missing-origin-validation.md` should NOT be submitted. |
 
