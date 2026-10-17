@@ -92,7 +92,7 @@ Target: `blog.kredivo.com` (WordPress blog, in scope per `scopes/kredivo.txt`). 
 |---------|----------|---------|--------|
 | Exposed WordPress Login Page (/wp-login.php) Without Protection | High (CVSS 8.1) | **FP** | Standard WordPress behavior — `/wp-login.php` is publicly accessible on virtually all WordPress installs. This is a blog site, not the main fintech app. RedStorm triagers would reject as "by design" / informational. Not worth submitting. |
 | Missing Content-Security-Policy Header | High (CVSS 7.0) | **FP** | Marketing/blog site. Auto-rejected as informational. Same pattern as moneybird, konghq, cal.com marketing pages. |
-| Cookie `_hcc` Missing HttpOnly and Secure | Medium (CVSS 5.3) | **FP** | `_hcc` is a HubSpot Contact Cookie — a third-party marketing platform cookie. Classic FP pattern (third-party analytics/marketing cookie intentionally exposed to JS). Not an application auth cookie. |
+| Cookie `_hcc` Missing HttpOnly and Secure | Medium (CVSS 5.3) | **FP** | `_hcc` is an Automattic CDN anti-bot challenge cookie (`server-timing: a8c-cdn`, 30-second expiry, value encodes requester IP + timestamp). Issued only on the HTTP 403 WAF block; JS must read it to solve the challenge, so no HttpOnly is by design. Not an application auth cookie; not bounty-worthy. |
 
 **Kredivo scan summary: 0 submittable findings.** The scanner was probing a WordPress blog (not the main fintech app at `app.kredivo.com`). All findings are either standard WordPress/blog-site patterns or third-party CDN/analytics cookies. The main app and sandbox (`mysandbox.kredivo.com`) remain unscanned — those are the actual targets with bounty potential.
 
@@ -119,7 +119,7 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ## Next Steps (Priority Order)
 
-1. **Investigate scan gap** — No scans since March 2026 (7 months). Why isn't `secbot hunt` running? Check if the hunt agent cron is firing, if targets are blocking the scanner, or if there are auth/API key issues. This is the top priority.
+1. **Set up an external scan scheduler** — No scans since March 2026 (7 months). `schedule: weekly` in `hunt-registry.yaml` only gates the `isDue()` check inside `secbot hunt`; it does not self-schedule the command. There is no cron or GitHub Actions workflow running `secbot hunt`. Configure one: a GitHub Actions schedule (`cron: '0 1 * * 1'`) or a VPS cron that runs `npx secbot hunt --registry hunt-registry.yaml` weekly. This is the top priority.
 2. **Scan main Kredivo app** — `app.kredivo.com` and `mysandbox.kredivo.com` are the actual fintech targets. The scanner only hit the blog. Update the scope file or run a targeted scan: `npx secbot scan https://app.kredivo.com --profile stealth`.
 3. **Scan AnyTask** — Never been scanned. `anytask.com` is a freelancer marketplace (Bugcrowd, $250-$5,000). Run: `npx secbot scan https://anytask.com --profile stealth`.
 4. **Submit Indeed finding** — CSRF cookie inconsistency. Draft ready: `2026-03-14-indeed-csrf-cookie-SUBMISSION.md`. Needs Playwright browser verification (cookie is JS-set, curl won't reproduce). Pending Dio's decision.
