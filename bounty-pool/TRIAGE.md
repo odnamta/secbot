@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-10-17 (Session 9)
 
 ## Submission Priority
 
@@ -80,16 +80,37 @@ Also reviewed: moneybird (2026-03-22).
 
 ---
 
-## Honest Assessment (Jun 2026, Session 8)
+## Session 9 Analysis — March 2026 Kredivo Scan (Triaged 2026-10-17)
 
-**Bounty readiness: Still LOW.** Three more scans, same pattern:
-- 0 injection vulnerabilities found (XSS, SQLi, SSTI, SSRF, etc.)
+**Context:** No new scans have been run since March 2026. This session processes the previously unreviewed Kredivo scan (`scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`). Scan gap: 7 months (March → October 2026). AnyTask was in `hunt-registry.yaml` but has no scan results — was never scanned.
+
+### Kredivo (RedStorm) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+Target: `blog.kredivo.com` (WordPress blog, in scope per `scopes/kredivo.txt`). Scanner was partially WAF-blocked (root returns HTTP 403), 10 pages scanned.
+
+| Finding | Severity | Verdict | Reason |
+|---------|----------|---------|--------|
+| Exposed WordPress Login Page (/wp-login.php) Without Protection | High (CVSS 8.1) | **FP** | Standard WordPress behavior — `/wp-login.php` is publicly accessible on virtually all WordPress installs. This is a blog site, not the main fintech app. RedStorm triagers would reject as "by design" / informational. Not worth submitting. |
+| Missing Content-Security-Policy Header | High (CVSS 7.0) | **FP** | Marketing/blog site. Auto-rejected as informational. Same pattern as moneybird, konghq, cal.com marketing pages. |
+| Cookie `_hcc` Missing HttpOnly and Secure | Medium (CVSS 5.3) | **FP** | `_hcc` is a HubSpot Contact Cookie — a third-party marketing platform cookie. Classic FP pattern (third-party analytics/marketing cookie intentionally exposed to JS). Not an application auth cookie. |
+
+**Kredivo scan summary: 0 submittable findings.** The scanner was probing a WordPress blog (not the main fintech app at `app.kredivo.com`). All findings are either standard WordPress/blog-site patterns or third-party CDN/analytics cookies. The main app and sandbox (`mysandbox.kredivo.com`) remain unscanned — those are the actual targets with bounty potential.
+
+---
+
+## Honest Assessment (Oct 2026, Session 9)
+
+**Bounty readiness: Still LOW.** Seven months since last scan, same structural problem:
+- 0 injection vulnerabilities found across all scans (XSS, SQLi, SSTI, SSRF, RCE)
 - All "high/medium" findings are passive (headers, cookies) — none submittable
-- Rate limiting findings are all GET-probe FPs
-- Open redirect findings are same-org redirect FPs
-- No authenticated scanning performed on any target
+- Rate limiting findings continue to be GET-probe FPs (scanner probes page loads, not POST auth)
+- Open redirect findings continue to be same-org redirect FPs
+- No authenticated scanning performed on any target (ever)
+- AnyTask has never been scanned despite being in hunt-registry.yaml since March 2026
 
-**Root cause unchanged:** Unauthenticated scan + hardened targets = passive findings only.
+**Root cause unchanged:** Unauthenticated scan + hardened targets = passive findings only. The scan surface is the login page, not behind it.
+
+**7-month scan gap is the real problem.** The hunt agent hasn't run new scans since March 2026. Weekly scans are scheduled in the registry but not executing. This needs to be investigated.
 
 **Bright spot:** OpenProject CVE analysis (`OPENPROJECT-CVE-ANALYSIS.md`) documents 22 real CVEs
 with exact endpoints and payloads. The path forward is a local Docker test → authenticated scan.
@@ -98,12 +119,15 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ## Next Steps (Priority Order)
 
-1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+1. **Investigate scan gap** — No scans since March 2026 (7 months). Why isn't `secbot hunt` running? Check if the hunt agent cron is firing, if targets are blocking the scanner, or if there are auth/API key issues. This is the top priority.
+2. **Scan main Kredivo app** — `app.kredivo.com` and `mysandbox.kredivo.com` are the actual fintech targets. The scanner only hit the blog. Update the scope file or run a targeted scan: `npx secbot scan https://app.kredivo.com --profile stealth`.
+3. **Scan AnyTask** — Never been scanned. `anytask.com` is a freelancer marketplace (Bugcrowd, $250-$5,000). Run: `npx secbot scan https://anytask.com --profile stealth`.
+4. **Submit Indeed finding** — CSRF cookie inconsistency. Draft ready: `2026-03-14-indeed-csrf-cookie-SUBMISSION.md`. Needs Playwright browser verification (cookie is JS-set, curl won't reproduce). Pending Dio's decision.
+5. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+6. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. Highest-ROI path to real findings.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+7. **Add neon.tech to hunt registry** — Active HackerOne program. Auth scan on `console.neon.tech` could find IDOR/BAC in the API.
+8. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March 2026).
