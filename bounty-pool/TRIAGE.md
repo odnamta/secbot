@@ -108,7 +108,8 @@ Scanned `blog.kredivo.com` (in scope per `scopes/kredivo.txt`). Only 10 pages cr
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| Missing security headers (7 findings) | **FP** | All detected on pages returning HTTP 403 (bot protection active). Header analysis on blocked pages is meaningless — the real app is behind the WAF. |
+| Missing security headers (8 findings: 5 security-headers + 3 cross-origin-policy) | **FP** | All detected on pages returning HTTP 403 (bot protection active). Header analysis on blocked pages is meaningless — the real app is behind the WAF. |
+| HSTS not eligible for preload | **FP** | Informational TLS advisory. HSTS exists (`max-age=31536000`) but lacks `includeSubDomains`/`preload` directives. Not a vulnerability, auto-rejected as informational by triagers. |
 | `_hcc` cookie missing HttpOnly/Secure | **FP** | `_hcc` is a CDN anti-bot challenge cookie (base64-encoded session token from the CDN layer, not the app). Missing flags on CDN challenge tokens is expected and not exploitable. |
 | WordPress login `/wp-login.php` exposed (200) | **Informational** | `blog.kredivo.com` is a WordPress blog. wp-login.php being accessible is expected WordPress behavior, not a vulnerability. |
 | Rate limiting on `/wp-login.php` | **FP** | Scanner fires 15 GET requests at the login page. Rate limiting applies to POST credential submissions, not page-load GETs. Same GET-probe FP as all other rate-limit findings. |
@@ -121,42 +122,32 @@ Three report drafts in `bounty-pool/pending/moneybird/`. Status below.
 
 #### `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md`
 
-**Status: HOLD — needs manual browser verification before submission**
+**Status: FP — archived** (`bounty-pool/archived/moneybird/`)
 
-Scanner detected a potential DOM XSS on `www.moneybird.com` (marketing homepage):
-- Detection: Playwright `dom-sink` — payload `#<img src=x onerror=alert("secbot-xss-37")>` reached `innerHTML` sinks (detected twice)
-- Raw confidence: **medium** (Playwright auto-verify not triggered/confirmed)
-- Response status in evidence: `0` — suspicious; may indicate navigation abort or challenge page during crawl
+Confirmed false positive. `learning-data/outcomes.json` records this finding ID twice as `not-applicable`:
+- 2026-03-22: "DOM XSS FP: innerHTML sink exists but fragment value is URL-encoded by browser and not read unsafely into DOM"
+- 2026-03-26: "DOM XSS FP: innerHTML sink exists but browser URL-encodes fragment payload"
 
-**Issues with the current draft:**
-1. Draft claims confidence "high" but raw finding is "medium" — overstated
-2. Steps to Reproduce use `curl` which cannot execute JavaScript. Fragment-based DOM XSS is entirely client-side; curl cannot reproduce it. Triagers will immediately reject a report with a broken PoC.
-3. No screenshot of `alert()` firing
-4. Impact references session cookie theft — but `www.moneybird.com` (marketing) and `app.moneybird.com` (accounting) have separate cookie scopes; actual impact may be limited to marketing page context
-
-**Required before submission:** Manually navigate to `https://www.moneybird.com/#<img src=x onerror=alert("secbot-xss-37")>` in a real browser (not curl). If `alert()` fires, capture a screenshot, update PoC to browser-based steps, and correct the confidence to medium. Then eligible for HackerOne.
+The scanner detected the payload reaching an `innerHTML` sink, but the browser URL-encodes the `#` fragment before JavaScript reads it, so `<img src=x onerror=...>` is never interpreted as HTML. Not exploitable. Draft moved to `archived/moneybird/`.
 
 #### `8c0823c1-postmessage-handlers-missing-origin-validation.md`
 
-**Status: FP — archive this draft**
+**Status: FP — archived** (`bounty-pool/archived/moneybird/`)
 
-The handler code snippet reveals this is a mouse/event normalization polyfill, not an application message protocol:
-> `function(i){(i=i||window.event).pageX||i.pageY...`
-
-This is characteristic of third-party widget JavaScript (chat/analytics). postMessage listeners on the marketing homepage without origin checks match the known FP pattern (Intercom, Drift, Zendesk). Not exploitable, not submittable.
+Handler code snippet is a mouse/event normalization polyfill from a third-party widget, not an application message protocol. Also confirmed in `learning-data/outcomes.json` (2026-03-26, `not-applicable`: "no exploitable action confirmed in manual review"). Draft moved to `archived/moneybird/`.
 
 #### `09dd5267-missing-content-security-policy-header.md`
 
-**Status: FP — archive this draft**
+**Status: FP — archived** (`bounty-pool/archived/moneybird/`)
 
-Marketing homepage missing CSP. Already identified as FP in Session 8. Auto-rejected by HackerOne triagers. No action.
+Marketing homepage missing CSP. Already identified as FP in Session 8. Auto-rejected by HackerOne triagers. Draft moved to `archived/moneybird/`.
 
 ### Session 9 Summary
 
 - **New findings triaged:** 14 (Kredivo) + 3 pending Moneybird drafts
 - **True positives drafted:** 0
-- **Drafts archived as FP:** 2 (Moneybird postMessage, Moneybird missing CSP)
-- **Drafts held for verification:** 1 (Moneybird DOM XSS — needs browser PoC)
+- **Drafts archived as FP:** 3 (Moneybird DOM XSS confirmed by outcomes.json, postMessage, missing CSP) — all moved to `bounty-pool/archived/moneybird/`
+- **Drafts held for verification:** 0
 - **Bounty readiness:** unchanged (LOW)
 
 ---
