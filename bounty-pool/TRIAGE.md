@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-10-21 (Session 9)
 
 ## Submission Priority
 
@@ -80,7 +80,7 @@ Also reviewed: moneybird (2026-03-22).
 
 ---
 
-## Honest Assessment (Jun 2026, Session 8)
+## Honest Assessment (Oct 2026, Session 9)
 
 **Bounty readiness: Still LOW.** Three more scans, same pattern:
 - 0 injection vulnerabilities found (XSS, SQLi, SSTI, SSRF, etc.)
@@ -93,6 +93,62 @@ Also reviewed: moneybird (2026-03-22).
 
 **Bright spot:** OpenProject CVE analysis (`OPENPROJECT-CVE-ANALYSIS.md`) documents 22 real CVEs
 with exact endpoints and payloads. The path forward is a local Docker test → authenticated scan.
+
+---
+
+---
+
+## Session 9 Analysis — October 21, 2026 (Report Drafter Auto-Run)
+
+No new scan results since March 2026. This session reviews the Kredivo scan (never triaged) and triages the three pending Moneybird report drafts.
+
+### Kredivo (RedStorm) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+Scanned `blog.kredivo.com` (in scope per `scopes/kredivo.txt`). Only 10 pages crawled (stealth profile).
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Missing security headers (8 findings: 5 security-headers + 3 cross-origin-policy) | **FP** | All detected on pages returning HTTP 403 (bot protection active). Header analysis on blocked pages is meaningless — the real app is behind the WAF. |
+| HSTS not eligible for preload | **FP** | Informational TLS advisory. HSTS exists (`max-age=31536000`) but lacks `includeSubDomains`/`preload` directives. Not a vulnerability, auto-rejected as informational by triagers. |
+| `_hcc` cookie missing HttpOnly/Secure | **FP** | `_hcc` is a CDN anti-bot challenge cookie (base64-encoded session token from the CDN layer, not the app). Missing flags on CDN challenge tokens is expected and not exploitable. |
+| WordPress login `/wp-login.php` exposed (200) | **Informational** | `blog.kredivo.com` is a WordPress blog. wp-login.php being accessible is expected WordPress behavior, not a vulnerability. |
+| Rate limiting on `/wp-login.php` | **FP** | Scanner fires 15 GET requests at the login page. Rate limiting applies to POST credential submissions, not page-load GETs. Same GET-probe FP as all other rate-limit findings. |
+
+**Verdict:** 0 submittable findings. Blog subdomain fully hardened at CDN level during scan window.
+
+### Moneybird — Pending Report Draft Triage
+
+Three report drafts in `bounty-pool/pending/moneybird/`. Status below.
+
+#### `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md`
+
+**Status: FP — archived** (`bounty-pool/archived/moneybird/`)
+
+Confirmed false positive. `learning-data/outcomes.json` records this finding ID twice as `not-applicable`:
+- 2026-03-22: "DOM XSS FP: innerHTML sink exists but fragment value is URL-encoded by browser and not read unsafely into DOM"
+- 2026-03-26: "DOM XSS FP: innerHTML sink exists but browser URL-encodes fragment payload"
+
+The scanner detected the payload reaching an `innerHTML` sink, but the browser URL-encodes the `#` fragment before JavaScript reads it, so `<img src=x onerror=...>` is never interpreted as HTML. Not exploitable. Draft moved to `archived/moneybird/`.
+
+#### `8c0823c1-postmessage-handlers-missing-origin-validation.md`
+
+**Status: FP — archived** (`bounty-pool/archived/moneybird/`)
+
+Handler code snippet is a mouse/event normalization polyfill from a third-party widget, not an application message protocol. Also confirmed in `learning-data/outcomes.json` (2026-03-26, `not-applicable`: "no exploitable action confirmed in manual review"). Draft moved to `archived/moneybird/`.
+
+#### `09dd5267-missing-content-security-policy-header.md`
+
+**Status: FP — archived** (`bounty-pool/archived/moneybird/`)
+
+Marketing homepage missing CSP. Already identified as FP in Session 8. Auto-rejected by HackerOne triagers. Draft moved to `archived/moneybird/`.
+
+### Session 9 Summary
+
+- **New findings triaged:** 14 (Kredivo) + 3 pending Moneybird drafts
+- **True positives drafted:** 0
+- **Drafts archived as FP:** 3 (Moneybird DOM XSS confirmed by outcomes.json, postMessage, missing CSP) — all moved to `bounty-pool/archived/moneybird/`
+- **Drafts held for verification:** 0
+- **Bounty readiness:** unchanged (LOW)
 
 ---
 
