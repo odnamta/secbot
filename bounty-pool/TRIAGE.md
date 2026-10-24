@@ -7,7 +7,7 @@
 | # | Target | Finding | Severity | Notes |
 |---|--------|---------|----------|-------|
 | 1 | indeed.com | CSRF cookie missing Secure on login page | Medium | Inconsistency between CSRF and INDEED_CSRF_TOKEN strengthens report. **CAVEAT:** Cookie set via JS, not HTTP header — curl won't reproduce. Needs Playwright/browser to verify. Submission draft ready: `2026-03-14-indeed-csrf-cookie-SUBMISSION.md` |
-| 2 | kredivo (blog) | Unprotected WordPress admin login (/wp-login.php) — no IP restriction, no rate limiting | High | blog.kredivo.com is explicitly in-scope. Real finding, high confidence. Draft ready: `2026-10-24-kredivo-wordpress-admin-exposure.md`. **CAVEAT:** Programs sometimes rate WP login exposure as Medium or Informational — frame around brute-force + admin takeover risk. |
+| 2 | kredivo (blog) | Unprotected WordPress admin login (/wp-login.php) — no IP restriction | High | blog.kredivo.com is explicitly in-scope. Page accessibility confirmed (HIGH/HIGH). Draft ready: `2026-10-24-kredivo-wordpress-admin-exposure.md`. **CAVEAT:** Scan confirmed no IP restriction but did NOT test POST credential rate limiting (stealth profile, no login attempted). Manually run Step 3 in the draft before submitting to verify rate limiting is also absent. |
 
 ### TIER 2 — Hold (needs more work)
 
@@ -120,7 +120,7 @@ Three previously unprocessed scans from March 22 2026 (pre-Session 8): **kredivo
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| Exposed WordPress Login (/wp-login.php) — no IP restriction, no rate limiting | **DRAFT READY** | blog.kredivo.com is explicitly in-scope. Real endpoint, HTTP 200 + WP login form, HIGH/HIGH confidence. No login attempted. Brute-force + admin takeover risk. Draft: `2026-10-24-kredivo-wordpress-admin-exposure.md` |
+| Exposed WordPress Login (/wp-login.php) — publicly accessible, no IP restriction | **DRAFT READY** | blog.kredivo.com is explicitly in-scope. HTTP 200 + WP login form confirmed, HIGH/HIGH confidence. Scan only confirmed GET-reachability — rate limiting on POST credential submissions was NOT tested. Manual verification of Step 3 in draft required before submitting. Draft: `2026-10-24-kredivo-wordpress-admin-exposure.md` |
 | Missing Content-Security-Policy header | **FP** | Marketing/company blog. Header findings on blogs auto-rejected as informational by triagers. |
 | Cookie `_hcc` missing HttpOnly + Secure | **FP** | `_hcc` = HubSpot Click Count cookie (third-party analytics/marketing). Intentionally JS-accessible. Classic FP pattern. |
 

@@ -40,21 +40,33 @@ content-type: text/html; charset=UTF-8
 
 The page renders the WordPress login form with no IP check, no HTTP Basic Auth challenge, and no CAPTCHA.
 
-### Step 2 — Confirm no rate limiting is enforced
+### Step 2 — Confirm no IP restriction is in place
 
-Send 20 rapid POST requests simulating failed login attempts:
+The login page is reachable from any external IP with no HTTP Basic Auth, CAPTCHA, or challenge:
 
 ```bash
-for i in $(seq 1 20); do
-  curl -s -o /dev/null -w "%{http_code}\n" \
+# Confirm page loads with WordPress login form content from an external IP
+curl -s -L 'https://blog.kredivo.com/wp-login.php' | grep -i 'wp-submit\|wordpress\|log in'
+```
+
+**Expected:** Output contains WordPress login form markup. No 403 Forbidden, no HTTP Basic Auth prompt.
+
+### Step 3 — Manual verification recommended: test rate limiting on POST submissions
+
+The automated scan only confirmed GET-reachability of the page. A triager should manually verify whether credential-submission POST requests are rate-limited:
+
+```bash
+# Send a small number of failed POST login attempts and observe response codes
+for i in 1 2 3 4 5; do
+  curl -s -o /dev/null -w "Request $i: %{http_code}\n" \
     -X POST \
-    -d 'log=admin&pwd=wrongpassword&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1' \
+    -d 'log=testuser&pwd=wrongpassword123&wp-submit=Log+In&redirect_to=%2Fwp-admin%2F&testcookie=1' \
     -H 'Cookie: wordpress_test_cookie=WP+Cookie+check' \
     'https://blog.kredivo.com/wp-login.php'
 done
 ```
 
-**Expected (no rate limiting):** All 20 requests return HTTP 200 — no 429 Too Many Requests, no lockout, no Retry-After header. An attacker can send thousands of credential guesses per minute without triggering any defensive response.
+If all return HTTP 200 with no `Retry-After` or `X-RateLimit-*` headers, rate limiting is absent — which would strengthen the report to a stronger High. If a WAF (Cloudflare, etc.) is silently throttling at the infrastructure level, severity may be downgraded to Medium.
 
 ### Step 3 — Observe the attack surface
 
@@ -118,5 +130,6 @@ Create a Firewall Rule:
 
 - `blog.kredivo.com` is explicitly listed as in-scope in the Kredivo RedStorm program.
 - The finding is a real exposure, not a scanner artifact — the page returns HTTP 200 with the full WordPress login form.
-- No actual login was attempted during the scan (stealth profile, passive discovery only).
+- No actual login was attempted during the scan (stealth profile, passive discovery only). Rate limiting was **not tested** — the scan only confirmed the page is publicly accessible with no IP restriction.
+- **Before submitting:** Run Step 3 manually to verify whether POST submissions are also unthrottled. If rate limiting is absent: submit as High. If WAF silently throttles: downgrade to Medium ("exposed admin surface, no IP restriction").
 - The CVSS score of 7.5 reflects the High complexity (AC:H) since successfully exploiting this still requires guessing valid credentials. If credential stuffing lists are used or WordPress credentials are reused, AC could be argued as Low (score → 9.8 Critical).
