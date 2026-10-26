@@ -1,7 +1,7 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
-# Strategy: low competition + web app depth + SecBot strengths
+# SecBot Hunt Registry
+# Created: 2026-03-22  |  Last updated: 2026-10-26 (Bounty Scout run)
+# Purpose: Active bounty targets — web app depth + SecBot strengths
+# Strategy: low competition + scanner-friendly programs + Indonesian/SEA priority
 
 - name: kredivo
   platform: other
@@ -34,6 +34,29 @@
 - name: calcom
   platform: hackerone
   scope_file: scopes/calcom.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+# --- Added 2026-10-26 by Bounty Scout ---
+
+- name: neon
+  platform: hackerone
+  scope_file: scopes/neon.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: plane
+  platform: other
+  scope_file: scopes/plane.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: ovo
+  platform: other
+  scope_file: scopes/ovo.txt
   profile: stealth
   schedule: weekly
   enabled: true
