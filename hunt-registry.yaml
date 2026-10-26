@@ -40,7 +40,7 @@
 
 # --- Added 2026-10-26 by Bounty Scout ---
 
-- name: neon
+- name: neon_bbp
   platform: hackerone
   scope_file: scopes/neon.txt
   profile: stealth

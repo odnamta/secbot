@@ -12,6 +12,7 @@
 # Best SecBot checks: auth-bypass, IDOR, XSS, CORS, info-disclosure, broken-access-control
 
 In Scope
+ovo.id
 *.ovo.id
 
 Out of Scope
