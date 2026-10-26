@@ -1,0 +1,24 @@
+# Program: OVO Indonesia
+# Platform: Self-hosted (bugbounty.ovo.id)
+# Bounty: OVO Points credited to researcher's OVO Wallet (variable by impact/severity)
+#         High-impact vulnerabilities (user data leakage etc.) earn relatively high rewards.
+#         Low-impact issues earn little to nothing.
+# Notes: Major Indonesian e-wallet/fintech (backed by Grab + Tokopedia). Scope includes
+#        external-facing web assets. Rewards in OVO Points — requires a registered OVO account.
+#        No explicit automated scanner ban confirmed in policy.
+#        Check bugbounty.ovo.id for current scope details before each scan.
+# Company size: ~2,000 employees (large, but high-value Indonesian target)
+# Tech stack: Unknown (likely Node.js/Java backend)
+# Best SecBot checks: auth-bypass, IDOR, XSS, CORS, info-disclosure, broken-access-control
+
+In Scope
+ovo.id
+*.ovo.id
+
+Out of Scope
+- Mobile-app-only issues (iOS/Android native)
+- Third-party services / payment processors
+- Social engineering, phishing
+- DoS / DDoS attacks
+- Fraud-related reports (separate fraud channel: fraud@ovo.id)
+- Former/current OVO employees and contractors

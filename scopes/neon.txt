@@ -1,0 +1,22 @@
+# Program: Neon (neon.com)
+# Platform: HackerOne (hackerone.com/neon_bbp)
+# Bounty: $150 (low) – $3,000 (critical), discretionary by severity+creativity
+# Notes: Serverless Postgres platform, Next.js web console. Acquired by Databricks (Oct 2025)
+#        but maintains a separate HackerOne program. No explicit automated scanner ban found.
+#        Priority areas: authentication, data protection, API security, privilege escalation.
+# Company size: ~200 employees
+# Tech stack: Node.js, Next.js, PostgreSQL API
+# Best SecBot checks: SQLi, auth-bypass, CORS, IDOR, JWT, rate-limit, info-disclosure, broken-access-control
+
+In Scope
+console.neon.tech
+api.neon.tech
+neon.com
+
+Out of Scope
+- Social engineering / phishing attacks
+- Physical security attacks
+- DoS / DDoS attacks
+- Spam / SEO manipulation
+- Scanner-only findings without demonstrated exploitability
+- Third-party services and libraries not within Neon's control

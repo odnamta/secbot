@@ -1,0 +1,19 @@
+# Program: Plane (plane.com)
+# Platform: Self-hosted — report to security@plane.com
+# Bounty: Discretionary; medium+ severity rewarded. Low severity currently not paid.
+# Notes: Open-source project management SaaS (Django + Next.js). Cloud product at app.plane.so.
+#        Multiple high/critical CVEs published in 2026 (stored XSS, SSRF, access-control, IDOR).
+#        No explicit automated scanner ban in disclosed policy.
+#        Response SLA: 3 business days initial reply, 90 days fix for critical.
+# Company size: ~100 employees (makeplane Inc.)
+# Tech stack: Django (Python), Next.js, PostgreSQL
+# Best SecBot checks: XSS, SSRF, broken-access-control, IDOR, SQLi, info-disclosure, CSRF
+
+In Scope
+app.plane.so
+
+Out of Scope
+- Low-severity issues (no monetary reward currently)
+- Issues already reported or fixed in the latest release
+- Issues in self-hosted deployments (cloud product only for bounty)
+- Physical attacks, social engineering, DoS
