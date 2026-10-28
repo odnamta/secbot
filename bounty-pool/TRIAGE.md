@@ -95,11 +95,11 @@ Target: `blog.kredivo.com` — this is the **marketing blog subdomain**, not the
 |---------|---------|--------|
 | Missing CSP on blog.kredivo.com | **FP** | Marketing blog. Auto-rejected by triagers. |
 | Cookie `_hcc` missing HttpOnly + Secure | **FP** | `_hcc` is the HubSpot Contact Cookie — a first-party analytics/marketing cookie. Intentionally JS-accessible for CRM tracking. Classic known FP pattern. |
-| WordPress login /wp-login.php exposed (CVSS 8.1) | **FP** | `blog.kredivo.com` is a WordPress blog. /wp-login.php is publicly accessible by default in WordPress — this is expected behavior, not a vulnerability. Additionally, blog subdomains are almost always out of scope for financial app bounty programs. |
+| WordPress login /wp-login.php exposed (CVSS 8.1) | **FP** | `blog.kredivo.com` is a WordPress blog. /wp-login.php is publicly accessible by default in WordPress — this is expected default behavior, not a vulnerability. No evidence of a real exploit path (no credential stuffing success, no unauthenticated admin access). |
 | Rate limiting on /login GET (medium/high) | **FP** | Scanner fires 15 GET requests at page-load endpoint. Rate limiting applies to POST auth submissions, not page loads. Same FP pattern seen on cal.com, OpenProject. |
 | Missing headers (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, etc.) | **FP** | Marketing blog, all low severity. Auto-rejected. |
 
-**Verdict: 0 actionable findings.** blog.kredivo.com is a marketing blog and almost certainly out of scope for the Kredivo RedStorm program (which targets the financial app). Recommend scoping next kredivo scan to `app.kredivo.com` or API endpoints.
+**Verdict: 0 actionable findings.** All findings are FP based on detection quality — the scanner probed a marketing WordPress blog and found only analytics cookies, default WP behavior, and GET-probe rate limit FPs. Note: `blog.kredivo.com` IS in scope per `scopes/kredivo.txt`; the FP verdicts are based on finding quality, not scope exclusion. Recommend adding `app.kredivo.com` and `mysandbox.kredivo.com` to the next scan for more meaningful attack surface.
 
 ### Moneybird Pending Drafts Review — `pending/moneybird/`
 
@@ -127,7 +127,7 @@ Three draft files were created by a previous agent run but were not in TRIAGE.md
 **Bounty readiness: Still LOW with one exception.**
 
 New session cleared the kredivo and moneybird backlogs. Result:
-- Kredivo blog: 0 actionable findings. Wrong target — blog subdomain is out of scope.
+- Kredivo blog: 0 actionable findings. All FP based on detection quality (analytics cookies, default WP behavior, GET-probe rate limits). blog.kredivo.com is in scope per `scopes/kredivo.txt` but offers low attack surface vs. `app.kredivo.com`.
 - Moneybird: 1 HOLD (DOM XSS, needs browser verify). If confirmed, this would be the first real injection finding from any scan.
 
 **The DOM XSS on moneybird.com is the single highest-priority item.** It has:
@@ -166,7 +166,7 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-5. **Scope Kredivo scan correctly** — Rescan `app.kredivo.com` or API endpoints (not blog subdomain). blog.kredivo.com is almost certainly out of scope.
+5. **Broaden Kredivo scan surface** — blog.kredivo.com is in scope but low-value (marketing blog, WP default behavior). Add `app.kredivo.com` and `mysandbox.kredivo.com` (both in `scopes/kredivo.txt`) to the next scan — these offer real auth and API attack surface.
 6. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
 7. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
 8. **Clean up FP drafts** — Move `pending/moneybird/09dd5267-missing-content-security-policy-header.md` and `pending/moneybird/8c0823c1-postmessage-handlers-missing-origin-validation.md` to `bounty-pool/archived/`.
