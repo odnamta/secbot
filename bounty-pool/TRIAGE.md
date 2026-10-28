@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-10-28 (Session 9)
 
 ## Submission Priority
 
@@ -15,6 +15,7 @@
 | 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
+| 5 | moneybird.com | DOM XSS via URL Fragment on homepage | High | Scanner found 2 `innerHTML-set` sinks triggered by `#<img src=x onerror=alert("secbot-xss-37")>`. Evidence is stronger than most (two confirmed sink hits). Draft ready: `bounty-pool/pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md`. **ACTION NEEDED:** Open `https://www.moneybird.com/#<img src=x onerror=alert("secbot-xss-37")>` in a browser and confirm alert fires. If confirmed, this is submittable to HackerOne for ~$200-500. |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -80,6 +81,65 @@ Also reviewed: moneybird (2026-03-22).
 
 ---
 
+---
+
+## Session 9 Analysis — October 28, 2026
+
+Two backlogs cleared: **kredivo** (blog.kredivo.com, 2026-03-22 scan) and **moneybird pending drafts** (3 draft files in `pending/moneybird/`).
+
+### Kredivo (RedStorm) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+Target: `blog.kredivo.com` — this is the **marketing blog subdomain**, not the main Kredivo financial app.
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Missing CSP on blog.kredivo.com | **FP** | Marketing blog. Auto-rejected by triagers. |
+| Cookie `_hcc` missing HttpOnly + Secure | **FP** | `_hcc` is the HubSpot Contact Cookie — a first-party analytics/marketing cookie. Intentionally JS-accessible for CRM tracking. Classic known FP pattern. |
+| WordPress login /wp-login.php exposed (CVSS 8.1) | **FP** | `blog.kredivo.com` is a WordPress blog. /wp-login.php is publicly accessible by default in WordPress — this is expected default behavior, not a vulnerability. No evidence of a real exploit path (no credential stuffing success, no unauthenticated admin access). |
+| Rate limiting on /login GET (medium/high) | **FP** | Scanner fires 15 GET requests at page-load endpoint. Rate limiting applies to POST auth submissions, not page loads. Same FP pattern seen on cal.com, OpenProject. |
+| Missing headers (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, etc.) | **FP** | Marketing blog, all low severity. Auto-rejected. |
+
+**Verdict: 0 actionable findings.** All findings are FP based on detection quality — the scanner probed a marketing WordPress blog and found only analytics cookies, default WP behavior, and GET-probe rate limit FPs. Note: `blog.kredivo.com` IS in scope per `scopes/kredivo.txt`; the FP verdicts are based on finding quality, not scope exclusion. Recommend adding `app.kredivo.com` and `mysandbox.kredivo.com` to the next scan for more meaningful attack surface.
+
+### Moneybird Pending Drafts Review — `pending/moneybird/`
+
+Three draft files were created by a previous agent run but were not in TRIAGE.md. Assessed below:
+
+| Draft File | Finding | Verdict | Reason |
+|------------|---------|---------|--------|
+| `09dd5267-missing-content-security-policy-header.md` | Missing CSP | **FP** | Marketing homepage. Consistent with Session 8 triage. Auto-rejected. Draft should be moved to archived or deleted. |
+| `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` | DOM XSS via URL Fragment | **HOLD** | Raw scan evidence shows 2 `innerHTML-set` sinks confirmed: `Sinks: innerHTML-set, innerHTML-set`. Stronger signal than typical scanner XSS claims. **Requires browser verification before submit.** See Tier 2 entry #5 above. |
+| `8c0823c1-postmessage-handlers-missing-origin-validation.md` | postMessage without origin check | **FP** | Handler snippet reveals this is a mouse/scroll tracking analytics handler (`function(i){(i=i||window.event).pageX||i.pageY...`), repurposed as a postMessage listener by a third-party analytics library. Not a real message-processing handler. Matches known FP pattern for Intercom/Drift/analytics widgets. Draft should be moved to archived or deleted. |
+
+### Moneybird Additional Raw Findings (from scan, not in drafted files)
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Open Redirects on /login via url/redirect/next/return/returnTo/redirect_uri/goto/dest | **FP** | All 8 redirect findings show `Location: https://moneybird.com/login?param=...` — redirect target is moneybird.com (same org), NOT the evil.example.com payload. Identical FP pattern to neon.tech. |
+| Mixed Content (80+ findings, same-domain http:// hrefs) | **Informational** | Consistent with Session 8 finding. Same-org HTTP hrefs auto-upgraded by HSTS. Not submittable. |
+| Missing SRI (Google Tag Manager scripts) | **FP** | GTM/analytics CDN. SRI not applicable for auto-updating tag manager scripts. |
+| Race Condition on /features/bookkeeping/ GET | **FP** | AI validator correctly identified this as FP in interpreted findings ("False Positive: Race Condition Finding on Static GET Endpoint"). |
+
+---
+
+## Honest Assessment (Oct 2026, Session 9)
+
+**Bounty readiness: Still LOW with one exception.**
+
+New session cleared the kredivo and moneybird backlogs. Result:
+- Kredivo blog: 0 actionable findings. All FP based on detection quality (analytics cookies, default WP behavior, GET-probe rate limits). blog.kredivo.com is in scope per `scopes/kredivo.txt` but offers low attack surface vs. `app.kredivo.com`.
+- Moneybird: 1 HOLD (DOM XSS, needs browser verify). If confirmed, this would be the first real injection finding from any scan.
+
+**The DOM XSS on moneybird.com is the single highest-priority item.** It has:
+- Two confirmed innerHTML sinks in raw evidence (not just "sink detected")
+- High confidence from AI validator
+- Draft report already written (`pending/moneybird/6d09cce8...`)
+- Plausible surface: marketing homepage reading URL fragment (common for SPA navigation)
+
+The cursor hasn't moved on authenticated scanning. The OpenProject Docker test and Twitch auth scan remain the highest-ROI next steps after verifying the moneybird XSS.
+
+---
+
 ## Honest Assessment (Jun 2026, Session 8)
 
 **Bounty readiness: Still LOW.** Three more scans, same pattern:
@@ -98,12 +158,15 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ## Next Steps (Priority Order)
 
-1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+1. **[NEW] Verify Moneybird DOM XSS** — Open `https://www.moneybird.com/#<img src=x onerror=alert("secbot-xss-37")>` in a browser. If alert fires, submit the draft in `pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` to Moneybird's HackerOne program. Estimated bounty: $200-500 for medium/high XSS on marketing page.
+2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+5. **Broaden Kredivo scan surface** — blog.kredivo.com is in scope but low-value (marketing blog, WP default behavior). Add `app.kredivo.com` and `mysandbox.kredivo.com` (both in `scopes/kredivo.txt`) to the next scan — these offer real auth and API attack surface.
+6. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+7. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+8. **Clean up FP drafts** — Move `pending/moneybird/09dd5267-missing-content-security-policy-header.md` and `pending/moneybird/8c0823c1-postmessage-handlers-missing-origin-validation.md` to `bounty-pool/archived/`.
