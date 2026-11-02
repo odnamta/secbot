@@ -1,0 +1,14 @@
+# Program: Kiteworks
+# Platform: YesWeHack (yeswehack.com/programs/kiteworks-public-bug-bounty-program-1)
+# Bounty: $250 - $25,000+ (Bugcrowd reference) + $25,000 bonus for single-tenant RCE scenario
+# Notes: US enterprise content firewall/collaboration platform. NEW program launched Sept 2026
+#        (less competition). Dedicated sandbox test instance provided — ideal for automated testing.
+#        Team focuses on HIGH and CRITICAL findings. Web app OS and platform are one and the same.
+#        Note: Separate older Bugcrowd program also exists ($250-$25,000 range confirmed there).
+
+In Scope
+ywh-kw-public.bounty.kiteworks.dev
+
+Out of Scope
+- DoS attacks or interfering with out-of-scope equipment
+- Out-of-scope hosts/instances

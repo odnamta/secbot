@@ -1,0 +1,18 @@
+# Program: DANA
+# Platform: YesWeHack (yeswehack.com/programs/dana-bug-bounty-program)
+# Bounty: Low $0, Medium $200, High $750, Critical $3,000
+# Notes: Indonesian digital wallet (~500M+ users). Public program, updated Sept 2026.
+#        Web app + API in scope. Verify exact domain list on YesWeHack before scanning.
+#        Larger/more competitive program — focus on SecBot's unique check types.
+#        Check automated-tool policy before scanning.
+
+In Scope
+my.dana.id
+*.dana.id
+
+Out of Scope
+- Exposed credentials only valid if the source/impact is within scope
+- Stolen credentials from unidentified sources
+- Exposed GitHub/GitLab instances with no direct relation to program scope
+- Social engineering, phishing
+- DoS/DDoS
