@@ -7,8 +7,8 @@
 #        Check automated-tool policy before scanning.
 
 In Scope
-*.dana.id
 my.dana.id
+*.dana.id
 
 Out of Scope
 - Exposed credentials only valid if the source/impact is within scope
