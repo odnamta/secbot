@@ -1,0 +1,18 @@
+# Program: Superbank
+# Platform: YesWeHack (yeswehack.com/programs/superbank-public-bug-bounty-program)
+# Bounty: Low $150, Medium $1,000, High $3,000, Critical $6,000
+# Notes: Indonesian digital bank backed by Grab/OVO/GxS. Small-medium company, public program.
+#        Verify domain list on YesWeHack before scanning — 6 assets listed.
+#        Note: Current/former Grab, OVO, GxS, GxB employees/contractors ineligible.
+#        Program explicitly prohibits DoS. Check automated-tool policy before scanning.
+
+In Scope
+www.superbank.id
+*.superbank.id
+*.super-id.net
+
+Out of Scope
+- DoS/DDoS testing strictly prohibited
+- Physical security attacks
+- Social engineering
+- Testing on production data (use test accounts)
