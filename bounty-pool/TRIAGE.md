@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-11-04 (Session 9)
 
 ## Submission Priority
 
@@ -15,6 +15,7 @@
 | 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
+| 5 | kredivo (blog) | Exposed /wp-login.php without brute-force protection | Medium–High | `blog.kredivo.com` (in-scope). wp-login.php returns HTTP 200 while CDN blocks other paths at 403 — WAF bypass. 15 rapid login requests, no rate-limit headers. Draft: `2026-11-04-kredivo-wordpress-login-exposed.md`. **VERIFY:** Browser-confirm 200 + test POST rate limiting before submitting. |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -96,14 +97,37 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ---
 
+## Session 9 Analysis — November 4, 2026 (Triaged 2026-11-04)
+
+Previously untriaged: **kredivo** (blog.kredivo.com, 2026-03-22) and **openproject v1** (community.openproject.org, 2026-03-22).
+
+### Kredivo Blog (RedStorm) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Exposed `/wp-login.php` + no rate limiting | **HOLD (Tier 2)** | `blog.kredivo.com` is explicitly in scope. wp-login.php returns HTTP 200 while CDN blocks other paths at HTTP 403 — WAF bypass behavior. 15 rapid requests showed zero rate-limit headers. This is a legitimate brute-force risk. Draft written: `2026-11-04-kredivo-wordpress-login-exposed.md`. Needs browser verification before submitting to RedStorm. |
+| Missing CSP on blog.kredivo.com | **FP** | Marketing/blog site, main page returns 403 from CDN anyway. Auto-rejected by triagers. |
+| Cookie `_hcc` missing HttpOnly/Secure | **FP** | Automattic CDN/WAF tracking cookie (server-timing: `a8c-cdn`). Not a user session token. Classic FP — third-party CDN fingerprint cookie. |
+| Missing X-Frame-Options | **FP** | Low severity on a blog. Not standalone submittable. |
+
+### OpenProject v1 (YesWeHack) — `scan-results/openproject/secbot-2026-03-22T12-38-03-985Z.json`
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Rate limiting on GET /login, /login?back_url=..., /login?layout=1 | **FP** | Same GET-probe FP as v2 scan (session 8). Not a real rate-limit finding. |
+| Missing SRI on external scripts | **FP** | OpenProject is MIT open source. The finding is consistent with v2 scan (session 8), already triaged. |
+
+---
+
 ## Next Steps (Priority Order)
 
-1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+1. **Verify kredivo WordPress finding** — Browser-confirm `/wp-login.php` returns 200, test POST rate limiting, then submit to RedStorm (Medium, ~Rp 500,000).
+2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
