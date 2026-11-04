@@ -66,16 +66,15 @@ Expected: No rate-limit headers present.
 
 ## Evidence (from automated scan 2026-03-22)
 
-SecBot sent 15 rapid requests to `/login` endpoint — all returned HTTP 200 with no rate-limit
-headers:
-- No `X-RateLimit-Limit`, `X-RateLimit-Remaining`, or `X-RateLimit-Reset`
-- No `Retry-After`
-- No HTTP 429 responses
-- WordPress login page confirmed: `<title>Log In ‹ Kredivo — WordPress</title>`
+**Confirmed — CDN bypass (wp-login.php accessible):**
+- WordPress login page confirmed accessible: `<title>Log In ‹ Kredivo — WordPress</title>`
+- `GET /wp-login.php` → HTTP 200, body length 9360 bytes
+- Main CDN layer returns HTTP 403 for scanner IPs on other paths — `/wp-login.php` bypasses this protection
 
-The main CDN layer returns HTTP 403 for scanner IPs on other paths, but `/wp-login.php`
-returns HTTP 200 directly — indicating the WAF/CDN rule does not cover the WordPress
-login endpoint.
+**Untested — POST authentication rate limiting:**
+- Scan's rate-limit finding used `GET /login` (page-load probe), not `POST /wp-login.php`
+- GET probes showed no rate-limit headers, but this does not confirm POST auth throttling is absent
+- **This must be verified manually before submitting** (see verification checklist above)
 
 ---
 

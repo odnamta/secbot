@@ -15,7 +15,7 @@
 | 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
-| 5 | kredivo (blog) | Exposed /wp-login.php without brute-force protection | Medium–High | `blog.kredivo.com` (in-scope). wp-login.php returns HTTP 200 while CDN blocks other paths at 403 — WAF bypass. 15 rapid login requests, no rate-limit headers. Draft: `2026-11-04-kredivo-wordpress-login-exposed.md`. **VERIFY:** Browser-confirm 200 + test POST rate limiting before submitting. |
+| 5 | kredivo (blog) | Exposed /wp-login.php (CDN bypass) | Medium | `blog.kredivo.com` (in-scope). wp-login.php returns HTTP 200 (real login form confirmed in HTML) while CDN blocks other paths at 403. **Note:** rate-limit evidence was GET probes on `/login` — POST auth throttling on `/wp-login.php` is untested. Draft: `2026-11-04-kredivo-wordpress-login-exposed.md`. **VERIFY:** Browser-confirm 200 + test POST rate limiting before submitting. |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -105,7 +105,7 @@ Previously untriaged: **kredivo** (blog.kredivo.com, 2026-03-22) and **openproje
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| Exposed `/wp-login.php` + no rate limiting | **HOLD (Tier 2)** | `blog.kredivo.com` is explicitly in scope. wp-login.php returns HTTP 200 while CDN blocks other paths at HTTP 403 — WAF bypass behavior. 15 rapid requests showed zero rate-limit headers. This is a legitimate brute-force risk. Draft written: `2026-11-04-kredivo-wordpress-login-exposed.md`. Needs browser verification before submitting to RedStorm. |
+| Exposed `/wp-login.php` (CDN bypass) | **HOLD (Tier 2)** | `blog.kredivo.com` is in scope. wp-login.php returns HTTP 200 (real WordPress login form in HTML response) while CDN blocks other paths at HTTP 403. **Caveat:** the scan's rate-limit evidence is from `GET /login` (a page-load probe), not `POST /wp-login.php` — POST auth throttling is untested. The CDN bypass finding is confirmed; brute-force risk needs manual POST verification. Draft: `2026-11-04-kredivo-wordpress-login-exposed.md`. |
 | Missing CSP on blog.kredivo.com | **FP** | Marketing/blog site, main page returns 403 from CDN anyway. Auto-rejected by triagers. |
 | Cookie `_hcc` missing HttpOnly/Secure | **FP** | Automattic CDN/WAF tracking cookie (server-timing: `a8c-cdn`). Not a user session token. Classic FP — third-party CDN fingerprint cookie. |
 | Missing X-Frame-Options | **FP** | Low severity on a blog. Not standalone submittable. |
@@ -121,7 +121,7 @@ Previously untriaged: **kredivo** (blog.kredivo.com, 2026-03-22) and **openproje
 
 ## Next Steps (Priority Order)
 
-1. **Verify kredivo WordPress finding** — Browser-confirm `/wp-login.php` returns 200, test POST rate limiting, then submit to RedStorm (Medium, ~Rp 500,000).
+1. **Verify kredivo WordPress finding** — (a) Browser-confirm `/wp-login.php` returns HTTP 200 for real users. (b) Test POST rate limiting: send 15+ `POST /wp-login.php` with invalid creds, confirm no lockout or 429. (c) If both confirmed, submit to RedStorm as Medium (~Rp 500,000). Note: scan's GET-probe rate-limit evidence is from `/login`, not `/wp-login.php` — POST throttling is untested.
 2. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
 3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
 4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
