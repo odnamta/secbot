@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-11-07 (Session 9)
 
 ## Submission Priority
 
@@ -15,6 +15,7 @@
 | 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
+| 5 | kredivo (blog.kredivo.com) | Exposed WordPress Login Page (/wp-login.php) Without Protection | High | blog.kredivo.com is in scope (RedStorm). wp-login.php returns HTTP 200. Combined with no rate limiting. **CAVEAT:** Scanner only tested GET requests — no POST brute-force attempt made, so rate limiting on auth submissions is unconfirmed. Need to test POST /wp-login.php with 20+ rapid requests to confirm lockout is absent. If confirmed, may be submittable as "no brute-force protection on WordPress login." |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -96,14 +97,46 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ---
 
+## Session 9 Analysis — November 7, 2026
+
+**Scan reviewed:** Kredivo `blog.kredivo.com` (2026-03-22) — was missed in Session 8.
+**Pending files audited:** 3 moneybird draft reports in `bounty-pool/pending/moneybird/`.
+
+### Kredivo (RedStorm) — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json`
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Exposed WordPress Login Page `/wp-login.php` | **HOLD** | blog.kredivo.com is in scope. wp-login.php is accessible (HTTP 200). But scanner only made GET requests — no POST brute-force test performed. Cannot confirm rate limiting is absent for auth submissions. Need: 20+ rapid POST requests to `/wp-login.php` to confirm no lockout. If confirmed, submittable as "no brute-force protection on WP login" (High, Rp 1.5M). Moved to Tier 2 (#5). |
+| Missing CSP on blog.kredivo.com | **FP** | Blog domain. Missing CSP on marketing/blog sites is auto-rejected as informational. |
+| `_hcc` cookie missing HttpOnly/Secure | **FP** | `_hcc` is a HubSpot click-tracking/contact cookie. Classic third-party marketing cookie FP — intentionally JS-accessible for analytics. |
+
+### Moneybird Pending Files Audit
+
+| File | Verdict | Reason |
+|------|---------|--------|
+| `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` | **FP — Archive** | DOM XSS on marketing homepage via URL fragment. Git history shows this was filed during a "DOM XSS FP fix" commit (cycle 18) — the scanner was updated to avoid this exact FP class. No DOM XSS in later moneybird scan JSON. Fragment XSS on marketing pages is a known FP: browsers URL-encode `#` payloads before they can reach innerHTML sinks. Not in moneybird scan results. |
+| `8c0823c1-postmessage-handlers-missing-origin-validation.md` | **FP — Archive** | postMessage on `www.moneybird.com` marketing homepage. These are HubSpot/Intercom/chat widget handlers — by design per CLAUDE.md FP patterns. Steps to reproduce say "automated testing could not fully enumerate handler logic" — no concrete exploit demonstrated. |
+| `09dd5267-missing-content-security-policy-header.md` | **FP — Archive** | Already noted as FP in Session 8 TRIAGE. Marketing homepage. Auto-rejected by triagers. |
+
+### Session 9 Honest Assessment
+
+**Result: 0 new reports drafted.** No new submittable findings discovered.
+
+**Pattern:** Same root cause as prior sessions — no authenticated scanning, no injection vulnerabilities, only passive/header findings on marketing properties.
+
+**New HOLD item:** Kredivo wp-login.php brute-force test is worthwhile (easy to run, in scope, potential Rp 1.5M). Requires 20 rapid POST requests and observing lockout behavior.
+
+---
+
 ## Next Steps (Priority Order)
 
 1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+2. **Test Kredivo wp-login.php brute-force** — Run `for i in $(seq 1 25); do curl -s -o /dev/null -w "%{http_code}\n" -X POST https://blog.kredivo.com/wp-login.php -d 'log=admin&pwd=test123'; done` and check if any responses indicate lockout. If all 200, submit as no rate limiting.
+3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+6. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
