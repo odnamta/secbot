@@ -37,3 +37,27 @@
   profile: stealth
   schedule: weekly
   enabled: true
+
+- name: komoju
+  platform: yeswehack
+  scope_file: scopes/komoju.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: "Japanese payments SaaS, staging env available, public since Jan 2025. Use staging domains for active testing."
+
+- name: easyship
+  platform: yeswehack
+  scope_file: scopes/easyship.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: "Shipping SaaS, smaller company, good for CORS/IDOR/JWT checks on API surface."
+
+- name: pintu
+  platform: other
+  scope_file: scopes/pintu.txt
+  profile: stealth
+  schedule: weekly
+  enabled: false
+  notes: "Indonesian crypto exchange (Jakarta), home advantage. Self-hosted bounty at pintu.co.id/security/bug-bounty. DISABLED: Pintu policy may explicitly prohibit automated scanners — verify at pintu.co.id/en/security/bug-bounty before enabling."

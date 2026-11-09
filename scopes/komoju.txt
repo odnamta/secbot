@@ -1,0 +1,19 @@
+# Program: KOMOJU
+# Platform: YesWeHack (https://yeswehack.com/programs/komoju-public-bug-bounty-program)
+# Bounty: $50 (low) - $3,000 (critical), up to $7,000 max
+# Notes: Japanese payments company, public since Jan 2025, staging env available
+# Stack: Payment gateway / checkout (likely Rails or Node.js)
+# Company size: ~200 employees
+# Warning: YesWeHack programs often restrict automated scanners with heavy traffic — use stealth profile and low rate limits
+
+In Scope
+yeswehack.staging.komoju.com
+multipay-staging.test.komoju.com
+komoju.com
+doc.komoju.com
+
+Out of Scope
+- admin.komoju.com
+- Vulnerabilities in third-party services/integrations
+- Social engineering
+- Physical attacks
