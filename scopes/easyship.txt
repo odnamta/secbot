@@ -8,7 +8,6 @@
 In Scope
 app.easyship.com
 api.easyship.com
-easyship.com
 
 Out of Scope
 - Third-party carrier/shipping provider endpoints
