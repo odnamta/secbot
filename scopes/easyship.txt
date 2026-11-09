@@ -1,0 +1,16 @@
+# Program: Easyship
+# Platform: YesWeHack (https://yeswehack.com/programs/easyship-public-bug-bounty-program)
+# Bounty: $25 (low) - $2,500 (critical)
+# Notes: Shipping SaaS platform, global but smaller company (~150-250 employees)
+# Stack: Web app (SaaS dashboard, API, carrier integrations)
+# Warning: YesWeHack programs often restrict automated scanners with heavy traffic — use stealth profile
+
+In Scope
+app.easyship.com
+api.easyship.com
+easyship.com
+
+Out of Scope
+- Third-party carrier/shipping provider endpoints
+- Marketing/blog pages (easyship.com/blog, easyship.com/resources)
+- Social engineering attacks

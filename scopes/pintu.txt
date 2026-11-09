@@ -1,0 +1,18 @@
+# Program: Pintu (PT Pintu Kemana Saja)
+# Platform: Self-hosted (https://pintu.co.id/en/security/bug-bounty)
+# Bounty: Tiered by severity (impact + exploitability) — exact amounts not published
+# Notes: Indonesian crypto exchange, updated June 2026, home advantage (SEA)
+# Stack: React frontend, mobile apps; crypto trading platform
+# Company size: ~200-400 employees (Jakarta-based)
+# Warning: DoS strictly forbidden; self-hosted platform — submit via pintu.co.id/security/bug-bounty
+
+In Scope
+pintu.co.id
+app.pintu.co.id
+api.pintu.co.id
+
+Out of Scope
+- Denial-of-service attacks (strictly forbidden)
+- Mobile-only vulnerabilities (focus on web/API)
+- Smart contract bugs (focus on web app)
+- Third-party dependencies without clear business impact
