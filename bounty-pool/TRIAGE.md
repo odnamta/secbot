@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-11-11 (Session 9)
 
 ## Submission Priority
 
@@ -15,6 +15,8 @@
 | 2 | twitch.tv | server_session_id + api_token missing HttpOnly | Medium | HOLD — needs auth scan to verify these are actual auth tokens. Need Twitch account + login. |
 | 3 | bugcrowd.com | PathSession + FirstSession missing HttpOnly/Secure | Medium | Weak standalone — needs XSS chain to be credible. Submitting to their own program is bad optics. |
 | 4 | openproject | Session Fixation: _open_project_session not regenerated | Medium | Scan detected same session cookie pre/post login on `community.openproject.org/login?layout=1`. **CAVEAT:** Scanner had no credentials — POST without valid credentials = failed login = session regeneration not triggered. Need authenticated test to confirm. Community instance is fully patched — test against local Docker (see OPENPROJECT-CVE-ANALYSIS.md). |
+| 5 | moneybird.com | DOM XSS via URL fragment on homepage | High | Scanner triggered `alert("secbot-xss-37")` via `#<img src=x onerror=...>`. High confidence, but on marketing homepage (`www.moneybird.com`), not app. innerHTML sink may be from third-party widget. **NEEDS manual browser verification**: open the URL in browser and confirm alert fires. If confirmed, submit to HackerOne — marketing domain XSS can still be in scope. Draft ready: `bounty-pool/pending/moneybird/6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` |
+| 6 | kredivo | Exposed WordPress Login Page on blog.kredivo.com | High | `blog.kredivo.com/wp-login.php` returns HTTP 200, login form visible, no rate limiting detected. Real finding, but **scope check needed**: kredivo's RedStorm program likely covers main app, not blog subdomain. Verify scope before submitting. |
 
 ### TIER 3 — Archived (non-bounty)
 
@@ -96,14 +98,45 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 ---
 
+## Session 9 Analysis — 2026-11-11 (New findings from March scans not yet triaged)
+
+Two scan result sets were unprocessed: **moneybird** (scanner-generated pending drafts) and **kredivo** (blog.kredivo.com, March 2026).
+
+### Moneybird — `bounty-pool/pending/moneybird/` (scanner-generated drafts)
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| DOM XSS via URL fragment (`#<img src=x onerror=...>`) on www.moneybird.com | **HOLD** | High confidence scanner alert, but on marketing homepage. innerHTML sink could be from third-party script. **Action: manually open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in browser to confirm.** If alert fires and origin is Moneybird code (not widget), submit to HackerOne. Draft in `pending/moneybird/`. |
+| postMessage handlers missing origin validation on homepage | **FP** | 3 handlers on marketing homepage = Intercom/Drift/Zendesk widgets. No concrete exploit chain. Classic widget FP. No draft needed. |
+| Missing CSP on www.moneybird.com | **FP** | Marketing homepage. Auto-rejected as informational. Already noted in Session 8. |
+
+### Kredivo — `scan-results/kredivo/secbot-2026-03-22T12-37-39-601Z.json` (blog.kredivo.com)
+
+| Finding | Verdict | Reason |
+|---------|---------|--------|
+| Exposed WordPress Login Page (`/wp-login.php`) — no rate limiting | **HOLD** | Real finding: HTTP 200, login form accessible, no lockout. But `blog.kredivo.com` is a blog subdomain — scope check required. RedStorm program may exclude blog. Verify before drafting. |
+| Missing CSP on blog.kredivo.com | **FP** | Blog subdomain. Triagers auto-reject header findings on blog/marketing pages. |
+| Cookie `_hcc` missing HttpOnly/Secure | **FP** | `_hcc` = HubSpot tracking cookie. Third-party marketing cookie — not in scope, classic FP per FP patterns. |
+
+### Session 9 Summary
+
+- **1 HOLD added to Tier 2** (moneybird DOM XSS — needs browser confirm)
+- **1 HOLD added to Tier 2** (kredivo blog WordPress login — needs scope check)
+- **4 FPs discarded** (moneybird postMessage, moneybird CSP, kredivo CSP, kredivo HubSpot cookie)
+- **0 new Tier 1 submissions**
+
+---
+
 ## Next Steps (Priority Order)
 
-1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+1. **Verify moneybird DOM XSS manually** — Open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in browser. If alert fires, it's a real HackerOne submission (marketing XSS is typically in scope). Check DevTools console to confirm origin is Moneybird code, not third-party widget.
+2. **Check kredivo scope** — Confirm whether `blog.kredivo.com` is in RedStorm program scope. If yes, draft WordPress login exposure report.
+3. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
+4. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+5. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+6. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+7. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
