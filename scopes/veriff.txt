@@ -8,6 +8,7 @@
 #        Verify full rules on Intigriti before first scan.
 
 In Scope
+app.veriff.com
 *.veriff.com
 
 Out of Scope
