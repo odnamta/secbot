@@ -1,0 +1,19 @@
+# Program: Paddle
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/paddle-com-public-bug-bounty-program
+# Bounty: ~$50 (Low) / ~$100 (Medium) / ~$500 (High) / ~$1,500 (Critical) — VERIFY on YesWeHack
+# Notes: UK-based billing/payments SaaS for software companies. ~300–400 employees.
+#        Sandbox environment available — prefer sandbox over production for active testing.
+#        Good surface for IDOR, broken access control, CORS, JWT, rate limiting.
+#        Automated scanner policy not explicitly stated — verify before first scan, use stealth.
+
+In Scope
+sandbox-vendors.paddle.com
+developer.paddle.com
+
+Out of Scope
+- vendors.paddle.com (production — payment flows not enforceably sandbox-only by scope parser)
+- www.paddle.com (marketing only)
+- Payment processing on production endpoints — sandbox only, never production payment flows
+- VDP scope: vdp.paddle.com (no bounty, disclosure only)
+- Mobile apps
