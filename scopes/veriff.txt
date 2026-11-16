@@ -1,0 +1,18 @@
+# Program: Veriff
+# Platform: Intigriti
+# URL: https://app.intigriti.com/programs/veriff/veriffbugbounty
+# Bounty: €50 (Low) / €300 (Medium) / €1,250 (High) / €2,750 (Critical) up to €6,000 exceptional
+# Notes: Estonian identity verification SaaS, public program since April 2025.
+#        ~1,000 employees. Good surface for auth bypass, IDOR, JWT, OAuth, XSS in dashboard.
+#        No explicit automated scanner ban found — use stealth profile + rate limits.
+#        Verify full rules on Intigriti before first scan.
+
+In Scope
+*.veriff.com
+
+Out of Scope
+- Mobile apps (iOS/Android) — web only via this config
+- UI/UX bugs, spelling mistakes
+- Third-party services unless misconfigured by Veriff
+- Known issue: cache poisoning via HTTP X-headers on veriff.com
+- Known issue: reflected XSS on tableau-embedded.veriff.com (acknowledged, out of scope)

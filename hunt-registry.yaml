@@ -37,3 +37,17 @@
   profile: stealth
   schedule: weekly
   enabled: true
+
+- name: veriff
+  platform: intigriti
+  scope_file: scopes/veriff.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+
+- name: paddle
+  platform: other
+  scope_file: scopes/paddle.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
