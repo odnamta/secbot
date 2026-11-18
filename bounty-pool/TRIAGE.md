@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-11-18 (Session 9)
 
 ## Submission Priority
 
@@ -29,6 +29,22 @@ Moved to `bounty-pool/archived/`:
 |---|--------|---------|----------|-------|
 | A1 | finance.atmando.app | No rate limiting on /login and /graphql | HIGH | Brute-force risk on finance app. Add Cloudflare rate limiting + app-level throttle. |
 | A2 | finance.atmando.app | Missing HSTS header | MEDIUM | Middleware has HSTS configured but it's not appearing in response. Docker rebuild or middleware bug. |
+
+---
+
+## Session 9 Analysis — 2026-11-18 (Automated Report Drafter)
+
+**No new scan results found** since Session 8. All existing scan results are from March 2026 and were previously triaged.
+
+Three previously unassessed files found in `bounty-pool/pending/moneybird/` — all committed in the same commit as a DOM XSS FP fix (`6aef881`, "cycle 18"). These are test artifacts from the detection fix cycle, not live-scan findings. Assessment below.
+
+### Moneybird Pending Files — Retroactive Triage
+
+| File | Finding | Verdict | Reason |
+|------|---------|---------|--------|
+| `09dd5267-missing-content-security-policy-header.md` | Missing CSP on www.moneybird.com | **FP** | Already triaged in Session 8 — marketing homepage, triagers auto-reject. Redundant file. |
+| `8c0823c1-postmessage-handlers-missing-origin-validation.md` | postMessage missing origin validation on homepage | **LIKELY FP** | Medium confidence. www.moneybird.com marketing page — postMessage handlers almost certainly from embedded third-party widgets (Intercom/Drift/analytics). Classic FP pattern listed in CLAUDE.md. Not submittable without isolating a handler that processes sensitive operations (not a widget). |
+| `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` | DOM XSS via URL fragment on www.moneybird.com | **FP** | Raw scan finding has `detectionMethod: "dom-sink"` and `confidence: medium` — static JS analysis found `innerHTML` being assigned from hash-related code, but never confirmed execution. Committed alongside commit `6aef881` which fixed exactly this FP pattern ("require unencoded HTML in innerHTML sinks"). Fragment content is URL-encoded by browsers before reaching innerHTML sinks, so alert does not fire. Pending report file should be archived. |
 
 ---
 
@@ -99,11 +115,12 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 ## Next Steps (Priority Order)
 
 1. **Submit Indeed finding** — CSRF cookie inconsistency. Only if Dio confirms willingness (cookie is JS-set, needs Playwright reproduction).
-2. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
-3. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
+3. **Authenticate Twitch** — Get Twitch account, run `secbot scan --auth-cookie` to unlock Tier 2 cookie findings.
+4. **OpenProject Docker test** — Spin up `openproject/openproject:16.6.2` (pre-patch), create two user accounts, run `secbot scan --auth ... --idor-alt-auth ...`. This is the highest-ROI next step.
    - CVE-2026-27716 (`GET /api/v3/custom_fields/{id}/items`) — quick IDOR win
    - CVE-2026-23646 (`DELETE /my/sessions/{id}`) — session IDOR
    - CVE-2026-27731 (emoji reaction → internal comment leak) — reader-level IDOR
    - CVE-2026-24685 (git rev argument injection → file write) — Critical RCE if repo enabled
-4. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
-5. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
+5. **Add neon.tech to hunt registry** — Neon has an active HackerOne program. App is PostgreSQL-as-a-service with real auth (console.neon.tech). Auth scan could find IDOR/BAC in API.
+6. **Run fresh scans** — 5 months since last scan batch. Re-run hunt targets (kredivo, anytask, moneybird, openproject, calcom) to check for new vulnerabilities introduced since March 2026.
+7. **Fix own app** — rate limiting + HSTS on finance.atmando.app (unchanged from March).
