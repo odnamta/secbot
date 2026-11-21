@@ -107,7 +107,7 @@ with exact endpoints and payloads. The path forward is a local Docker test → a
 
 | Finding | Verdict | Reason |
 |---------|---------|--------|
-| DOM XSS via URL fragment (`6d09cce8`) | **TIER 2 — Hold** | Scanner ran this AFTER cycle-18 FP fix (which requires unencoded HTML in sink before firing). Playwright confirmed alert fired. BUT: `www.moneybird.com` is marketing homepage — no user sessions. Impact claim in draft exaggerates (mentions "financial data" but users are not logged in here). Impact is phishing/defacement via trusted `moneybird.com` domain. **Action: Dio opens `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in browser to confirm.** If confirmed, revise impact and submit. |
+| DOM XSS via URL fragment (`6d09cce8`) | **TIER 2 — Hold** | Scanner confirmed unencoded `<img onerror=...>` payload reached an `innerHTML-set` sink (cycle-18 FP fix requires this — URL-encoded payloads are skipped). **NOT confirmed execution** — scanner detects sink matches, not dialog fires (see `xss.ts:1315`, raw confidence is `medium`). `www.moneybird.com` is marketing homepage — no user sessions; impact in draft overstates (no "financial data"). **Action: Dio opens `https://www.moneybird.com/#<img src=x onerror=alert(1)>` in browser to confirm execution.** If alert fires, revise impact (phishing via moneybird.com domain) and submit. If no alert, discard. |
 | postMessage missing origin validation (`8c0823c1`) | **FP — Archived** | 3 listeners on marketing homepage = analytics/chat widgets (HubSpot, Intercom, etc.). Classic known FP pattern. No actionable finding. |
 | Missing CSP (`09dd5267`) | **FP — Archived** | Already marked FP in Session 8. Marketing homepage. Auto-rejected by triagers. Moved to `archived/moneybird/`. |
 
