@@ -1,0 +1,23 @@
+# Program: Neon (Serverless Postgres)
+# Platform: HackerOne
+# URL: https://hackerone.com/neon_bbp
+# Bounty: $150 - $3,000 (average Medium ~$750)
+# Notes: Neon is a cloud Postgres platform (serverless), acquired by Databricks in 2025.
+#        Public program launched Feb 2025. Scope: web app console + API (staging + production).
+#        Tech stack: Node.js/TypeScript/Next.js web console. Good for: CORS, CSRF, IDOR, JWT, SSRF,
+#        GraphQL, broken access control, info disclosure, XSS in dashboard.
+# Warning: If a finding touches the Lakebase product (Databricks side), report to the Databricks program
+#          instead. Rate limit: be respectful of staging + production environments.
+
+In Scope
+console.neon.tech
+api.neon.tech
+neon.tech
+
+Out of Scope
+# Databricks/Lakebase infrastructure (separate program)
+# Issues requiring a paid Neon plan to reproduce (unless critical)
+# Third-party OAuth providers (GitHub, Google login)
+# Findings on the neon.tech marketing site with no exploitable business impact
+# DoS/DDoS attacks
+# Social engineering

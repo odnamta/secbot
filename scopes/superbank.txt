@@ -1,0 +1,23 @@
+# Program: Superbank Public Bug Bounty
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/superbank-public-bug-bounty-program
+# Bounty: Low ~$50 / Medium $150 / High $1,000 / Critical $2,000
+# Notes: Indonesian digital bank (PT Super Bank Indonesia), backed by Grab/OVO/Singtel (~100-300 employees).
+#        Program last updated 2026-09-14 — recently active. Self-register required via Android/iOS app
+#        using YesWeHack email alias. Focus: banking web portal + API endpoints.
+# Warning: No automated scanner evidence — use stealth profile. Former/current Grab, OVO, GxS, GxB
+#          employees ineligible.
+
+In Scope
+superbank.id
+app.superbank.id
+api.superbank.id
+*.superbank.id
+
+Out of Scope
+# Issues from current/former employees of Superbank, Grab, OVO, GxS, GxB or their contractors
+# Third-party payment gateway issues (not under Superbank control)
+# Mobile app OS-level issues
+# Social engineering
+# Physical security attacks
+# Findings on assets not explicitly listed in the YesWeHack scope table

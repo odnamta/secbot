@@ -1,6 +1,5 @@
-# SecBot Hunt Registry — Diagnostic Run #1
-# Created: 2026-03-22
-# Purpose: First real bounty hunt — 5 carefully selected targets
+# SecBot Hunt Registry
+# Last updated: 2026-11-23 (Bounty Scout automated run)
 # Strategy: low competition + web app depth + SecBot strengths
 
 - name: kredivo
@@ -32,8 +31,35 @@
   enabled: true
 
 - name: calcom
-  platform: hackerone
+  platform: bugcrowd
   scope_file: scopes/calcom.txt
   profile: stealth
   schedule: weekly
   enabled: true
+  notes: "SCOPE CHANGED 2026-11-23: platform is Bugcrowd (not HackerOne); in-scope is QA env (app.cal.qa) not production"
+
+# --- New targets added 2026-11-23 ---
+
+- name: dana
+  platform: yeswehack
+  scope_file: scopes/dana.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: "Indonesian e-wallet — Medium $700, Critical $3,000. WARNING: must manually validate all findings before submit (unvalidated scanner reports excluded by policy)"
+
+- name: superbank
+  platform: yeswehack
+  scope_file: scopes/superbank.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: "Indonesian digital bank (Grab/OVO backed) — Medium $150, Critical $2,000. Self-register via mobile app using YesWeHack email alias"
+
+- name: neon
+  platform: hackerone
+  scope_file: scopes/neon.txt
+  profile: stealth
+  schedule: weekly
+  enabled: true
+  notes: "Serverless Postgres cloud platform — Medium ~$750, Critical $3,000. Acquired by Databricks; report Lakebase findings to Databricks program instead"
