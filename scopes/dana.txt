@@ -1,0 +1,32 @@
+# Program: DANA Indonesia
+# Platform: YesWeHack
+# URL: https://yeswehack.com/programs/dana-bug-bounty-program
+# Bounty: Low $300 / Medium $700 / High $2,000 / Critical $3,000 (up to $5,000 for special cases like ATO)
+# Notes: Indonesian e-wallet (PT Espay Debit Indonesia Koe), ~600 employees, YesWeHack public program.
+#        Public program launched after private phase. Good match: login, payment flows, dashboard, API.
+# Warning: Unvalidated automated scanner reports explicitly excluded — SecBot findings MUST be manually
+#          verified before submission. Use stealth profile to avoid WAF triggers.
+
+In Scope
+# Web assets only (source: https://yeswehack.com/programs/dana-bug-bounty-program, last updated 2026-11-02)
+m.dana.id
+mgs-gw.dana.id
+
+# Mobile apps (out of SecBot's scope but listed for completeness)
+# https://play.google.com/store/apps/details?id=id.dana&hl=en  (Android)
+# https://apps.apple.com/id/app/dana/id1437123008              (iOS)
+
+Out of Scope
+# EXPLICITLY excluded by DANA's program:
+*.dana.id  (wildcard — everything not listed above is out of scope)
+webdev.dana.id
+wp.dana.id
+fiat.dana.id
+cmsdev.dana.id
+techops.dana.id
+dm.dana.id
+encrypt.dana.id
+# Dev/test/staging/sandbox/demo/non-production environments
+# Known non-qualifying: DoS, self-XSS, missing cookie flags, missing headers,
+#   rate-limit absence, clickjacking, version disclosure, account enumeration,
+#   XSS without real impact beyond JS execution proof

@@ -1,11 +1,20 @@
 # Program: Cal.com
-# Platform: HackerOne
-# Bounty: $100 - $3,000 (estimated)
-# Notes: Open-source scheduling (Next.js/TypeScript), code on GitHub, small startup
+# Platform: Bugcrowd (NOT HackerOne — was migrated)
+# URL: https://bugcrowd.com/cal-com (verify on cal.com/security)
+# Bounty: estimated $100 - $3,000 (unconfirmed — verify on Bugcrowd)
+# Notes: Open-source scheduling SaaS (Next.js/TypeScript). Code is now closed-source (Apr 2026,
+#        moved private due to AI security risks). Scope is QA environment only — NOT production.
+#        Self-register at app.cal.qa using a test account.
+# Warning: Testing production (app.cal.com) is OUT OF SCOPE. Use QA environment only.
+#          Previously listed *.companyhub.com in scope — verify this is still current on Bugcrowd.
 
 In Scope
-app.cal.com
-*.companyhub.com
+app.cal.qa
+api.cal.qa
 
 Out of Scope
-- cal.com (marketing site only, not the app)
+# app.cal.com (production — out of scope, use QA only)
+# cal.com (marketing site)
+# Third-party OAuth integrations
+# Issues requiring a paid Cal.com plan to reproduce
+# cal.com infrastructure not explicitly in scope on Bugcrowd program page
