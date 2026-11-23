@@ -45,8 +45,8 @@
   scope_file: scopes/dana.txt
   profile: stealth
   schedule: weekly
-  enabled: true
-  notes: "Indonesian e-wallet — Medium $700, Critical $3,000. WARNING: must manually validate all findings before submit (unvalidated scanner reports excluded by policy)"
+  enabled: false
+  notes: "DISABLED — DANA's policy explicitly prohibits automated scanners ('Do not use automated scanners or tools that generate large amount of network traffic' + 'refrain from using automated tools'). SecBot is an automated scanner. Manual testing only. Enable only after confirming with YesWeHack/DANA that stealth-profile scanning is permitted. Rewards: Medium $700, Critical $3,000."
 
 - name: superbank
   platform: yeswehack
