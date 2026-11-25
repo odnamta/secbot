@@ -2,7 +2,7 @@
 
 **Severity:** high | **CVSS:** 7 | CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N
 **Platform:** HackerOne | **Program:** Moneybird
-**Confidence:** high
+**Confidence:** medium (DOM sink detected — requires browser verification to confirm execution)
 
 ## Description
 The homepage directly writes URL fragment content into the DOM via innerHTML without sanitization. An attacker can craft a malicious URL containing an HTML/JS payload in the fragment (e.g., #<img src=x onerror=alert(1)>) and trick a user into clicking it, causing arbitrary JavaScript execution in the victim's browser.
@@ -18,11 +18,12 @@ The homepage directly writes URL fragment content into the DOM via innerHTML wit
 3. Observe the alert dialog firing with `www.moneybird.com`, confirming same-origin JavaScript execution
 4. The payload reaches at least two separate `innerHTML` sinks on the page
 
-**SecBot auto-verify confirmation:**
-- Scanner navigated to the URL using Playwright (headless Chromium)
-- XSS marker `secbot-xss-37` was confirmed in DOM after navigation
+**SecBot detection details:**
+- Detection method: DOM sink analysis (`detectionMethod: "dom-sink"`)
 - Two `innerHTML` assignment sinks detected reading from `window.location.hash`
+- Confidence: medium — sink was identified in page JavaScript, but script execution was NOT confirmed by auto-verify (AI validation skipped for this finding)
 - Classification: DOM XSS (CWE-79), no server-side processing involved
+- **Browser verification required before submission** — sink detection ≠ confirmed execution
 
 ## Impact
 An attacker can steal session cookies, perform actions on behalf of the user, redirect to phishing pages, or exfiltrate sensitive financial data visible in the Moneybird UI. This is particularly severe for an accounting/finance application.
