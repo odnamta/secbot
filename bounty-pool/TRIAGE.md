@@ -1,4 +1,4 @@
-# Bounty Pool Triage — Updated 2026-06-13 (Session 8)
+# Bounty Pool Triage — Updated 2026-11-28 (Session 9)
 
 ## Submission Priority
 
@@ -29,6 +29,24 @@ Moved to `bounty-pool/archived/`:
 |---|--------|---------|----------|-------|
 | A1 | finance.atmando.app | No rate limiting on /login and /graphql | HIGH | Brute-force risk on finance app. Add Cloudflare rate limiting + app-level throttle. |
 | A2 | finance.atmando.app | Missing HSTS header | MEDIUM | Middleware has HSTS configured but it's not appearing in response. Docker rebuild or middleware bug. |
+
+---
+
+## Session 9 Analysis — 2026-11-28 (Report Drafter Agent)
+
+No new scan results since Session 8. Reviewed 3 pending files in `bounty-pool/pending/moneybird/` that were not previously triaged.
+
+### Moneybird Pending Files — `bounty-pool/pending/moneybird/`
+
+| Finding | File | Verdict | Reason |
+|---------|------|---------|--------|
+| DOM XSS via URL fragment | `6d09cce8-dom-based-cross-site-scripting-(xss)-via-url-fragment.md` | **HOLD** | Raw scan: `dom-sink` detection only (innerHTML reads `location.hash`), confidence was **medium** in raw scan (AI reporter bumped to high). No Playwright auto-verification performed. The curl PoC in the draft is wrong — curl doesn't execute JS/fragments. Needs manual browser test: open `https://www.moneybird.com/#<img src=x onerror=alert(1)>` and confirm alert fires. If confirmed, fix the curl PoC (add screenshot evidence) before submitting. |
+| Missing CSP header | `09dd5267-missing-content-security-policy-header.md` | **FP** | Already triaged in Session 8: marketing homepage header findings are auto-rejected by HackerOne triagers as informational. No standalone submittable value. |
+| postMessage missing origin validation | `8c0823c1-postmessage-handlers-missing-origin-validation.md` | **FP** | Known FP pattern: 3 postMessage handlers on Moneybird homepage are almost certainly from a chat/analytics widget (Intercom/Drift/Freshchat). CLAUDE.md explicitly lists this as a known FP pattern. Medium confidence only. Report steps are vague ("automated testing could not fully enumerate all handler logic"). Not submittable. |
+
+**Action items from Session 9:**
+- Move `09dd5267` and `8c0823c1` to `bounty-pool/archived/` (Dio to confirm)
+- `6d09cce8` DOM XSS: Dio should manually test in browser — if `alert()` fires, update curl PoC with screenshot and submit to Moneybird HackerOne
 
 ---
 
